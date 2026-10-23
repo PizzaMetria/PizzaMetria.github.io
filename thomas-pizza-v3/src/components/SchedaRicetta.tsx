@@ -1,5 +1,6 @@
 import type { RicettaConfig } from '../types';
 import { RICETTE } from '../config/ricette';
+import { formattaPercentuale } from '../lib/formato';
 import { parametriScheda } from '../lib/vista';
 
 interface Props {
@@ -10,10 +11,15 @@ function notaRicetta(ricetta: RicettaConfig): string {
   if (ricetta.famiglia === 'diretto') {
     return 'La dose di riferimento è una teglia 30 × 40 cm con 375 g di farina. Il calcolo mantiene la stessa quantità di impasto per unità di superficie.';
   }
-  if (ricetta.famiglia === 'biga-autolisi') {
-    return 'Il 75% della farina va nella biga, il 25% nell’autolisi facoltativa. Se la disattivi, la farina entra nell’impastamento finale; l’acqua finale resta la parte restante dell’acqua totale.';
-  }
-  return 'L’85% della farina va nella biga, il restante 15% nel rinfresco. L’autolisi è facoltativa: se la attivi, il calcolatore ripartisce l’acqua totale tra biga, autolisi e rinfresco.';
+  // Le due ricette con biga usano la stessa frase, con le proprie percentuali:
+  // la biga ha un'acqua sua, quindi il calcolo ripartisce quella restante.
+  const quotaBiga = ricetta.quotaFarinaBiga ?? 0;
+  const percentualeBiga = formattaPercentuale(quotaBiga);
+  const articolo = /^(8|11|18)/.test(percentualeBiga) ? 'L’' : 'Il ';
+
+  return `${articolo}${percentualeBiga} della farina va nella biga, il restante ${formattaPercentuale(
+    1 - quotaBiga,
+  )} nel rinfresco. L’autolisi è facoltativa: se la attivi, il calcolatore ripartisce l’acqua restante tra autolisi e rinfresco.`;
 }
 
 export function SchedaRicetta({ ricetta }: Props) {
