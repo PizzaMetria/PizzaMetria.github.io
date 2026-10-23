@@ -77,9 +77,33 @@ _(nessuna al momento)_
 
 Quando una richiesta viene eseguita, spostala in fondo con la data e l'esito.
 
+## Punti da decidere
+
+Rimasti aperti dopo l’aggiornamento dei testi del 23 ottobre, da confermare prima
+di pubblicare o in un secondo momento:
+
+- **Cottura della teglia**: la scheda in home descrive il forno F1 P134H, mentre
+  il procedimento (PDF) ha ancora il passo «Stesura e cottura in due fasi» con
+  forno statico alla massima temperatura e condimenti aggiunti a metà cottura.
+  Le due indicazioni non coincidono; non inventare i passaggi mancanti.
+- **Autolisi del Canotto**: i Tips & Tricks non indicano più la temperatura di
+  conservazione, ma tempi e procedimento dicono ancora «a temperatura ambiente
+  per tutta la notte». Serve una decisione, non una correzione automatica.
+- **Temperatura di chiusura 25 °C**: resta nei parametri del pannello risultato
+  (dato necessario), ma non più nella scheda in home.
+- **Procedimento della teglia**: conserva «Porta la biga a circa 25 °C … per
+  circa 24 ore», lasciato com’era perché la richiesta riguardava solo la voce
+  «Tempi e temperature».
+
 ## Fatto in questa sessione
 
 - Sorgenti di `thomas-pizza-v3` allineati alla versione pubblicata e committati
   sul branch `freebuff/3e8da9f944cbe470e8ed6e43`, così una nuova chat li ritrova.
 - README della v3 aggiornato con gli URL reali e le istruzioni di pubblicazione
   (prima citava URL di anteprima vecchi).
+- 23 ottobre, aggiornamento dei testi di teglia e Canotto: tempi della biga senza
+  «circa», voce «Chiusura della biga» rimossa, nuova cottura della teglia in
+  paragrafi ed elenco, nuovi Tips & Tricks su riposo iniziale e autolisi (testi
+  unici in `TIP_RIPOSO_BIGA` e `TIP_AUTOLISI`), `VoceConfig` esteso con
+  `paragrafi` ed `elenco`. Test 116 verdi, build ok, verifiche DOM e PDF ok.
+  **Da pubblicare** su `thomascalc.freebuff.page`.

@@ -79,6 +79,29 @@ export function SchedaRicetta({ ricetta }: Props) {
                 </dt>
                 <dd className="mt-0.5 text-xs leading-relaxed break-words text-inchiostro">
                   {voce.valore}
+                  {voce.paragrafi?.map((paragrafo) => (
+                    <span key={paragrafo} className="mt-1.5 block">
+                      {paragrafo}
+                    </span>
+                  ))}
+                  {voce.elenco && voce.elenco.length > 0 ? (
+                    <ul className="mt-1.5 grid gap-1">
+                      {voce.elenco.map((rigaElenco) => (
+                        <li
+                          key={rigaElenco}
+                          className="flex items-start gap-1.5"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="mt-px font-bold text-terracotta"
+                          >
+                            •
+                          </span>
+                          <span>{rigaElenco}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </dd>
               </div>
             ))}

@@ -38,6 +38,10 @@ export interface FaseConfig {
 export interface VoceConfig {
   etichetta: string;
   valore: string;
+  /** Paragrafi che completano il valore, per le indicazioni articolate. */
+  paragrafi?: readonly string[];
+  /** Elenco puntato che chiude l'indicazione. */
+  elenco?: readonly string[];
 }
 
 export interface PassoProcedimento {

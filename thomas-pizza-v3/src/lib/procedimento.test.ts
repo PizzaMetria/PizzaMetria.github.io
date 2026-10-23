@@ -156,14 +156,14 @@ describe('testi pubblici delle ricette', () => {
     const bigaTeglia = RICETTA_TEGLIA_BIGA.fasi.find((fase) => fase.id === 'biga');
 
     expect(bigaTeglia?.avviso).toBe(
-      'Chiusura a circa 25 °C, poi circa 24 ore in frigorifero a 4 °C.',
+      'Chiusura a 25 °C, poi 24 ore in frigorifero a 4 °C.',
     );
     expect(RICETTA_TEGLIA_BIGA.tempiETemperature).toContainEqual({
       etichetta: 'Biga',
-      valore: 'Chiusura a circa 25 °C, poi circa 24 ore in frigorifero a 4 °C',
+      valore: 'Chiusura a 25 °C, poi 24 ore in frigorifero a 4 °C',
     });
     expect(RICETTA_TEGLIA_BIGA.tips.join(' ')).toContain(
-      '20 minuti a temperatura ambiente',
+      'indicativamente 30 minuti',
     );
     expect(RICETTA_CANOTTO.fasi[0].avviso).toContain('30 minuti');
   });

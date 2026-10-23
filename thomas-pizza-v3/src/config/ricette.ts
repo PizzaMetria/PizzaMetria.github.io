@@ -12,6 +12,16 @@ import type {
  * degli impasti diretti alla farina totale.
  */
 
+/**
+ * Consigli condivisi dalle due ricette con biga: sono testi unici, così home e
+ * PDF restano allineati senza duplicazioni.
+ */
+export const TIP_RIPOSO_BIGA =
+  'Con piccole dosi di biga, il passaggio immediato in frigorifero può raffreddare rapidamente la massa e rallentare molto l’avvio della fermentazione. Per favorirlo, è consigliabile un breve riposo a temperatura ambiente prima di refrigerare: indicativamente 30 minuti, da adattare alla temperatura dell’ambiente e della biga.';
+
+export const TIP_AUTOLISI =
+  'L’autolisi è opzionale e la sua durata può essere adattata alla farina e al risultato desiderato: può essere preparata mezz’ora prima del rinfresco oppure, con farine più forti, anche la sera precedente, per smorzarne la tenacità e favorire l’estensibilità dell’impasto. Se attivata, il calcolatore ripartisce automaticamente l’acqua totale tra biga, autolisi e impastamento finale.';
+
 export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   id: 'pizza-teglia-biga-85',
   slug: 'pizza-teglia-biga',
@@ -25,8 +35,7 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
       id: 'biga',
       titolo: 'Biga',
       nota: 'Da preparare',
-      avviso:
-        'Chiusura a circa 25 °C, poi circa 24 ore in frigorifero a 4 °C.',
+      avviso: 'Chiusura a 25 °C, poi 24 ore in frigorifero a 4 °C.',
     },
     {
       id: 'autolisi',
@@ -64,9 +73,8 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   tempiETemperature: [
     {
       etichetta: 'Biga',
-      valore: 'Chiusura a circa 25 °C, poi circa 24 ore in frigorifero a 4 °C',
+      valore: 'Chiusura a 25 °C, poi 24 ore in frigorifero a 4 °C',
     },
-    { etichetta: 'Chiusura della biga', valore: 'Circa 25 °C' },
     {
       etichetta: 'Autolisi',
       valore:
@@ -75,8 +83,16 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
     { etichetta: 'Teglia di riferimento', valore: '40 × 30 cm · 710 g di impasto' },
     {
       etichetta: 'Cottura',
-      valore:
-        'Forno statico alla massima temperatura: prima senza condimenti fino alla colorazione, poi condimenti e completamento',
+      valore: 'Cottura nel forno F1 P134H con pietra refrattaria.',
+      paragrafi: [
+        'Preriscalda il forno impostando entrambe le resistenze, superiore e inferiore, a 300 °C.',
+        'Inforna e cuoci per i primi 5 minuti con la resistenza superiore spenta e quella inferiore impostata a 270 °C.',
+        'Prosegui per altri 7 minuti, mantenendo la resistenza inferiore a 270 °C e impostando quella superiore:',
+      ],
+      elenco: [
+        'a 250 °C per la pizza rossa',
+        'a 230 °C per la pizza bianca, limitandoti a una sola accensione della resistenza superiore',
+      ],
     },
   ],
   procedimento: [
@@ -135,9 +151,9 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   noteEssenziali: ['Olio per ungere la teglia: q.b., escluso dalle dosi.'],
   tips: [
     'Per una biga all’85% e un’idratazione totale dell’80% serve una farina forte, indicativamente W 300–320: deve reggere la lunga fermentazione e l’alta idratazione senza collassare.',
-    'La biga va portata a circa 25 °C al termine dell’impasto, lasciata 20 minuti a temperatura ambiente e poi conservata in frigorifero per circa 24 ore.',
+    TIP_RIPOSO_BIGA,
     'Se la fermentazione riparte con difficoltà, usa acqua tiepida nel rinfresco per riportare l’impasto sopra 20 °C.',
-    'L’autolisi è opzionale: serve a idratare la farina del rinfresco prima dell’impastamento finale, favorendo sviluppo e lavorabilità. Se attivata, il calcolatore ripartisce automaticamente l’acqua totale tra biga, autolisi e impastamento finale.',
+    TIP_AUTOLISI,
   ],
 };
 
@@ -397,8 +413,8 @@ export const RICETTA_CANOTTO: RicettaConfig = {
   ],
   tips: [
     'Per una biga al 75% e un’idratazione totale del 77% è adatta una farina forte, indicativamente W 300–320: deve sostenere la lunga maturazione della biga e l’alta idratazione.',
-    'Prepara la biga con un avvio di circa 30 minuti a temperatura ambiente, poi conservala in frigorifero per circa 24 ore.',
-    'L’autolisi è facoltativa: se la attivi, prepara la sera precedente la farina del rinfresco con l’acqua destinata all’autolisi, così si idrata prima dell’impastamento finale; se la disattivi, la farina entra direttamente nell’impasto con la biga.',
+    TIP_RIPOSO_BIGA,
+    TIP_AUTOLISI,
     'L’acqua finale va incorporata gradualmente durante l’impastamento finale, dopo aver unito biga e autolisi.',
   ],
 };
