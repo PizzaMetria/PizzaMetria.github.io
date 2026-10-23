@@ -60,88 +60,9 @@ export function SchedaRicetta({ ricetta }: Props) {
         ))}
       </dl>
 
-      {ricetta.tempiETemperature.length > 0 ? (
-        <details className="group mt-3 rounded-xl border border-bordo/70 bg-crema-scuro/40">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-inchiostro transition-colors hover:text-oro-chiaro focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta [&::-webkit-details-marker]:hidden">
-            <span>Tempi e temperature</span>
-            <span
-              aria-hidden="true"
-              className="shrink-0 text-lg leading-none font-normal text-terracotta transition-transform group-open:rotate-45 motion-reduce:transition-none"
-            >
-              +
-            </span>
-          </summary>
-          <dl className="grid gap-2.5 border-t border-bordo/60 px-3 py-3">
-            {ricetta.tempiETemperature.map((voce) => (
-              <div key={voce.etichetta} className="min-w-0">
-                <dt className="text-[10px] font-semibold tracking-wider text-terracotta/90 uppercase">
-                  {voce.etichetta}
-                </dt>
-                <dd className="mt-0.5 text-xs leading-relaxed break-words text-inchiostro">
-                  {voce.valore}
-                  {voce.paragrafi?.map((paragrafo) => (
-                    <span key={paragrafo} className="mt-1.5 block">
-                      {paragrafo}
-                    </span>
-                  ))}
-                  {voce.elenco && voce.elenco.length > 0 ? (
-                    <ul className="mt-1.5 grid gap-1">
-                      {voce.elenco.map((rigaElenco) => (
-                        <li
-                          key={rigaElenco}
-                          className="flex items-start gap-1.5"
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="mt-px font-bold text-terracotta"
-                          >
-                            •
-                          </span>
-                          <span>{rigaElenco}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </details>
-      ) : null}
-
       <p className="mt-4 border-l-2 border-terracotta/60 pl-3 text-xs leading-relaxed text-inchiostro-tenue">
         {notaRicetta(ricetta)}
       </p>
-
-      {ricetta.tips.length > 0 ? (
-        <details className="group mt-3 rounded-xl border border-bordo/70 bg-crema-scuro/40">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-inchiostro transition-colors hover:text-oro-chiaro focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta [&::-webkit-details-marker]:hidden">
-            <span>Tips &amp; Tricks</span>
-            <span
-              aria-hidden="true"
-              className="shrink-0 text-lg leading-none font-normal text-terracotta transition-transform group-open:rotate-45 motion-reduce:transition-none"
-            >
-              +
-            </span>
-          </summary>
-          <ul className="grid gap-2.5 border-t border-bordo/60 px-3 py-3">
-            {ricetta.tips.map((tip) => (
-              <li
-                key={tip}
-                className="flex items-start gap-2 text-xs leading-relaxed text-inchiostro"
-              >
-                <span
-                  aria-hidden="true"
-                  className="mt-px font-bold text-terracotta"
-                >
-                  •
-                </span>
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
     </section>
   );
 }

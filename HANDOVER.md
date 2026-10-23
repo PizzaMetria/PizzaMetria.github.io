@@ -13,7 +13,7 @@ contesto. Aggiornalo quando cambia qualcosa di importante.
 | Anteprima pubblicata | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page> |
 | Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` («Thomas' Pizza v3») |
 | Ambiente di produzione | `production`, sottodominio `thomascalc` |
-| Bundle in produzione | `assets/index-BAHTDgUT.js`, `assets/index-D5Ws0A6U.css` |
+| Bundle in produzione | `assets/index-C0jOyM04.js`, `assets/index-D5Ws0A6U.css` |
 
 Le altre cartelle non vanno toccate:
 
@@ -82,10 +82,14 @@ Quando una richiesta viene eseguita, spostala in fondo con la data e l'esito.
 Rimasti aperti dopo l’aggiornamento dei testi del 23 ottobre, da confermare prima
 di pubblicare o in un secondo momento:
 
-- **Cottura della teglia**: la scheda in home descrive il forno F1 P134H, mentre
-  il procedimento (PDF) ha ancora il passo «Stesura e cottura in due fasi» con
-  forno statico alla massima temperatura e condimenti aggiunti a metà cottura.
-  Le due indicazioni non coincidono; non inventare i passaggi mancanti.
+- **Tempi, temperature e cottura F1 P134H**: erano nella scheda in home e il 23
+  ottobre sono stati tolti insieme a Tips & Tricks (duplicati del PDF). Ora la
+  cottura non è visibile in nessun punto dell'app né nel PDF: o si aggiunge una
+  sezione «Tempi e temperature» al PDF completo, o resta solo nei dati di
+  `ricette.ts`.
+- **Cottura nel procedimento (PDF)**: il passo «Stesura e cottura in due fasi»
+  descrive ancora forno statico alla massima temperatura e condimenti a metà
+  cottura, quindi non coincide con il testo F1 P134H. Non inventare i passaggi.
 - **Autolisi del Canotto**: i Tips & Tricks non indicano più la temperatura di
   conservazione, ma tempi e procedimento dicono ancora «a temperatura ambiente
   per tutta la notte». Serve una decisione, non una correzione automatica.
@@ -108,3 +112,7 @@ di pubblicare o in un secondo momento:
   `paragrafi` ed `elenco`. Test 116 verdi, build ok, verifiche DOM e PDF ok.
   Pubblicato su `thomascalc.freebuff.page` con il bundle `index-BAHTDgUT.js`
   (deploy `d6801d39`); le stesse verifiche DOM passano sulla build servita.
+- 23 ottobre, seconda passata: rimossi dalla home i due riquadri richiudibili
+  («Tempi e temperature» e «Tips & Tricks») su richiesta di Thomas, che vuole la
+  home dedicata al calcolo. Pubblicato con il bundle `index-C0jOyM04.js`
+  (deploy `c820bf40`). Test 116 verdi, nessun errore in console, calcolo intatto.
