@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it" data-tema="scuro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Thomas' Pizza: calcola farina, acqua, lievito, sale e olio per pizza in teglia con biga, Trancio Milanese e Canotto, poi salva la ricetta in JPG o PDF. Tema chiaro o scuro, nessun dato inviato altrove."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#23262a" />
+    <title>Thomas' Pizza — Calcolatore di impasti</title>
+    <style>
+      html {
+        background-color: #23262a;
+      }
+      html[data-tema="chiaro"] {
+        background-color: #f7f2e8;
+      }
+    </style>
+    <script>
+      // Tema scelto (o preferenza di sistema) prima del primo paint:
+      // evita il lampo del tema sbagliato al caricamento.
+      (function () {
+        var tema;
+        try {
+          var salvato = localStorage.getItem('thomas-pizza-tema');
+          tema =
+            salvato === 'chiaro' || salvato === 'scuro'
+              ? salvato
+              : window.matchMedia('(prefers-color-scheme: light)').matches
+                ? 'chiaro'
+                : 'scuro';
+        } catch (errore) {
+          tema = 'scuro';
+        }
+        document.documentElement.dataset.tema = tema;
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
