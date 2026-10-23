@@ -120,8 +120,7 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
       titolo: 'Completa l’impasto',
       condizione: 'autolisi',
       paragrafi: [
-        'Unisci tutta la biga e tutta l’autolisi, quindi incorpora gradualmente l’acqua restante ({acquaFinale}).',
-        'Aggiungi il malto, il sale e l’olio e lavora fino a ottenere un impasto omogeneo e ben sviluppato.',
+        'Unisci tutta la biga e tutta l’autolisi, quindi incorpora gradualmente l’acqua restante ({acquaFinale}). Aggiungi il malto, il sale e l’olio e lavora fino a ottenere un impasto omogeneo e ben sviluppato.',
       ],
     },
     {
@@ -353,10 +352,7 @@ export const RICETTA_CANOTTO: RicettaConfig = {
       titolo: 'Completa l’impasto',
       condizione: 'autolisi',
       paragrafi: [
-        'Unisci tutta la biga e tutta l’autolisi. Incorpora gradualmente l’acqua restante ({acquaFinale}), quindi aggiungi malto, sale e olio, lasciando assorbire gli ingredienti durante la lavorazione.',
-        'Lavora fino a ottenere un impasto omogeneo e ben strutturato. Considera circa 15 minuti come riferimento, da adattare alla macchina e alla risposta dell’impasto.',
-        'Una temperatura finale intorno a 21 °C è il riferimento di questa ricetta; regola la temperatura dell’acqua in base a quella degli ingredienti e al riscaldamento prodotto dall’impastatrice.',
-        'L’acqua dell’impastamento finale ({acquaFinale}) è già compresa nell’acqua totale ({acquaTotale}).',
+        'Unisci tutta la biga e tutta l’autolisi, quindi incorpora gradualmente l’acqua restante ({acquaFinale}). Aggiungi il malto, il sale e l’olio e lavora fino a ottenere un impasto omogeneo e ben sviluppato.',
       ],
     },
     {

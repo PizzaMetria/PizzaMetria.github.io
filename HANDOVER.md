@@ -139,3 +139,10 @@ di pubblicare o in un secondo momento:
   biga, autolisi, rinfresco e stesura in teglia in entrambe le ricette con biga,
   senza il riposo di 30 minuti a temperatura ambiente. 125 test verdi, build ok,
   verifiche DOM e PDF con quantità dinamiche ok.
+- 23 ottobre, settima passata: il passo «Completa l’impasto» (biga + autolisi)
+  usa lo stesso testo su teglia e Canotto, con l’acqua restante dinamica; per la
+  Canotto spariscono le note su 21 °C, 15 minuti e acqua già compresa nel totale.
+  Totali di fase arrotondati all’intero restano invariati, così come biga,
+  autolisi e stesura. 125 test verdi, build ok, verifiche PDF con autolisi
+  attiva su entrambe le ricette. Pubblicato con il bundle `index-B146GiQ6.js`
+  (deploy `b683a997`).

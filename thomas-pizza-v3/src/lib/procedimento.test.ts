@@ -44,9 +44,8 @@ describe('procedimento della Canotto', () => {
       formattaGrammiIngrediente(grammiDi(risultato, 'acqua-finale'), 'acqua'),
     );
     expect(testo).toContain(
-      formattaGrammiIngrediente(risultato.acquaTotaleG, 'acqua'),
+      'Aggiungi il malto, il sale e l’olio e lavora fino a ottenere un impasto omogeneo e ben sviluppato.',
     );
-    expect(testo).toContain('già compresa nell’acqua totale');
   });
 
   it('senza autolisi impasta la farina del rinfresco con la biga', () => {
