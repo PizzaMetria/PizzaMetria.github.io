@@ -13,7 +13,7 @@ contesto. Aggiornalo quando cambia qualcosa di importante.
 | Anteprima pubblicata | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page> |
 | Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` («Thomas' Pizza v3») |
 | Ambiente di produzione | `production`, sottodominio `thomascalc` |
-| Bundle in produzione | `assets/index-CiWY64Yr.js`, `assets/index-Xwr3EGh0.css` |
+| Bundle in produzione | `assets/index-tFO_Zhdi.js`, `assets/index-Xwr3EGh0.css` |
 
 Le altre cartelle non vanno toccate:
 
@@ -82,22 +82,11 @@ Quando una richiesta viene eseguita, spostala in fondo con la data e l'esito.
 Rimasti aperti dopo l’aggiornamento dei testi del 23 ottobre, da confermare prima
 di pubblicare o in un secondo momento:
 
-- **Tempi, temperature e cottura F1 P134H**: erano nella scheda in home e il 23
-  ottobre sono stati tolti insieme a Tips & Tricks (duplicati del PDF). Ora la
-  cottura non è visibile in nessun punto dell'app né nel PDF: o si aggiunge una
-  sezione «Tempi e temperature» al PDF completo, o resta solo nei dati di
-  `ricette.ts`.
-- **Cottura**: il racconto del forno statico è stato tolto dal procedimento, che
-  ora si ferma alla stesura in teglia. La cottura F1 P134H resta solo nei dati
-  di `ricette.ts`: va deciso se e dove rimetterla (per esempio nel PDF).
 - **Autolisi del Canotto**: i Tips & Tricks non indicano più la temperatura di
   conservazione, ma tempi e procedimento dicono ancora «a temperatura ambiente
   per tutta la notte». Serve una decisione, non una correzione automatica.
 - **Temperatura di chiusura 25 °C**: resta nei parametri del pannello risultato
   (dato necessario), ma non più nella scheda in home.
-- **Procedimento della teglia**: conserva «Porta la biga a circa 25 °C … per
-  circa 24 ore», lasciato com’era perché la richiesta riguardava solo la voce
-  «Tempi e temperature».
 
 ## Fatto in questa sessione
 
@@ -146,3 +135,11 @@ di pubblicare o in un secondo momento:
   autolisi e stesura. 125 test verdi, build ok, verifiche PDF con autolisi
   attiva su entrambe le ricette. Pubblicato con il bundle `index-B146GiQ6.js`
   (deploy `b683a997`).
+- 23 ottobre, ottava passata: il procedimento della pizza in teglia con biga
+  diventa quello del PDF, in otto passi (nove con autolisi): completamento
+  dell’impasto, rigenero/pieghe/puntata, staglio, appretto a 25 °C, stesura con
+  fori, prima cottura F1 P134H su pietra e seconda cottura in forno di casa.
+  L’acqua restante usa la dose del rinfresco (421 g) quando l’autolisi è spenta
+  e quella dell’impastamento finale (329 g) quando è accesa. Test 126 verdi,
+  PDF generati e riletti (8/9 passi, nessun «spezzetta»). Pubblicato con il
+  bundle `index-tFO_Zhdi.js` (deploy `4243ff6e`).

@@ -110,30 +110,61 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
       ],
     },
     {
-      titolo: 'Rinfresca l’impasto',
+      titolo: 'Completa l’impasto (rinfresco)',
       condizione: 'senzaAutolisi',
       paragrafi: [
-        'Unisci tutta la biga alla farina residua ({farinaRinfresco}), all’acqua ({acquaRinfresco}), al malto, al sale e all’olio. Lavora fino a ottenere un impasto omogeneo e ben sviluppato, aggiungendo l’acqua gradualmente.',
+        'Unisci tutta la biga. Aggiungi la farina residua ({farinaRinfresco}), il malto e inizia ad impastare incorporando gradualmente l’acqua restante ({acquaRinfresco}), preferendo acqua tiepida durante i mesi freddi. Aggiungi il sale e l’olio e lavora fino a ottenere un impasto omogeneo e ben incordato (temperatura finale dell’impasto: circa 22–23 °C).',
       ],
     },
     {
-      titolo: 'Completa l’impasto',
+      titolo: 'Completa l’impasto (rinfresco)',
       condizione: 'autolisi',
       paragrafi: [
-        'Unisci tutta la biga e tutta l’autolisi, quindi incorpora gradualmente l’acqua restante ({acquaFinale}). Aggiungi il malto, il sale e l’olio e lavora fino a ottenere un impasto omogeneo e ben sviluppato.',
+        'Unisci tutta la biga e tutta l’autolisi. Aggiungi il malto e inizia ad impastare incorporando gradualmente l’acqua restante ({acquaFinale}), preferendo acqua tiepida durante i mesi freddi. Aggiungi il sale e l’olio e lavora fino a ottenere un impasto omogeneo e ben incordato (temperatura finale dell’impasto: circa 22–23 °C).',
       ],
     },
     {
-      titolo: 'Riposo, staglio e lievitazione',
+      titolo: 'Rigenero, pieghe e puntata in massa',
       paragrafi: [
-        'Lascia riposare l’impasto coperto per 15–20 minuti, poi dividilo in panetti.',
-        '{formazionePanetti} Lascia lievitare i panetti fino al raddoppio, prendendo il volume come riferimento principale.',
+        'A 10 minuti dalla chiusura dell’impasto, effettua un rigenero in impastatrice, esegui un giro di pieghe sul banco e trasferisci l’impasto in un contenitore oleato.',
+        'Lascia riposare in massa al caldo (circa 25 °C) fino al raddoppio del volume (indicativamente circa 1 ora).',
       ],
     },
     {
-      titolo: 'Stesura in teglia',
+      titolo: 'Staglio e formatura dei panetti',
       paragrafi: [
-        'Ungi la teglia e distribuisci delicatamente l’impasto fino a coprire uniformemente tutta la superficie.',
+        '{formazionePanetti}',
+        'Esegui una pre-formatura stendendo delicatamente l’impasto, applica 4+4 pieghe dal lato corto verso il centro, arrotola su se stesso per 3–4 volte e sovrapponi nel senso opposto, chiudendo bene la parte inferiore.',
+        'Spolvera abbondantemente di semola rimacinata.',
+      ],
+    },
+    {
+      titolo: 'Appretto dei panetti',
+      paragrafi: [
+        'Riponi i panetti in un contenitore oleato e lascia lievitare a circa 25 °C fino a triplicare il volume (indicativamente circa 3 ore).',
+      ],
+    },
+    {
+      titolo: 'Stesura e preparazione della teglia',
+      paragrafi: [
+        'Stendi l’impasto su abbondante semola rimacinata.',
+        'Trasferiscilo nella teglia precedentemente scaldata, spruzzata d’olio e coperta da un velo di semola.',
+        'Pratica delicatamente qualche piccolo foro con la punta di un coltello per favorire una crescita uniforme della massa durante la cottura.',
+      ],
+    },
+    {
+      titolo: 'Prima cottura (forno F1 P134H, pietra refrattaria)',
+      paragrafi: [
+        'Preriscaldamento: preriscalda il forno a 300 °C sia sopra (cielo) sia sotto (platea).',
+        'Prima fase (5 minuti): inforna la teglia impostando il cielo spento (sopra a 0) e la platea a 270 °C.',
+        'Seconda fase (7 minuti successivi): prosegui la cottura riaccendendo la resistenza superiore (cielo), a 250 °C se la pizza è rossa e a 230 °C se la pizza è bianca, gestendo in questo caso una sola accensione della resistenza.',
+        'Sforma e fai raffreddare la base su una griglia staccata dal piano.',
+      ],
+    },
+    {
+      titolo: 'Seconda cottura e farcitura',
+      paragrafi: [
+        'Preriscalda il forno di casa in modalità statica al massimo. Inforna la base a metà altezza sulla griglia per un paio di minuti per renderla croccante, quindi condisci e completa la cottura fino allo scioglimento degli ingredienti.',
       ],
     },
   ],

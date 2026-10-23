@@ -69,10 +69,11 @@ describe('tempi e temperature della pizza in teglia con biga', () => {
 });
 
 describe('procedimento e modalità della pizza in teglia con biga', () => {
-  it('non racconta più il forno statico', () => {
-    const testo = JSON.stringify(RICETTA_TEGLIA_BIGA.procedimento).toLowerCase();
+  it('descrive la cottura nel forno F1 e il passaggio nel forno di casa', () => {
+    const testo = JSON.stringify(RICETTA_TEGLIA_BIGA.procedimento);
 
-    expect(testo).not.toContain('forno statico');
+    expect(testo).toContain('forno F1 P134H');
+    expect(testo).toContain('modalità statica al massimo');
     expect(testo).not.toContain('massima temperatura');
     expect(testo).not.toContain('in due fasi');
   });
@@ -80,7 +81,7 @@ describe('procedimento e modalità della pizza in teglia con biga', () => {
   it('conserva la stesura in teglia', () => {
     const titoli = RICETTA_TEGLIA_BIGA.procedimento.map((passo) => passo.titolo);
 
-    expect(titoli).toContain('Stesura in teglia');
+    expect(titoli).toContain('Stesura e preparazione della teglia');
   });
 
   it('permette di scegliere la misura della teglia', () => {

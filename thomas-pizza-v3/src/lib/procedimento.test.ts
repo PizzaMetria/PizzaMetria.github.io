@@ -195,10 +195,14 @@ describe('procedimento della pizza in teglia con biga', () => {
     expect(passi.map((passo) => passo.titolo)).not.toContain(
       'Prepara l’autolisi',
     );
-    expect(testo).toContain('Rinfresca l’impasto');
+    expect(testo).toContain('Completa l’impasto (rinfresco)');
     expect(testo).toContain(
       formattaGrammiIngrediente(grammiDi(risultato, 'farina-rinfresco'), 'farina'),
     );
+    expect(testo).toContain(
+      formattaGrammiIngrediente(grammiDi(risultato, 'acqua-rinfresco'), 'acqua'),
+    );
+    expect(testo).not.toContain('(0 g)');
     expect(testo).not.toContain('{');
   });
 
@@ -224,13 +228,41 @@ describe('procedimento della pizza in teglia con biga', () => {
     const testo = testoProcedimento(passi);
 
     expect(passi.map((passo) => passo.titolo)).toContain('Prepara l’autolisi');
-    expect(passi.map((passo) => passo.titolo)).toContain('Completa l’impasto');
+    expect(passi.map((passo) => passo.titolo)).toContain(
+      'Completa l’impasto (rinfresco)',
+    );
     expect(testo).toContain(
       formattaGrammiIngrediente(grammiDi(risultato, 'farina-autolisi'), 'farina'),
     );
     expect(testo).toContain(
       formattaGrammiIngrediente(grammiDi(risultato, 'acqua-finale'), 'acqua'),
     );
+    expect(testo).not.toContain('{');
+  });
+
+  it('descrive puntata, staglio, appretto e le due cotture', () => {
+    const risultato = calcolaPerFarina(RICETTA_TEGLIA_BIGA, 1);
+    const passi = componiProcedimento(RICETTA_TEGLIA_BIGA, risultato);
+    const titoli = passi.map((passo) => passo.titolo);
+    const testo = testoProcedimento(passi);
+
+    expect(titoli).toEqual([
+      'Prepara la biga',
+      'Completa l’impasto (rinfresco)',
+      'Rigenero, pieghe e puntata in massa',
+      'Staglio e formatura dei panetti',
+      'Appretto dei panetti',
+      'Stesura e preparazione della teglia',
+      'Prima cottura (forno F1 P134H, pietra refrattaria)',
+      'Seconda cottura e farcitura',
+    ]);
+    expect(testo).toContain('circa 22–23 °C');
+    expect(testo).toContain('platea a 270 °C');
+    expect(testo).toContain('a 250 °C se la pizza è rossa');
+    expect(testo).toContain('a 230 °C se la pizza è bianca');
+    expect(testo).toContain('fino a triplicare il volume');
+    expect(testo).toContain('modalità statica al massimo');
+    expect(testo).not.toContain('spezzetta');
     expect(testo).not.toContain('{');
   });
 });
