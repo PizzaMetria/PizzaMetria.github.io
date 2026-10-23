@@ -13,12 +13,9 @@ import type {
  */
 
 /**
- * Consigli condivisi dalle due ricette con biga: sono testi unici, così home e
- * PDF restano allineati senza duplicazioni.
+ * Consiglio condiviso dalle due ricette con biga: è un testo unico, così home
+ * e PDF restano allineati senza duplicazioni.
  */
-export const TIP_RIPOSO_BIGA =
-  'Con piccole dosi di biga, il passaggio immediato in frigorifero può raffreddare rapidamente la massa e rallentare molto l’avvio della fermentazione. Per favorirlo, è consigliabile un breve riposo a temperatura ambiente prima di refrigerare: indicativamente 30 minuti, da adattare alla temperatura dell’ambiente e della biga.';
-
 export const TIP_AUTOLISI =
   'L’autolisi è opzionale e la sua durata può essere adattata alla farina e al risultato desiderato: può essere preparata mezz’ora prima del rinfresco oppure, con farine più forti, anche la sera precedente, per smorzarne la tenacità e favorire l’estensibilità dell’impasto. Se attivata, il calcolatore ripartisce automaticamente l’acqua totale tra biga, autolisi e impastamento finale.';
 
@@ -102,24 +99,21 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
     {
       titolo: 'Prepara la biga',
       paragrafi: [
-        'Mescola la farina ({farinaBiga}), l’acqua ({acquaBiga}) e il lievito ({lievito}) della biga: il composto deve restare grezzo e uniforme, senza essere lavorato a lungo.',
-        'Porta la biga a circa 25 °C, coprila e trasferiscila in frigorifero a 4 °C per circa 24 ore.',
+        'Mescola la farina ({farinaBiga}), l’acqua ({acquaBiga}) e il lievito ({lievito}): il composto deve restare grezzo e uniforme, senza essere lavorato a lungo. La temperatura della biga a fine impasto deve essere circa 25 °C. Riponi la biga in un contenitore ermetico e trasferiscila in frigorifero a 4 °C per circa 24 ore.',
       ],
     },
     {
       titolo: 'Prepara l’autolisi',
       condizione: 'autolisi',
       paragrafi: [
-        'Mescola la farina del rinfresco ({farinaAutolisi}) con l’acqua destinata all’autolisi ({acquaAutolisi}), fino a idratare tutta la farina.',
-        'Copri il contenitore e lascia riposare fino al momento dell’impastamento finale.',
+        'Mescola la farina del rinfresco ({farinaAutolisi}) con l’acqua destinata all’autolisi ({acquaAutolisi}) fino a ottenere un composto grezzo e uniforme. Copri il contenitore e lascia riposare fino al momento dell’impastamento finale.',
       ],
     },
     {
       titolo: 'Rinfresca l’impasto',
       condizione: 'senzaAutolisi',
       paragrafi: [
-        'Spezzetta tutta la biga e uniscila alla farina residua ({farinaRinfresco}), all’acqua ({acquaRinfresco}), al malto, al sale e all’olio.',
-        'Lavora fino a ottenere un impasto omogeneo e ben sviluppato, aggiungendo l’acqua gradualmente.',
+        'Unisci tutta la biga alla farina residua ({farinaRinfresco}), all’acqua ({acquaRinfresco}), al malto, al sale e all’olio. Lavora fino a ottenere un impasto omogeneo e ben sviluppato, aggiungendo l’acqua gradualmente.',
       ],
     },
     {
@@ -140,7 +134,7 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
     {
       titolo: 'Stesura in teglia',
       paragrafi: [
-        'Ungi la teglia e stendi l’impasto senza forzarlo, concedendogli brevi pause per rilassarsi.',
+        'Ungi la teglia e distribuisci delicatamente l’impasto fino a coprire uniformemente tutta la superficie.',
       ],
     },
   ],
@@ -149,10 +143,11 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
     'Il malto diastasico è il 2% della farina della biga ed è già compreso nelle dosi.',
     'L’acqua del rinfresco è compresa nell’acqua totale: non è un’aggiunta separata.',
   ],
-  noteEssenziali: ['Olio per ungere la teglia: q.b., escluso dalle dosi.'],
+  noteEssenziali: [],
+  senzaNotaPeso: true,
+  senzaChiarimenti: true,
   tips: [
     'Per una biga all’85% e un’idratazione totale dell’80% serve una farina forte, indicativamente W 300–320: deve reggere la lunga fermentazione e l’alta idratazione senza collassare.',
-    TIP_RIPOSO_BIGA,
     'Se la fermentazione riparte con difficoltà, usa acqua tiepida nel rinfresco per riportare l’impasto sopra 20 °C.',
     TIP_AUTOLISI,
   ],
@@ -269,8 +264,7 @@ export const RICETTA_CANOTTO: RicettaConfig = {
       id: 'biga',
       titolo: 'Biga',
       nota: 'Da preparare',
-      avviso:
-        'Avvio di circa 30 minuti a temperatura ambiente, poi circa 24 ore a 4 °C.',
+      avviso: 'Chiusura a 25 °C, poi 24 ore in frigorifero a 4 °C.',
     },
     {
       id: 'autolisi',
@@ -304,7 +298,7 @@ export const RICETTA_CANOTTO: RicettaConfig = {
   tempiETemperature: [
     {
       etichetta: 'Biga',
-      valore: 'Circa 30 minuti a temperatura ambiente, poi circa 24 ore a 4 °C',
+      valore: 'Chiusura a 25 °C, poi 24 ore a 4 °C',
     },
     {
       etichetta: 'Autolisi',
@@ -335,17 +329,14 @@ export const RICETTA_CANOTTO: RicettaConfig = {
     {
       titolo: 'Prepara la biga',
       paragrafi: [
-        'Mescola la farina ({farinaBiga}), l’acqua ({acquaBiga}) e il lievito ({lievito}) previsti per la biga, fino a ottenere un composto grezzo e uniforme, senza lavorarlo fino a renderlo liscio.',
-        'Copri il contenitore, lascia avviare la fermentazione per circa 30 minuti a temperatura ambiente e trasferisci in frigorifero a 4 °C per circa 24 ore.',
+        'Mescola la farina ({farinaBiga}), l’acqua ({acquaBiga}) e il lievito ({lievito}): il composto deve restare grezzo e uniforme, senza essere lavorato a lungo. La temperatura della biga a fine impasto deve essere circa 25 °C. Riponi la biga in un contenitore ermetico e trasferiscila in frigorifero a 4 °C per circa 24 ore.',
       ],
     },
     {
       titolo: 'Prepara l’autolisi',
       condizione: 'autolisi',
       paragrafi: [
-        'La sera prima dell’impastamento finale, mescola la farina del rinfresco ({farinaAutolisi}) con l’acqua destinata all’autolisi ({acquaAutolisi}), fino a idratare tutta la farina.',
-        'Copri bene il contenitore e lascia riposare a temperatura ambiente per tutta la notte.',
-        'Usa soltanto la farina e l’acqua indicate nella sezione Autolisi: lievito, malto, sale e olio vengono gestiti nelle rispettive fasi della ricetta.',
+        'Mescola la farina del rinfresco ({farinaAutolisi}) con l’acqua destinata all’autolisi ({acquaAutolisi}) fino a ottenere un composto grezzo e uniforme. Copri il contenitore e lascia riposare fino al momento dell’impastamento finale.',
       ],
     },
     {
@@ -414,7 +405,6 @@ export const RICETTA_CANOTTO: RicettaConfig = {
   ],
   tips: [
     'Per una biga al 75% e un’idratazione totale del 77% è adatta una farina forte, indicativamente W 300–320: deve sostenere la lunga maturazione della biga e l’alta idratazione.',
-    TIP_RIPOSO_BIGA,
     TIP_AUTOLISI,
     'L’acqua finale va incorporata gradualmente durante l’impastamento finale, dopo aver unito biga e autolisi.',
   ],

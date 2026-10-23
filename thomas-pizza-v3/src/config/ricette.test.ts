@@ -4,7 +4,6 @@ import {
   RICETTA_TEGLIA_BIGA,
   RICETTA_TRANCIO,
   TIP_AUTOLISI,
-  TIP_RIPOSO_BIGA,
 } from './ricette';
 
 function voce(ricetta: typeof RICETTA_TEGLIA_BIGA, etichetta: string) {
@@ -100,9 +99,8 @@ describe('procedimento e modalità della pizza in teglia con biga', () => {
 });
 
 describe('Tips & Tricks condivisi dalle ricette con biga', () => {
-  it('usa il consiglio sul riposo iniziale in entrambe le ricette', () => {
+  it('usa il consiglio sull’autolisi in entrambe le ricette', () => {
     for (const ricetta of [RICETTA_TEGLIA_BIGA, RICETTA_CANOTTO]) {
-      expect(ricetta.tips).toContain(TIP_RIPOSO_BIGA);
       expect(ricetta.tips).toContain(TIP_AUTOLISI);
     }
   });
@@ -111,9 +109,6 @@ describe('Tips & Tricks condivisi dalle ricette con biga', () => {
     for (const ricetta of [RICETTA_TEGLIA_BIGA, RICETTA_CANOTTO]) {
       const testo = ricetta.tips.join('\n');
 
-      expect(
-        ricetta.tips.filter((tip) => tip === TIP_RIPOSO_BIGA),
-      ).toHaveLength(1);
       expect(ricetta.tips.filter((tip) => tip === TIP_AUTOLISI)).toHaveLength(
         1,
       );
@@ -130,12 +125,6 @@ describe('Tips & Tricks condivisi dalle ricette con biga', () => {
     }
   });
 
-  it('presenta il riposo come riferimento e non come obbligo', () => {
-    expect(TIP_RIPOSO_BIGA).toContain('indicativamente 30 minuti');
-    expect(TIP_RIPOSO_BIGA).toContain('piccole dosi di biga');
-    expect(TIP_RIPOSO_BIGA).not.toContain('obbligatori');
-  });
-
   it('non rende obbligatoria l’autolisi e non impone la sera prima', () => {
     expect(TIP_AUTOLISI).toContain('L’autolisi è opzionale');
     expect(TIP_AUTOLISI).toContain('mezz’ora prima del rinfresco');
@@ -145,7 +134,6 @@ describe('Tips & Tricks condivisi dalle ricette con biga', () => {
 
   it('lascia invariati i consigli del Trancio Milanese', () => {
     expect(RICETTA_TRANCIO.tips).toHaveLength(2);
-    expect(RICETTA_TRANCIO.tips).not.toContain(TIP_RIPOSO_BIGA);
     expect(RICETTA_TRANCIO.tips).not.toContain(TIP_AUTOLISI);
   });
 });

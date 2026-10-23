@@ -39,7 +39,7 @@ describe('vista Pizza in teglia con biga', () => {
     ]);
     expect(vista.fasi[0].totale).toEqual({
       etichetta: 'Totale biga pronta',
-      valore: '1.283,5 g',
+      valore: '1.284 g',
     });
     expect(vista.fasi[1].voci).toEqual([
       { etichetta: 'Farina 00 forte', valore: '150 g', tipo: 'farina' },
@@ -51,7 +51,7 @@ describe('vista Pizza in teglia con biga', () => {
     expect(vista.fasi[1].avviso).toContain('Aggiungi tutta la biga');
   });
 
-  it('mostra i parametri, l’autolisi non attiva e i chiarimenti', () => {
+  it('mostra i parametri e l’autolisi non attiva senza chiarimenti', () => {
     expect(vista.parametri).toEqual(
       expect.arrayContaining([
         { etichetta: 'Farina nella biga', valore: '85% della farina totale' },
@@ -63,21 +63,12 @@ describe('vista Pizza in teglia con biga', () => {
         { etichetta: 'Temperatura di chiusura', valore: '25 °C' },
       ]),
     );
-    expect(vista.chiarimenti[0]).toContain(
-      'La percentuale di biga indica la quota della farina totale utilizzata nella biga.',
-    );
-    expect(vista.chiarimenti).toContain(
-      'Il malto indicato è già incluso nelle dosi.',
-    );
+    expect(vista.chiarimenti).toEqual([]);
   });
 
-  it('mostra la nota sull’olio e il peso teorico', () => {
-    expect(vista.noteEssenziali).toEqual([
-      'Olio per ungere la teglia: q.b., escluso dalle dosi.',
-    ]);
-    expect(vista.notaPeso).toBe(
-      'Peso teorico: quantità arrotondate; condimenti e perdite di lavorazione esclusi.',
-    );
+  it('non mostra più la nota sull’olio e il peso teorico', () => {
+    expect(vista.noteEssenziali).toEqual([]);
+    expect(vista.notaPeso).toBe('');
     expect(vista.note.join(' ')).toContain(
       'Il malto diastasico è il 2% della farina della biga',
     );

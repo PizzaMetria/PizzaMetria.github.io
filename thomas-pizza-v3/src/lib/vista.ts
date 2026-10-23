@@ -222,10 +222,12 @@ function creaFasi(risultato: Pick<RisultatoCalcolo, 'fasi'>): FaseVista[] {
       valore: formattaGrammiIngrediente(voce.grammi, voce.tipo),
       tipo: voce.tipo,
     })),
+    // I totali di fase sono di sola lettura: si arrotondano all'intero senza
+    // toccare i valori in virgola mobile usati dai calcoli.
     totale: fase.totale
       ? {
           etichetta: fase.totale.etichetta,
-          valore: formattaGrammi(fase.totale.grammi),
+          valore: `${formattaIntero(Math.round(fase.totale.grammi))} g`,
         }
       : undefined,
   }));
@@ -334,6 +336,8 @@ function creaChiarimenti(
   ricetta: RicettaConfig,
   risultato: RisultatoCalcolo,
 ): string[] {
+  if (ricetta.senzaChiarimenti === true) return [];
+
   if (ricetta.famiglia === 'diretto') {
     return [
       'L’acqua indicata è l’acqua totale dell’impasto: non ci sono aggiunte separate.',
@@ -386,7 +390,7 @@ export function creaVistaRicetta(
     parametri: creaParametri(ricetta, risultato),
     noteEssenziali: [...(ricetta.noteEssenziali ?? [])],
     note: [...ricetta.note],
-    notaPeso: NOTA_PESO,
+    notaPeso: ricetta.senzaNotaPeso === true ? '' : NOTA_PESO,
     chiarimenti: creaChiarimenti(ricetta, risultato),
   };
 }

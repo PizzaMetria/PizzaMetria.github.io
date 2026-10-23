@@ -110,6 +110,10 @@ export interface RicettaConfig {
   note: readonly string[];
   /** Note operative essenziali mostrate subito dopo gli ingredienti. */
   noteEssenziali?: readonly string[];
+  /** Nasconde la nota sul peso teorico nella scheda risultato. */
+  senzaNotaPeso?: boolean;
+  /** Nasconde i chiarimenti dei parametri nella scheda risultato. */
+  senzaChiarimenti?: boolean;
   tips: readonly string[];
   condimentiFacoltativi?: readonly string[];
 }

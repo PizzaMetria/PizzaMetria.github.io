@@ -131,3 +131,11 @@ di pubblicare o in un secondo momento:
   30 × 40 = 710 g di impasto, scalata per superficie e numero di teglie).
   Pubblicato con il bundle `index-BlrIcbJZ.js` (deploy `6c1896db`). Test 123
   verdi, verifiche DOM e PDF ok.
+- 23 ottobre, sesta passata: pulsanti nell’ordine «Per teglie · Per panetti ·
+  Per farina» su teglia e Trancio (stato e calcoli invariati); dalla scheda della
+  pizza in teglia con biga spariscono la nota sull’olio, la nota sul peso teorico
+  e i cinque chiarimenti dei parametri (parametri e valori restano); i totali
+  delle fasi sono arrotondati all’intero solo in visualizzazione; testi unici di
+  biga, autolisi, rinfresco e stesura in teglia in entrambe le ricette con biga,
+  senza il riposo di 30 minuti a temperatura ambiente. 125 test verdi, build ok,
+  verifiche DOM e PDF con quantità dinamiche ok.

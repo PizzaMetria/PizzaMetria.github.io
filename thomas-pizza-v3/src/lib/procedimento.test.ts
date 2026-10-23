@@ -152,7 +152,7 @@ describe('testi pubblici delle ricette', () => {
     expect(testoCanotto).not.toContain('1% della farina totale');
   });
 
-  it('mantiene l’avviso della biga della teglia e l’avvio della Canotto', () => {
+  it('allinea gli avvisi della biga senza riposo a temperatura ambiente', () => {
     const bigaTeglia = RICETTA_TEGLIA_BIGA.fasi.find((fase) => fase.id === 'biga');
 
     expect(bigaTeglia?.avviso).toBe(
@@ -162,10 +162,11 @@ describe('testi pubblici delle ricette', () => {
       etichetta: 'Biga',
       valore: 'Chiusura a 25 °C, poi 24 ore in frigorifero a 4 °C',
     });
-    expect(RICETTA_TEGLIA_BIGA.tips.join(' ')).toContain(
-      'indicativamente 30 minuti',
+    expect(RICETTA_CANOTTO.fasi[0].avviso).toBe(
+      'Chiusura a 25 °C, poi 24 ore in frigorifero a 4 °C.',
     );
-    expect(RICETTA_CANOTTO.fasi[0].avviso).toContain('30 minuti');
+    expect(RICETTA_TEGLIA_BIGA.tips.join(' ')).not.toContain('30 minuti');
+    expect(RICETTA_CANOTTO.tips.join(' ')).not.toContain('30 minuti');
   });
 
   it('usa 4 °C per biga e panetti e temperatura ambiente per l’autolisi', () => {
@@ -208,7 +209,9 @@ describe('procedimento della pizza in teglia con biga', () => {
       componiProcedimento(RICETTA_TEGLIA_BIGA, risultato),
     );
 
-    expect(testo).toContain('Porta la biga a circa 25 °C');
+    expect(testo).toContain(
+      'La temperatura della biga a fine impasto deve essere circa 25 °C',
+    );
     expect(testo).toContain('in frigorifero a 4 °C per circa 24 ore');
     expect(testo).not.toContain('20 minuti a temperatura ambiente');
   });

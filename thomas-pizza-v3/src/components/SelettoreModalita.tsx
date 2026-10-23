@@ -12,11 +12,22 @@ const ETICHETTE: Record<ModalitaCalcolo, string> = {
   teglie: 'Per teglie',
 };
 
+/** Ordine visivo dei pulsanti, indipendente dalla modalità selezionata. */
+const ORDINE_VISIVO: readonly ModalitaCalcolo[] = [
+  'teglie',
+  'panetti',
+  'farina',
+];
+
 export function SelettoreModalita({
   modalita,
   modalitaDisponibili,
   onCambia,
 }: Props) {
+  const opzioni = [...modalitaDisponibili].sort(
+    (a, b) => ORDINE_VISIVO.indexOf(a) - ORDINE_VISIVO.indexOf(b),
+  );
+
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-semibold text-inchiostro">
@@ -29,7 +40,7 @@ export function SelettoreModalita({
           gridTemplateColumns: `repeat(${modalitaDisponibili.length}, minmax(0, 1fr))`,
         }}
       >
-        {modalitaDisponibili.map((opzione) => {
+        {opzioni.map((opzione) => {
           const selezionata = modalita === opzione;
 
           return (

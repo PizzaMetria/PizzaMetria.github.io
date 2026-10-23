@@ -127,30 +127,36 @@ export function PannelloRisultato({
         ))}
       </div>
 
-      <div className="mt-3 rounded-xl border border-bordo/50 bg-carta/25 px-3 py-2.5">
-        <ul className="space-y-1.5">
-          {vista.noteEssenziali.map((nota) => (
-            <li
-              key={nota}
-              className="flex items-start gap-2 text-[11px] leading-relaxed text-inchiostro-tenue"
+      {vista.noteEssenziali.length > 0 || vista.notaPeso ? (
+        <div className="mt-3 rounded-xl border border-bordo/50 bg-carta/25 px-3 py-2.5">
+          {vista.noteEssenziali.length > 0 ? (
+            <ul className="space-y-1.5">
+              {vista.noteEssenziali.map((nota) => (
+                <li
+                  key={nota}
+                  className="flex items-start gap-2 text-[11px] leading-relaxed text-inchiostro-tenue"
+                >
+                  <span aria-hidden="true" className="mt-px font-bold text-terracotta">
+                    i
+                  </span>
+                  <span>{nota}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {vista.notaPeso ? (
+            <p
+              className={`text-[11px] leading-relaxed text-inchiostro-tenue ${
+                vista.noteEssenziali.length > 0
+                  ? 'mt-2 border-t border-bordo/50 pt-2'
+                  : ''
+              }`}
             >
-              <span aria-hidden="true" className="mt-px font-bold text-terracotta">
-                i
-              </span>
-              <span>{nota}</span>
-            </li>
-          ))}
-        </ul>
-        <p
-          className={`text-[11px] leading-relaxed text-inchiostro-tenue ${
-            vista.noteEssenziali.length > 0
-              ? 'mt-2 border-t border-bordo/50 pt-2'
-              : ''
-          }`}
-        >
-          {vista.notaPeso}
-        </p>
-      </div>
+              {vista.notaPeso}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-4 border-t border-bordo/60 pt-4">
         <div className="grid gap-2.5 sm:grid-cols-2">
@@ -263,16 +269,18 @@ export function PannelloRisultato({
             </p>
           ) : null}
 
-          <div className="mt-3 border-t border-bordo/50 pt-3">
-            {vista.chiarimenti.map((chiarimento) => (
-              <p
-                key={chiarimento}
-                className="text-xs leading-relaxed text-inchiostro-tenue"
-              >
-                {chiarimento}
-              </p>
-            ))}
-          </div>
+          {vista.chiarimenti.length > 0 ? (
+            <div className="mt-3 border-t border-bordo/50 pt-3">
+              {vista.chiarimenti.map((chiarimento) => (
+                <p
+                  key={chiarimento}
+                  className="text-xs leading-relaxed text-inchiostro-tenue"
+                >
+                  {chiarimento}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
       </details>
 
