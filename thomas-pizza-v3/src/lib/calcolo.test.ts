@@ -218,6 +218,31 @@ describe('Trancio Milanese — teglie', () => {
   });
 });
 
+describe('Trancio Milanese — panetti', () => {
+  it('ricava le dosi da numero e peso dei panetti', () => {
+    const r = calcolaPerPanetti(trancio, 3, 300);
+
+    vicino(r.pesoImpastoG, 900, 6);
+    vicino(r.farinaTotaleG, 900 / 1.732, 6);
+    vicino(grammiDi(r, 'sale'), r.farinaTotaleG * (8 / 375), 6);
+    vicino(r.pesoPanettoG ?? -1, 300);
+    expect(r.numeroPanetti).toBe(3);
+  });
+
+  it('resta coerente con il calcolo per teglie', () => {
+    const panetti = calcolaPerPanetti(trancio, 4, 324.75);
+    const teglie = calcolaPerTeglie(trancio, 30, 40, 2);
+
+    vicino(panetti.farinaTotaleG, teglie.farinaTotaleG, 6);
+    vicino(panetti.pesoImpastoG, teglie.pesoImpastoG, 6);
+  });
+
+  it('è disponibile fra le modalità, senza cambiare quella predefinita', () => {
+    expect(RICETTA_TRANCIO.modalita).toContain('panetti');
+    expect(RICETTA_TRANCIO.modalita[0]).toBe('teglie');
+  });
+});
+
 describe('Trancio Milanese — farina', () => {
   it('0,375 kg corrisponde esattamente alla ricetta base', () => {
     const r = calcolaPerFarina(trancio, 0.375);

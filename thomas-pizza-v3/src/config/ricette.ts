@@ -165,7 +165,7 @@ export const RICETTA_TRANCIO: RicettaConfig = {
   descrizione:
     'Impasto diretto al 60% di idratazione con farina debole: il trancio milanese morbido e leggero, cotto in teglia.',
   famiglia: 'diretto',
-  modalita: ['teglie', 'farina'],
+  modalita: ['teglie', 'farina', 'panetti'],
   fasi: [{ id: 'impasto', titolo: 'Impasto' }],
   idratazioneTotale: 0.6,
   lievitoFrescoSuFarina: 5.5 / 375,

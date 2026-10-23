@@ -13,7 +13,7 @@ contesto. Aggiornalo quando cambia qualcosa di importante.
 | Anteprima pubblicata | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page> |
 | Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` («Thomas' Pizza v3») |
 | Ambiente di produzione | `production`, sottodominio `thomascalc` |
-| Bundle in produzione | `assets/index-Bv4F_Be1.js`, `assets/index-Xwr3EGh0.css` |
+| Bundle in produzione | `assets/index-CiWY64Yr.js`, `assets/index-Xwr3EGh0.css` |
 
 Le altre cartelle non vanno toccate:
 
@@ -116,6 +116,10 @@ di pubblicare o in un secondo momento:
   («Tempi e temperature» e «Tips & Tricks») su richiesta di Thomas, che vuole la
   home dedicata al calcolo. Pubblicato con il bundle `index-C0jOyM04.js`
   (deploy `c820bf40`). Test 116 verdi, nessun errore in console, calcolo intatto.
+- 23 ottobre, quinta passata: anche il Trancio Milanese si può calcolare **per
+  panetti** (numero e peso), con la modalità «per teglie» che resta la
+  predefinita. Pubblicato con il bundle `index-CiWY64Yr.js` (deploy `802130ec`).
+  Test 126 verdi.
 - 23 ottobre, quarta passata: la nota sotto la scheda è un testo unico per le due
   ricette con biga, con le rispettive percentuali (85/15 teglia, 75/25 Canotto) e
   la formula «acqua restante tra autolisi e rinfresco», perché l’acqua della biga
