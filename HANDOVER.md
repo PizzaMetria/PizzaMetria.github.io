@@ -13,7 +13,7 @@ contesto. Aggiornalo quando cambia qualcosa di importante.
 | Anteprima pubblicata | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page> |
 | Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` («Thomas' Pizza v3») |
 | Ambiente di produzione | `production`, sottodominio `thomascalc` |
-| Bundle in produzione | `assets/index-BnUpGoKR.js`, `assets/index-D5Ws0A6U.css` |
+| Bundle in produzione | `assets/index-BAHTDgUT.js`, `assets/index-D5Ws0A6U.css` |
 
 Le altre cartelle non vanno toccate:
 
@@ -106,4 +106,5 @@ di pubblicare o in un secondo momento:
   paragrafi ed elenco, nuovi Tips & Tricks su riposo iniziale e autolisi (testi
   unici in `TIP_RIPOSO_BIGA` e `TIP_AUTOLISI`), `VoceConfig` esteso con
   `paragrafi` ed `elenco`. Test 116 verdi, build ok, verifiche DOM e PDF ok.
-  **Da pubblicare** su `thomascalc.freebuff.page`.
+  Pubblicato su `thomascalc.freebuff.page` con il bundle `index-BAHTDgUT.js`
+  (deploy `d6801d39`); le stesse verifiche DOM passano sulla build servita.
