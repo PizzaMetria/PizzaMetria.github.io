@@ -69,6 +69,36 @@ describe('tempi e temperature della pizza in teglia con biga', () => {
   });
 });
 
+describe('procedimento e modalità della pizza in teglia con biga', () => {
+  it('non racconta più il forno statico', () => {
+    const testo = JSON.stringify(RICETTA_TEGLIA_BIGA.procedimento).toLowerCase();
+
+    expect(testo).not.toContain('forno statico');
+    expect(testo).not.toContain('massima temperatura');
+    expect(testo).not.toContain('in due fasi');
+  });
+
+  it('conserva la stesura in teglia', () => {
+    const titoli = RICETTA_TEGLIA_BIGA.procedimento.map((passo) => passo.titolo);
+
+    expect(titoli).toContain('Stesura in teglia');
+  });
+
+  it('permette di scegliere la misura della teglia', () => {
+    expect(RICETTA_TEGLIA_BIGA.modalita).toContain('teglie');
+    expect(RICETTA_TEGLIA_BIGA.tegliaRiferimento).toEqual({
+      latoA: 30,
+      latoB: 40,
+    });
+    expect(RICETTA_TEGLIA_BIGA.pesoImpastoTegliaG).toBe(710);
+  });
+
+  it('non estende le teglie alle ricette che non le prevedono', () => {
+    expect(RICETTA_CANOTTO.modalita).not.toContain('teglie');
+    expect(RICETTA_CANOTTO.tegliaRiferimento).toBeUndefined();
+  });
+});
+
 describe('Tips & Tricks condivisi dalle ricette con biga', () => {
   it('usa il consiglio sul riposo iniziale in entrambe le ricette', () => {
     for (const ricetta of [RICETTA_TEGLIA_BIGA, RICETTA_CANOTTO]) {

@@ -13,7 +13,7 @@ contesto. Aggiornalo quando cambia qualcosa di importante.
 | Anteprima pubblicata | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page> |
 | Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` («Thomas' Pizza v3») |
 | Ambiente di produzione | `production`, sottodominio `thomascalc` |
-| Bundle in produzione | `assets/index-C0jOyM04.js`, `assets/index-D5Ws0A6U.css` |
+| Bundle in produzione | `assets/index-BlrIcbJZ.js`, `assets/index-D5Ws0A6U.css` |
 
 Le altre cartelle non vanno toccate:
 
@@ -87,9 +87,9 @@ di pubblicare o in un secondo momento:
   cottura non è visibile in nessun punto dell'app né nel PDF: o si aggiunge una
   sezione «Tempi e temperature» al PDF completo, o resta solo nei dati di
   `ricette.ts`.
-- **Cottura nel procedimento (PDF)**: il passo «Stesura e cottura in due fasi»
-  descrive ancora forno statico alla massima temperatura e condimenti a metà
-  cottura, quindi non coincide con il testo F1 P134H. Non inventare i passaggi.
+- **Cottura**: il racconto del forno statico è stato tolto dal procedimento, che
+  ora si ferma alla stesura in teglia. La cottura F1 P134H resta solo nei dati
+  di `ricette.ts`: va deciso se e dove rimetterla (per esempio nel PDF).
 - **Autolisi del Canotto**: i Tips & Tricks non indicano più la temperatura di
   conservazione, ma tempi e procedimento dicono ancora «a temperatura ambiente
   per tutta la notte». Serve una decisione, non una correzione automatica.
@@ -116,3 +116,9 @@ di pubblicare o in un secondo momento:
   («Tempi e temperature» e «Tips & Tricks») su richiesta di Thomas, che vuole la
   home dedicata al calcolo. Pubblicato con il bundle `index-C0jOyM04.js`
   (deploy `c820bf40`). Test 116 verdi, nessun errore in console, calcolo intatto.
+- 23 ottobre, terza passata: tolta la sezione «Note» dal PDF, rimosso dal
+  procedimento il passo del forno statico (resta «Stesura in teglia»), aggiunta
+  la modalità **Per teglie** anche alla pizza in teglia con biga (una teglia
+  30 × 40 = 710 g di impasto, scalata per superficie e numero di teglie).
+  Pubblicato con il bundle `index-BlrIcbJZ.js` (deploy `6c1896db`). Test 123
+  verdi, verifiche DOM e PDF ok.

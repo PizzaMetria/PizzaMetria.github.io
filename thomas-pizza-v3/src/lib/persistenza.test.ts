@@ -149,7 +149,7 @@ describe('persistenza locale per ricetta', () => {
         JSON.stringify({
           ricettaId: 'ricetta-inesistente',
           ricette: {
-            [RICETTA_TEGLIA_BIGA.id]: { modalita: 'teglie' },
+            [RICETTA_TEGLIA_BIGA.id]: { modalita: 'microonde' },
           },
         }),
       ),

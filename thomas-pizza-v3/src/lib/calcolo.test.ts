@@ -318,6 +318,35 @@ describe('Canotto 77%', () => {
   });
 });
 
+describe('Pizza in teglia con biga — teglie', () => {
+  it('usa un panetto da 710 g per la teglia 30 × 40', () => {
+    const r = calcolaPerTeglie(tegliaBiga, 30, 40, 1);
+
+    vicino(r.pesoImpastoG, 710, 6);
+    vicino(r.pesoPerTegliaG ?? -1, 710, 6);
+    vicino(r.farinaTotaleG, 710 / derivaRicetta(tegliaBiga).fattorePeso, 6);
+  });
+
+  it('scala con la superficie e con il numero di teglie', () => {
+    const una = calcolaPerTeglie(tegliaBiga, 30, 40, 1);
+    const grande = calcolaPerTeglie(tegliaBiga, 40, 60, 1);
+    const tre = calcolaPerTeglie(tegliaBiga, 30, 40, 3);
+
+    vicino(grande.pesoImpastoG, una.pesoImpastoG * 2, 6);
+    vicino(tre.pesoImpastoG, 2130, 6);
+    vicino(tre.pesoPerTegliaG ?? -1, 710, 6);
+  });
+
+  it('mantiene il peso per teglia anche con il lievito secco', () => {
+    const secco = calcolaPerTeglie(tegliaBiga, 30, 40, 1, {
+      tipoLievito: 'secco',
+      autolisi: false,
+    });
+
+    vicino(secco.pesoImpastoG, 710, 6);
+  });
+});
+
 describe('conversioni e protezioni', () => {
   it('la farina dei panetti ricostruisce gli stessi ingredienti', () => {
     const daPanetti = calcolaPerPanetti(tegliaBiga, 3, 710);

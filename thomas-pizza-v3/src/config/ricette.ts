@@ -29,7 +29,7 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   descrizione:
     'Biga all’85% della farina e idratazione totale dell’80%, con malto diastasico e autolisi facoltativa.',
   famiglia: 'biga-rinfresco',
-  modalita: ['panetti', 'farina'],
+  modalita: ['panetti', 'farina', 'teglie'],
   fasi: [
     {
       id: 'biga',
@@ -70,6 +70,9 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   oreBiga: 24,
   temperaturaConservazioneBiga: 4,
   temperaturaChiusuraBiga: 25,
+  tegliaRiferimento: { latoA: 30, latoB: 40 },
+  /** Un panetto da 710 g copre una teglia 30 × 40 cm. */
+  pesoImpastoTegliaG: 710,
   tempiETemperature: [
     {
       etichetta: 'Biga',
@@ -135,11 +138,9 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
       ],
     },
     {
-      titolo: 'Stesura e cottura in due fasi',
+      titolo: 'Stesura in teglia',
       paragrafi: [
-        'Ungi la teglia e stendi il panetto senza forzarlo, concedendogli brevi pause per rilassarsi.',
-        'Preriscalda il forno statico alla massima temperatura. Inforna la teglia con il solo impasto e cuoci finché la superficie inizia a colorarsi.',
-        'Aggiungi i condimenti e completa la cottura, controllando il fondo e ruotando la teglia se serve. Adatta tempi e temperature al tuo forno.',
+        'Ungi la teglia e stendi l’impasto senza forzarlo, concedendogli brevi pause per rilassarsi.',
       ],
     },
   ],

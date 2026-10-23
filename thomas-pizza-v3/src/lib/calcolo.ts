@@ -549,7 +549,16 @@ export function calcolaPerTeglie(
   numeroTeglie: number,
   opzioni: OpzioniRicetta = opzioniIniziali(ricetta),
 ): RisultatoCalcolo {
-  if (ricetta.famiglia !== 'diretto' || !ricetta.tegliaRiferimento) {
+  const riferimento = ricetta.tegliaRiferimento;
+  // Le ricette dirette partono da una dose fissa di farina; quelle con biga
+  // partono dal peso dell'impasto, che resta esatto qualunque sia il lievito.
+  const farinaBaseG =
+    ricetta.farinaBaseG ??
+    (ricetta.pesoImpastoTegliaG != null
+      ? ricetta.pesoImpastoTegliaG / derivaRicetta(ricetta, opzioni).fattorePeso
+      : undefined);
+
+  if (!riferimento || farinaBaseG === undefined) {
     throw new Error('Questa ricetta non supporta il calcolo per teglie.');
   }
   richiediPositivo('Il primo lato della teglia', latoA);
@@ -559,13 +568,11 @@ export function calcolaPerTeglie(
     throw new RangeError('Il numero di teglie deve essere un numero intero.');
   }
 
-  const riferimento = ricetta.tegliaRiferimento;
   const areaBase = riferimento.latoA * riferimento.latoB;
   const areaTeglia = latoA * latoB;
   const fattorePerTeglia = areaTeglia / areaBase;
   const fattoreTotale = fattorePerTeglia * numeroTeglie;
-  const farinaTotaleG =
-    richiediConfig(ricetta.farinaBaseG, 'farinaBaseG') * fattoreTotale;
+  const farinaTotaleG = farinaBaseG * fattoreTotale;
   const base = calcolaDaFarinaTotale(ricetta, farinaTotaleG, opzioni);
 
   return {

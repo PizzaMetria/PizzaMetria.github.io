@@ -98,6 +98,11 @@ export interface RicettaConfig {
   /** Ricetta diretta: dose di riferimento della teglia 30 × 40 cm. */
   farinaBaseG?: number;
   tegliaRiferimento?: { latoA: number; latoB: number };
+  /**
+   * Impasto di riferimento della teglia base, per le ricette che non partono
+   * da una dose fissa di farina (per esempio quelle con biga).
+   */
+  pesoImpastoTegliaG?: number;
 
   /** Testi editoriali usati dalla scheda e dal PDF. */
   tempiETemperature: readonly VoceConfig[];

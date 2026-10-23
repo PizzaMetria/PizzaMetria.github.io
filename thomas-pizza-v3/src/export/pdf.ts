@@ -661,15 +661,6 @@ export function creaPdfRicetta(
     }
   }
 
-  scrittore.sezioneConContenuto('Note', 14);
-  for (const nota of [
-    ...vista.noteEssenziali,
-    ...vista.note,
-    vista.notaPeso,
-  ]) {
-    scrittore.paragrafo(nota, { colore: TENUE });
-  }
-
   scrittore.footer();
   return scrittore.documento;
 }
