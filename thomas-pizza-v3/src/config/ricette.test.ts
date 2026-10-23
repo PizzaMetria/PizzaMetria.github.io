@@ -133,6 +133,15 @@ describe('Tips & Tricks condivisi dalle ricette con biga', () => {
     expect(TIP_AUTOLISI).not.toContain('tutta la notte');
   });
 
+  it('spiega la temperatura di chiusura con il prefermento freddo', () => {
+    const testo = RICETTA_TEGLIA_BIGA.tips.join(' ');
+
+    expect(testo).toContain('prefermento freddo');
+    expect(testo).toContain('acqua tiepida o calda nel rinfresco');
+    expect(testo).toContain('22–23 °C');
+    expect(testo).not.toContain('riparte con difficoltà');
+  });
+
   it('lascia invariati i consigli del Trancio Milanese', () => {
     expect(RICETTA_TRANCIO.tips).toHaveLength(2);
     expect(RICETTA_TRANCIO.tips).not.toContain(TIP_AUTOLISI);

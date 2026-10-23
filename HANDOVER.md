@@ -13,7 +13,7 @@ contesto. Aggiornalo quando cambia qualcosa di importante.
 | Anteprima pubblicata | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page> |
 | Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` («Thomas' Pizza v3») |
 | Ambiente di produzione | `production`, sottodominio `thomascalc` |
-| Bundle in produzione | `assets/index-tFO_Zhdi.js`, `assets/index-Xwr3EGh0.css` |
+| Bundle in produzione | `assets/index-OOibmodH.js`, `assets/index-Xwr3EGh0.css` |
 
 Le altre cartelle non vanno toccate:
 
@@ -143,3 +143,8 @@ di pubblicare o in un secondo momento:
   e quella dell’impastamento finale (329 g) quando è accesa. Test 126 verdi,
   PDF generati e riletti (8/9 passi, nessun «spezzetta»). Pubblicato con il
   bundle `index-tFO_Zhdi.js` (deploy `4243ff6e`).
+- 23 ottobre, nona passata: il secondo Tips & Tricks della teglia spiega che il
+  prefermento freddo può chiudere l’impasto sotto 20 °C e consiglia acqua
+  tiepida o calda nel rinfresco per tornare a 22–23 °C. Primo e terzo consiglio
+  invariati. Test 127 verdi, PDF riletto. Pubblicato con il bundle
+  `index-OOibmodH.js` (deploy `50ac2b1f`).

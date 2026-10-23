@@ -178,7 +178,7 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   senzaChiarimenti: true,
   tips: [
     'Per una biga all’85% e un’idratazione totale dell’80% serve una farina forte, indicativamente W 300–320: deve reggere la lunga fermentazione e l’alta idratazione senza collassare.',
-    'Se la fermentazione riparte con difficoltà, usa acqua tiepida nel rinfresco per riportare l’impasto sopra 20 °C.',
+    'Usando un prefermento freddo nei periodi più freddi, l’impasto potrebbe chiudersi a una temperatura inferiore a 20 °C, rallentando la lievitazione: in questo caso, utilizza acqua tiepida o calda nel rinfresco per riportare la temperatura finale del mix in target (22–23 °C).',
     TIP_AUTOLISI,
   ],
 };
