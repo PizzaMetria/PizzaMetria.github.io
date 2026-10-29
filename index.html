@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="it" data-tema="scuro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="PizzaMetria: calcola farina, acqua, lievito, sale e olio per pizza in teglia con biga, pizza contemporanea con biga, Trancio Milanese e Impasto Tuttofare, poi salva la ricetta in JPG o PDF. Tema chiaro o scuro, nessun dato inviato altrove."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#23262a" />
+    <title>PizzaMetria — Calcolatore di impasti</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <style>
+      html {
+        background-color: #23262a;
+      }
+      html[data-tema="chiaro"] {
+        background-color: #f7f2e8;
+      }
+    </style>
+    <script>
+      // Tema scelto prima del primo paint: al primo accesso è sempre scuro.
+      (function () {
+        var tema;
+        try {
+          var salvato = localStorage.getItem('pizzametria-tema');
+          tema =
+            salvato === 'chiaro' || salvato === 'scuro' ? salvato : 'scuro';
+        } catch (errore) {
+          tema = 'scuro';
+        }
+        document.documentElement.dataset.tema = tema;
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-BWwsFb_-.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CUaa64el.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
