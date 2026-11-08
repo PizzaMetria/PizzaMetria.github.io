@@ -1,0 +1,48 @@
+/*
+ * Font self-hosted (subset latin, file variabili): nessuna richiesta a CDN.
+ * Inter per il testo, Playfair Display per titoli e richiami.
+ */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./assets/fonts/inter-variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('./assets/fonts/playfair-display-variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('./assets/fonts/playfair-display-variable-italic.woff2') format('woff2');
+}
+
+/*
+ * Tinos è il clone metrico di Times New Roman: lo usa solo il JPG del vecchio
+ * sito, per avere gli stessi numeri del PDF.
+ */
+@font-face {
+  font-family: 'Tinos';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/tinos-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Tinos';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/tinos-bold.woff2') format('woff2');
+}

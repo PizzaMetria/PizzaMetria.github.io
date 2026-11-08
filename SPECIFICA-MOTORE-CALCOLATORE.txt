@@ -1,0 +1,647 @@
+=====================================================================
+PIZZAMETRIA — SPECIFICA DEL MOTORE DI CALCOLO
+Come funziona il calcolatore, spiegato per poterlo ricostruire
+=====================================================================
+Aggiornata: 3 novembre 2026
+Scopo: questo file descrive il motore vero, non le prove. Chi legge solo
+questo documento deve poter rifare il calcolatore e ottenere gli stessi
+numeri. I due file PROMPT-MOTORE-CALCOLO.txt e PROMPT-MOTORE-BIGA.txt sono
+le esercitazioni su casi singoli: questo è l'impianto.
+
+Le formule sono tutte con i coefficienti esatti. Tra parentesi quadre il
+file del codice da cui vengono, per chi ha ancora il progetto.
+
+
+=====================================================================
+1. ARCHITETTURA IN UN COLPO D'OCCHIO
+=====================================================================
+
+Il calcolo è una catena a otto passi. L'ordine conta: ogni passo consuma
+l'uscita del precedente, e gli arrotondamenti avvengono solo dove è scritto.
+
+   dati (ingredienti, pesi, tempi, temperature)
+     ↓
+   1. ore equivalenti        quanto "pesa" davvero la maturazione
+     ↓                        (dipende dal modello: vecchio o inerzia)
+   2. dose di lievito        legge a potenza sulle ore equivalenti
+     ↓
+   3. dosi in grammi         farina → acqua, sale, olio, malto, lievito
+     ↓
+   4. forza della farina     W consigliato, W del mix, giudizio
+     ↓
+   5. temperatura acqua      formula dei panificatori
+     ↓
+   6. avvisi                 soglie fuori scala
+     ↓
+   7. tabella di marcia      orari reali delle fasi
+     ↓
+   8. confronto              gli stessi numeri con l'altro modello
+
+Due cose da sapere subito, perché cambiano tutto il resto:
+
+- il calcolatore ha DUE modelli di lettura della temperatura, e quello
+  ATTIVO PER DEFAULT è il vecchio (§4.3). L'inerzia (§4.2) si sceglie;
+- la biga ha un motore suo (§12), separato: non usa né le ore equivalenti
+  né i due modelli.
+
+
+=====================================================================
+2. I DATI
+=====================================================================
+
+Ingressi (già numerici e validati):
+
+  tipo                 'verace' | 'contemporanea' | 'teglia'
+  ramo                 'napoletana' | 'teglia'   (decide la legge del lievito)
+  idratazione, sale, olio, malto    punti percentuali sulla farina
+  tipoLievito          'fresco' | 'secco'
+  farine[]             quote (sommano 100) e W dichiarato, null se ignoto
+  modalita             'panetti' | 'farina'      (solo per la tonda)
+  numeroPanetti, pesoPanettoG, farinaG
+  formaTeglia, latoA, latoB, diametro, numeroTeglie, grammiPerCm2
+  tempi                oreTotali, oreFrigo, oreTaPrima, oreTaDopo, ta, tc
+  staglio              'prima' | 'dopo'   (panetti prima o dopo il frigo)
+  modello              'nuovo' | 'vecchio'   (default: 'vecchio')
+  temperaturaImpasto, temperaturaFarina, riscaldamento
+  correzioneLievito    punti percentuali, può essere negativa
+
+Uscite: grammi di ogni ingrediente, peso finale, percentuale di lievito,
+W consigliato e giudizio, temperatura dell'acqua, avvisi, passi della
+tabella di marcia, curva della temperatura e fascia del frigo.
+
+Limiti di validità dei campi (rifiutano i valori assurdi):
+  idratazione 45–100 · sale 0–5 · olio 0–20 · malto 0–3
+  W 100–500 · panetti 1–200 · peso panetto 80–1200 g
+  lato teglia 10–200 cm · grammi/cm² 0,2–1,2
+  ore frigo 0–96 · ore TA prima 0–24 · ore totali 4–72
+  temperatura impasto 15–32 °C · ambiente 5–40 °C · frigo 1–14 °C
+
+
+=====================================================================
+3. PASSO 1a — IL TEMPO
+=====================================================================
+
+Le ore si leggono in tre segmenti, nell'ordine in cui passano:
+
+  oreTaPrima   a temperatura ta, prima del frigorifero (puntata)
+  oreFrigo     a temperatura tc, in frigorifero
+  oreTaDopo    a temperatura ta, dopo il frigorifero (appretto)
+
+Vale: oreTaPrima + oreFrigo + oreTaDopo = oreTotali.
+Se oreFrigo = 0 il frigo non entra e restano puntata e appretto.
+
+Nota sul peso che va in frigo, decisiva per l'inerzia (§4.2):
+  staglio = 'prima'  → in cella entrano i panetti (peso di un pezzo)
+  staglio = 'dopo'   → in cella entra la massa unica (peso di tutto l'impasto)
+La teglia fa eccezione: la massa è sempre un pezzo solo.
+
+
+=====================================================================
+4. PASSO 1b — LE ORE EQUIVALENTI
+=====================================================================
+
+Idea: ogni ora viene convertita in "ore a 20 °C" moltiplicandola per il
+ritmo di fermentazione a quella temperatura. Le ore equivalenti sono la
+somma di tutti i segmenti, e da lì in poi tutto il calcolo è identico sui
+due modelli: cambia solo come si ottiene quel numero.
+
+
+---------------------------------------------------------------------
+4.1 IL RITMO A UNA TEMPERATURA (modello nuovo)
+---------------------------------------------------------------------
+[src/lib/fermentazione.ts]
+
+  ln g(T) = -2,843854 + 0,175803·T - 0,00168741·T²
+  f(T) = g(T) / g(20)          con T limitata a [-5, 40] °C
+
+Non è un raddoppio ogni 10 °C: è una quadratica sul logaritmo, normalizzata
+a 1 esatto a 20 °C. Valori da usare come test:
+
+  T      4        16       20       24       28
+  f(T)   0,114763 0,631142 1,000000 1,501145 2,1350
+
+Nel vecchio modello il ritmo ha altri coefficienti e NON è normalizzato
+(§4.3): non sono intercambiabili.
+
+
+---------------------------------------------------------------------
+4.2 IL MODELLO NUOVO: INERZIA TERMICA
+---------------------------------------------------------------------
+[src/lib/inerzia.ts]
+
+L'impasto non salta alla temperatura dell'ambiente: la insegue con la legge
+di Newton a capacità concentrata.
+
+  dT/dt = (T_ambiente − T) / τ
+
+La costante di tempo non è scelta a caso, viene dalla geometria:
+
+  volume V = massa / 1000 / 1100            [m³]  (densità 1100 kg/m³)
+  raggio r = cbrt( V / (2·π·k) )
+  lunghezza caratteristica L = k·r / (1 + 2k)
+  τ = 1100 · 3400 · L / 5,5 / 3600          [ore]
+
+con k = 0,35 per un panetto e k = 0,50 per una massa unica in ciotola;
+cp = 3400 J/(kg·K), h = 5,5 W/(m²·K), massa minima 20 g.
+Risultato tipico: panetto 250 g → τ ≈ 1,8 h; 500 g → 2,3 h; massa 1,5 kg → 3,6 h.
+
+Integrazione, da fare esattamente così (un minuto per passo):
+
+  temperatura = temperaturaImpasto
+  per ogni fase (puntata, frigo, appretto) con ore > 0:
+     passi = max(1, round(ore · 60))
+     dt    = ore / passi
+     τ     = τ(peso della fase, forma della fase)
+     per ogni passo:
+        dopo = ambiente + (temperatura − ambiente)·exp(−dt/τ)
+        eqFase += (f(temperatura) + f(dopo))/2 · dt      [trapezio]
+        temperatura = dopo
+     eqTot += eqFase
+     eqSenzaInerzia += ore · f(ambiente)
+
+Forme usate nelle fasi: in puntata e in frigo si usa la forma dello staglio
+(panetto o massa); nell'appretto il panetto, tranne la teglia che resta massa.
+Peso del pezzo in teglia: peso dell'impasto / numero teglie.
+
+La curva del grafico è la temperatura reale campionata ogni 5 minuti; la
+fascia chiara del grafico è la fase in frigorifero.
+
+Perché il conto può salire o scendere: f(T) cresce più che linearmente, quindi
+le ore spese a raffreddarsi rendono meno di quelle spese a riscaldarsi.
+Esempi misurati (ambiente 20 °C, impasto a 24 °C, panetti 250 g, frigo 4 °C):
+
+  profilo                      senza inerzia   con inerzia
+  2 h + 18 h frigo + 0,5 h         4,57           5,87
+  2 h + 18 h frigo + 4 h           8,07           7,82
+  solo frigo 18 h                  2,07           3,52
+  1 h + 9 h frigo + 8 h panetti   10,03           9,39
+  1 h + 9 h frigo + 8 h massa     10,03          10,85
+
+Questi cinque numeri sono il collaudo dell'inerzia.
+
+
+---------------------------------------------------------------------
+4.3 IL MODELLO VECCHIO (quello attivo per default)
+---------------------------------------------------------------------
+[src/lib/vecchio.ts]
+
+Emula il calcolatore precedente: non pubblica formule, quindi qui ci sono
+coefficienti fittati su otto calcoli eseguiti davvero su quello strumento.
+Il profilo termico NON dipende dal peso: tre costanti di tempo fisse.
+
+  ln ritmo(T) = -2,64024655 + 0,15789607·T - 0,00140871·T²
+  ritmo(T) = exp(...)                      NON normalizzato a 20 °C
+
+  τ puntata a temperatura ambiente   3,00 h
+  τ in frigorifero                   2,30 h
+  τ appretto dopo il frigo           0,39 h   (riaccesa quasi istantanea)
+
+L'integrazione è identica a quella del §4.2 (passi di un minuto, soluzione
+esatta dell'esponenziale, trapezio), con il ritmo del vecchio modello.
+Se non si usa il frigo, l'appretto usa la τ dell'ambiente (3 h).
+
+La dose e la forza del vecchio modello hanno coefficienti propri: §5.2 e §7.2.
+
+
+---------------------------------------------------------------------
+4.4 LE ORE EQUIVALENTI IN USCITA
+---------------------------------------------------------------------
+Si producono sempre ENTRAMBE le letture (nuova e vecchia), perché la card di
+confronto le mostra affiancate (§8). Il modello scelto decide quale entra
+nelle dosi:
+
+  oreEq = (modello = 'vecchio') ? profiloVecchio.oreEquivalenti
+                                : profiloNuovo.oreEquivalenti
+
+
+=====================================================================
+5. PASSO 2 — LA DOSE DI LIEVITO
+=====================================================================
+
+Percentuale di lievito FRESCO sulla farina, poi convertita nel tipo scelto.
+
+
+---------------------------------------------------------------------
+5.1 Legge del modello nuovo
+---------------------------------------------------------------------
+[src/lib/fermentazione.ts]
+
+  % = [ K · oreEq^(−E) · (idratazione/62)^(−1,20) ] / (fattoreSale · fattoreOlio)
+
+  ramo napoletana (tonda):  K = 2,8656    E = 1,1978
+  ramo teglia:              K = 14,0668   E = 1,3589
+
+  fattoreSale = (1,172 − 0,0655·sale%) / (1,172 − 0,0655·2,5)
+  fattoreOlio = 1 / (1 + 0,05·olio%)
+
+Sale e olio rallentano: sono fattori di VELOCITÀ, vanno al denominatore
+(più condimento = più lievito). L'idratazione accelera: esponente negativo
+al numeratore (più acqua = meno lievito).
+Limiti: oreEq minima 0,5; idratazione minima 30; risultato limitato a
+0,01–8 %.
+
+
+---------------------------------------------------------------------
+5.2 Legge del modello vecchio
+---------------------------------------------------------------------
+[src/lib/vecchio.ts]
+
+  % = K · oreEq^(−E) · (idratazione/62)^(−1,20) / (fattoreSale · fattoreOlio)
+
+  napoletana: K = 3,9635    E = 1,2506
+  teglia:     K = 11,755    E = 1,2059
+
+Stessi fattori di sale, olio e idratazione del modello nuovo; stessi limiti.
+
+
+---------------------------------------------------------------------
+5.3 Tipo di lievito e correzione manuale
+---------------------------------------------------------------------
+  fresco: dose = percentuale
+  secco:  dose = percentuale · 0,335
+
+  correzioneLievito (punti %): percentualeFresco · (1 + correzione/100)
+  poi si moltiplica per il fattore del tipo.
+
+In uscita ci sono sempre: percentuale nel tipo scelto (per la ricetta),
+percentuale fresca (per i confronti) e grammi per kg di farina
+(percentualeFresco · 10, arrotondata a 1 decimale).
+
+ATTENZIONE, è la trappola numero uno: 0,335 vale per gli IMPASTI DIRETTI.
+La biga usa 0,6 (§12); alcune ricette del vecchio sito usano 0,67 o 0,4.
+
+
+=====================================================================
+6. PASSO 3 — LE DOSI IN GRAMMI
+=====================================================================
+[src/lib/calcolo.ts]
+
+Regola unica: tutte le percentuali sono sulla FARINA, quindi il peso
+dell'impasto si converte in farina dividendo per la somma delle parti.
+
+  denominatore = 1 + (idratazione + sale + olio + malto)/100
+
+Peso obiettivo, secondo la modalità:
+
+  panetti:  pesoObiettivo = numeroPanetti · pesoPanettoG
+  teglia:   area = latoA·latoB   (oppure π·(diametro/2)² se tonda)
+            pesoObiettivo = area · numeroTeglie · grammiPerCm2
+  farina:   pesoObiettivo = farinaG · denominatore
+
+Poi, in questo ordine esatto:
+
+  farina = arrotonda( pesoObiettivo / denominatore )        [intero]
+  acqua  = arrotonda( farina · idratazione/100 )            [intero]
+  sale   = arrotonda( farina · sale/100 )
+  olio   = arrotonda( farina · olio/100 )
+  malto  = arrotonda( farina · malto/100 )
+  lievito = farina · percentuale/100                        [2 decimali]
+  peso finale = arrotonda( somma degli ingredienti arrotondati )
+
+Tutti gli ingredienti si calcolano dalla farina GIÀ arrotondata: è questo
+che rende i conti riproducibili a mano.
+
+Se la somma degli ingredienti supera il peso obiettivo (per gli
+arrotondamenti), va bene: la farina è la variabile libera.
+
+Modalità "parti dalla farina": dopo il calcolo si contano i panetti interi
+
+  numeroPezzi = floor(pesoFinale / pesoPanetto)
+  residuoG    = arrotonda(pesoFinale − numeroPezzi · pesoPanetto)
+
+Arrotondamenti: interi all'intero più vicino, sempre (22,8 → 23; 709,5 → 710).
+Il lievito al centesimo: 0,04 g non è zero.
+
+
+=====================================================================
+7. PASSO 4 — LA FORZA DELLA FARINA
+=====================================================================
+
+Il W consigliato è quello che serve a QUELLA maturazione. Non c'è nessuna
+correzione per gli ingredienti: la retta è tarata su 62% di idratazione,
+2,5% di sale, senza olio né malto, e gli ingredienti NON la spostano
+(verificato sul calcolatore di riferimento: 258 a 62% come al 75%).
+
+
+---------------------------------------------------------------------
+7.1 Modello nuovo
+---------------------------------------------------------------------
+  W = min(365, arrotonda(162,657 + 5,8044 · oreEq))
+
+---------------------------------------------------------------------
+7.2 Modello vecchio
+---------------------------------------------------------------------
+  W = min(365, arrotonda(161,149 + 3,912 · oreEq + 1,759 · oreTotali))
+
+Qui conta anche il tempo totale, non solo quello equivalente: è una retta in
+due variabili, fittata sugli otto W del calcolatore precedente (entro l'1%).
+
+
+---------------------------------------------------------------------
+7.3 Il mix di farine
+---------------------------------------------------------------------
+  W equivalente = media pesata sulle quote delle farine con W dichiarato
+  W efficace    = media pesata − 0,5 · scarto quadratico pesato
+
+La penalità serve perché la maglia si rompe dove il glutine è più corto:
+50/50 di W 250 e W 150 dà media 200 ed efficace 175. Con una farina sola la
+penalità è zero.
+
+---------------------------------------------------------------------
+7.4 Finestra, giudizio, curve
+---------------------------------------------------------------------
+  finestra:  da 0,9·W a 1,25·W     (arrotondati: 177–246 per W 197)
+  fasce:     sicura  0,90·W – 1,15·W
+             tollerata 0,85·W – 1,25·W
+  giudizio:  'ottima' dentro la sicura, 'accettabile' dentro la tollerata,
+             'distante' fuori.
+
+  ore massime che il mix regge:  oreMax = (W efficace − 162,657) / 5,8044
+
+  suggerimento quando il mix è sotto finestra e ha almeno due farine con W
+  diverso (differenza ≥ 20):
+     quota farina forte = (W voluto − W debole) / (W forte − W debole)
+
+La curva del grafico è una lettura morbida delle stesse soglie (1 dentro la
+zona sicura, circa 0,6 sulle spalle, 0 fuori), non una grandezza misurata.
+
+
+=====================================================================
+8. PASSI 5–8 — ACQUA, AVVISI, ORARI, CONFRONTO
+=====================================================================
+
+Temperatura dell'acqua (formula dei panificatori):
+  T_acqua = 3·T_impasto − T_ambiente − T_farina − riscaldamento
+  riscaldamento: 4–6 °C a mano, 8–12 °C con la planetaria.
+
+Avvisi, con queste soglie esatte:
+  lievito > 12 g/kg fresco      "dose alta, rischio di sovralievitazione"
+  lievito < 0,4 g/kg fresco     "dose molto bassa, serve farina forte"
+  oreEq < 3                     "lievitazione molto corta"
+  oreEq > 60                    "rischio di sovramaturazione"
+  acqua < 4 °C oppure > 30 °C   "il lievito parte male comunque"
+  giudizio 'distante'           "il mix è fuori dalla finestra"
+
+Tabella di marcia: un passo per ogni confine di fase, con l'orario reale
+calcolato sommando le ore all'istante di inizio:
+  Impasto pronto → In frigorifero → Fuori dal frigorifero → Pronto da infornare
+
+Card di confronto: si calcolano sempre ENTRAMBI i modelli e si mostrano
+affiancati ore equivalenti, grammi di lievito e W. Serve a vedere quanto
+pesa la scelta, non a scegliere per l'utente.
+
+
+=====================================================================
+9. LA MODALITÀ FACILE
+=====================================================================
+[src/lib/facile.ts]
+
+Non è un modello ridotto: è un altro modo di chiedere i dati. Dato il tempo
+totale, le ore fuori dal frigo si ricavano così:
+
+  1. fuori = 30% del totale, limitato fra 4 e 8 ore
+  2. le due metà sono uguali, ma l'appretto non scende sotto 3 ore e la
+     puntata non scende sotto 1 ora: le ore si spostano dalla puntata
+     all'appretto
+  3. frigo = totale − fuori; se il frigo resta sotto 5 ore, il frigo non si
+     usa e tutto il tempo diventa appretto
+  4. tutto arrotondato alla mezz'ora
+
+Nel percorso guidato il W non si chiede e non si mostra: al suo posto c'è un
+consiglio in parole. Il frigo di casa è 4 °C. Le ore in frigo si possono
+correggere a mano: da quel momento valgono i numeri scritti e l'appretto si
+aggiusta di conseguenza.
+
+
+=====================================================================
+10. ORDINE COMPLETO DEL CALCOLO (pseudocodice)
+=====================================================================
+
+  tempi = oreTaPrima, oreFrigo, oreTaDopo, ta, tc
+  profiloNuovo    = integra(tempi, inerzia)          §4.2
+  profiloVecchio  = integra(tempi, tau fisse)        §4.3
+  oreEq = modello == 'vecchio' ? profiloVecchio.eq : profiloNuovo.eq
+
+  pctFresca = legge(oreEq, ramo, idratazione, sale, olio, modello)
+  pct = pctFresca · 0,335 se secco
+
+  den = 1 + (idro + sale + olio + malto)/100
+  pesoObiettivo = ...                                 §6
+  farina = round(pesoObiettivo/den)
+  acqua  = round(farina·idro/100)  ... sale, olio, malto
+  lievito = round2(farina·pct/100)
+
+  W = modello == 'vecchio'
+        ? min(365, round(161,149 + 3,912·oreEq + 1,759·oreTotali))
+        : min(365, round(162,657 + 5,8044·oreEq))
+  weff = W efficace del mix
+  giudizio = confronta(weff, W)
+
+  acquaConsigliata = 3·Timpasto − Tambiente − Tfarina − riscaldamento
+  avvisi = soglie(...)
+  passi  = orari(...)
+
+
+=====================================================================
+11. I DUE MODELLI A CONFRONTO: QUALE MOSTRARE
+=====================================================================
+
+Il default è il VECCHIO, e non è una svista: chi arriva sul sito deve
+ritrovare le dosi del calcolatore di prima. L'inerzia si sceglie a mano
+dalla card "Modello di calcolo".
+
+Differenze misurate sullo stesso programma di lavoro:
+  - senza frigorifero i due modelli danno quasi lo stesso numero (entro 2%);
+  - con il frigorifero il vecchio resta più alto del 7–27%, perché riaccende
+    l'impasto quasi subito all'uscita (τ 0,39 h contro 1,8–3,6 h);
+  - il nuovo distingue panetti e massa unica (+10…+29% di ore equivalenti per
+    la massa), il vecchio no: per lui il peso non conta.
+
+
+=====================================================================
+12. LA BIGA
+=====================================================================
+
+Ha un motore separato, nato come port di BigaMetrica: nessuna inerzia,
+nessuna ora equivalente a 20 °C. La temperatura è quella dell'ambiente in cui
+la biga sta, e il frigorifero entra solo con un fattore.
+[src/vecchio/lib/motore-biga.ts, biga-sola.ts]
+
+
+---------------------------------------------------------------------
+12.1 Quanto matura una biga
+---------------------------------------------------------------------
+  ore(idr, T) = (1/T) · (270534 / (7,74·idr − 83,5))^(5/6) + correzione(T)
+
+  correzione(T) = 0                        se T ≥ 16
+  correzione(T) = 0,1382 · (16 − T)^(4/3)  se T < 16
+
+Idratazione ammessa 40–60%; sopra 22 °C il massimo scende a 55%.
+Il modello è verificato fino a 27 °C: oltre si ferma invece di estrapolare.
+Punti di misura del motore (scarto massimo dichiarato 8 minuti):
+
+  T     idr    matura
+  16    50%    18 h 01 min
+  16    42%    21 h 41 min
+  20    41%    17 h 54 min
+  12    56%    22 h 01 min
+
+---------------------------------------------------------------------
+12.2 La finestra e il tempo obiettivo
+---------------------------------------------------------------------
+  appoggio = 60% se T ≤ 22, altrimenti 55%
+  finestra.min = ore(appoggio, T)     la biga più idratata ammessa
+  finestra.max = ore(40, T)           la più asciutta ammessa
+
+  tempo obiettivo: 20 h se T ≤ 16 · 19 h se T = 17 · 18 h se 17 < T < 19 ·
+                   16,5 h se T ≥ 19
+
+  finestra PRO (quella che conta):
+     min = max(finestra.min, 0,80 · obiettivo)
+     max = min(finestra.max, 1,20 · obiettivo)
+  margine di tolleranza: 10 minuti
+
+Esempio: a 19 °C il minimo scende a 13,20 h (era la finestra dell'idratazione
+più corta di 13,2).
+
+---------------------------------------------------------------------
+12.3 Il frigorifero della biga
+---------------------------------------------------------------------
+Se l'attesa sta nella finestra PRO: tutto in ambiente, zero frigo.
+
+Se è più lunga:
+  peso = 2^((T_frigo − T)/10)         un'ora di frigo vale "peso" ore in ambiente
+  oreFrigo   = (oreAttesa − finestra.max) / (1 − peso)
+  tetto: 24 ore; oltre si dichiara che nemmeno il frigo basta
+  oreAmbiente = oreAttesa − oreFrigo
+  oreEquivalenti = oreAmbiente + oreFrigo · peso
+
+Se è più corta di finestra.min − 10 min: la biga non è pronta in tempo, si
+dice e si prosegue con la durata minima.
+
+---------------------------------------------------------------------
+12.4 L'idratazione la decide il tempo
+---------------------------------------------------------------------
+  durata = oreEquivalenti limitato fra finestra.min e finestra.max
+  si provano TUTTE le idratazioni intere da 40 al massimo ammesso e si
+  sceglie quella con |ore(idr,T) − durata| minore
+  a parità di scarto vince l'idratazione più bassa
+
+---------------------------------------------------------------------
+12.5 Grammi della sola biga
+---------------------------------------------------------------------
+  farina  = kg · 1000
+  acqua   = farina · idr/100
+  lievito fresco = farina · 1%          ← 1% della farina della biga
+  lievito secco  = fresco · 0,6         ← NON 0,335
+  totale  = farina + acqua + lievito
+
+Esempi (1 kg di farina):
+  20 °C, 20:00 → 14:00 (18 h): idr 41%, matura 17 h 51 min, acqua 410 g
+  18 °C, 19:30 → 19:30 (24 h): idr 40%, 18 h 12 min in ambiente + 5 h 48 min
+                               in frigo, equivalenti 20,40 h, acqua 400 g
+  14 °C, 17:00 → 14:00 (21 h): idr 50%, matura 20 h 52 min, acqua 500 g
+
+---------------------------------------------------------------------
+12.6 La biga dentro la ricetta (rinfresco)
+---------------------------------------------------------------------
+[src/vecchio/lib/calcolo.ts]
+
+La ricetta fissa la farina totale e le percentuali; l'idratazione della biga
+la decide il motore (§12.4). Con quotaBiga (0,75 nella tonda, 0,85 nella
+teglia) e idratazioneTotale (0,77 e 0,80):
+
+  farinaBiga    = farinaTotale · quotaBiga
+  farinaRinfresco = farinaTotale − farinaBiga
+  acquaBiga     = farinaBiga · idratazioneBiga       (dal motore)
+  acquaTotale   = farinaTotale · idratazioneTotale
+  lievito       = farinaBiga · lievitoFrescoSuFarinaBiga (1%) · fattore secco
+  olio          = farinaTotale · percentualeOlio     (2% tonda, 4% teglia)
+  sale          = farinaTotale · percentualeSale     (3%)
+  malto         = farinaTotale · (percentualeMalto · quotaBiga)
+  acqua finale  = acquaTotale − acquaBiga − acquaAutolisi
+
+Autolisi (se attiva): la farina del rinfresco si idrata al 55% con una parte
+dell'acqua; l'acqua finale è solo il resto. Con il 100% di biga non resta
+farina per l'autolisi.
+Se l'acqua finale esce negativa è un errore: la ripartizione non è valida.
+
+Fattore del lievito secco nelle ricette: 0,6 (biga), 0,67 e 0,4 in altre:
+è un campo della ricetta, non una costante globale.
+
+
+=====================================================================
+13. VALORI DI COLLAUDO
+=====================================================================
+
+Chi ricostruisce il motore deve far tornare questi numeri.
+
+Ritmo del modello nuovo
+  f(4) = 0,114763 · f(16) = 0,631142 · f(20) = 1 · f(24) = 1,501145
+
+Ore equivalenti senza inerzia (2 h + 18 h frigo + 4 h, ambiente 20 °C, frigo 4 °C)
+  2 + 18·0,114763 + 4 = 8,0657
+
+Dose, modello nuovo, senza inerzia (62% di idratazione, 2,5% di sale, no olio)
+  ore  6  → 0,3351%     ore 12 → 0,1461%    ore 24 → 0,0637%
+  ore  8  → 0,2374%     ore 18 → 0,0899%    ore 48 → 0,0278%
+  ramo teglia: 6 h → 1,2324% · 12 h → 0,4805% · 24 h → 0,1873% · 48 h → 0,0730%
+
+Confronto con il calcolatore di riferimento (14 punti, ramo tonda e teglia):
+  media 99,6%, errore medio assoluto 2,9%, intervallo 93,9–105,6%.
+
+Tre casi completi (impasti diretti, modello senza inerzia, lievito fresco):
+  A verace 6×250 g, 62%, 6 h a 20 °C → 0,3351%, farina 912, acqua 565,
+    sale 23, lievito 3,06 g, totale 1503, W 197
+  B contemporanea 6×280 g, 75%, 1+18 frigo+5 h → 0,1871%, farina 946,
+    acqua 710, sale 24, lievito 1,77 g, totale 1682, W 209
+  C teglia 30×40, 70%, olio 2%, malto 1%, 2+18+4 h → 0,7839%, farina 376,
+    acqua 263, sale 9, olio 8, malto 4, lievito 2,95 g, totale 663, W 209
+
+Inerzia (panetti 250 g, massa 1,5 kg, impasto a 24 °C, ambiente 20 °C, frigo 4 °C)
+  τ panetto 250 g ≈ 1,8 h · massa 1,5 kg ≈ 3,6 h
+  i cinque profili del §4.2 sono la prova del conto.
+
+Biga
+  ore(41, 20) = 17,8535 h · ore(40, 18) = 20,4015 h · ore(50, 14) = 20,8720 h
+  correzione(14) = 0,3483 h · finestraPro(19).min = 13,2000 h
+  peso del frigo a 18 °C con cella a 4 °C = 0,378929
+
+I test del progetto blindano tutto questo: fermentazione.test.ts, confronto.test.ts,
+calcolo.test.ts, inerzia.test.ts, vecchio.test.ts, motore-biga.test.ts.
+
+
+=====================================================================
+14. COSA IL MODELLO NON FA (dichiarato)
+=====================================================================
+
+- Non modella i prefermenti nel motore principale: la biga ha il suo (§12) e
+  non entra nelle ore equivalenti dell'impasto finale.
+- Il modello nuovo ha l'inerzia; quello vecchio no, per costruzione.
+- Non usa la temperatura dell'impasto nel ritmo: usa quella ambiente.
+  L'acqua è calcolata per chiudere a 24 °C, ma quel dato non entra nel calcolo.
+- Non conosce la vitalità del lievito né la qualità del glutine oltre al W.
+- Non prevede la cottura.
+- La biga si ferma a 27 °C e ignora i prefermenti diversi da lei.
+
+
+=====================================================================
+15. MAPPA FILE → FORMULE (per chi ha ancora il progetto)
+=====================================================================
+
+  ritmo, legge del lievito, forza, rese      src/lib/fermentazione.ts
+  inerzia, τ, integrazione                   src/lib/inerzia.ts
+  modello vecchio, sue dosi e suo W          src/lib/vecchio.ts
+  dosi, mix, finestra, giudizio, avvisi      src/lib/calcolo.ts
+  ripartizione della Modalità Facile         src/lib/facile.ts
+  motore della biga                          src/vecchio/lib/motore-biga.ts
+  sola biga (scheda)                         src/vecchio/lib/biga-sola.ts
+  biga dentro la ricetta, rinfresco          src/vecchio/lib/calcolo.ts
+  valori delle ricette                       src/vecchio/config/ricette.ts
+  tipi di ingresso e uscita                  src/types.ts
+  spiegazione estesa, con le misure          DOCUMENTAZIONE-CALCOLO.md
+
+Se il progetto esiste, il codice è la fonte: questo file serve a capirlo e a
+rifarlo, non a sostituirlo. Se il progetto non esiste, questo file più i due
+PROMPT-MOTORE-*.txt sono tutto quello che c'è.
+=====================================================================

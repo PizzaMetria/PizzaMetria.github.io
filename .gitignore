@@ -5,3 +5,21 @@ artifacts/
 *.local
 .DS_Store
 /freebuff-sites-build/
+
+# Materiale di lavoro locale: non va su GitHub (copie storiche, backup, attrezzi, file di chat).
+/artifacts/
+/files/
+/.toolchain/
+/.wrangler/
+/backup/
+/backup-v1/
+/backup-pre-allineamento-2026-11-06-1809/
+*.tar.gz
+libcapstone.so
+/sito-unito/
+/pizzametria-v1/
+/bigametrica/
+/bigametrica-latte/
+/calcolatore-libero/
+/thomas-pizza/
+/candidato a definitivo v8/

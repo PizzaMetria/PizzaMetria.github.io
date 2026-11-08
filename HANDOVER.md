@@ -1,50 +1,84 @@
 # Thomas' Pizza — nota di passaggio
 
+> **Cartella rinominata il 27 ottobre 2026:** il progetto attivo è ora `thomas-pizza/` (prima `thomas-pizza-v5/`). Le note di consegna dentro `artifacts/consegna-*/` e i vecchi log citano ancora il nome precedente.
+
 Questo file serve a riprendere il lavoro in una nuova chat senza ricostruire il
 contesto. Aggiornalo quando cambia qualcosa di importante.
 
 ## Progetto attivo
 
-**`thomas-pizza-v3/`** — è la versione online e l'unica da modificare.
+**`thomas-pizza/`** — contiene la **v8**, pubblicata sul sito pubblico il
+27 ottobre 2026. Comprende tutti gli aggiornamenti precedenti (5.1, 5.2, 5.3,
+5.4, 5.23, 5.25, 5.26, 5.27), gli aggiornamenti 5.5–5.10 della v6,
+l'aggiornamento v6.1, il procedimento del Trancio e la v7 (pulsanti).
 
 | Voce | Valore |
 | --- | --- |
-| Sito pubblicato | <https://thomascalc.freebuff.page/> |
-| Anteprima pubblicata | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page> |
+| Sito pubblico (v8) | <https://thomascalc.freebuff.page/> |
+| Bundle in produzione | `assets/index-Bv_kPAgU.js`, `assets/index-BZPVRzqs.css` |
+| Deploy di pubblicazione | `09181f32-fe7c-468a-8690-0e0835a679e7` (27/10/2026 08:38 UTC) |
+| Sito di prova `preview` (v5.3) | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page/> |
+| Bundle in prova | `assets/index-bBNKfUJr.js`, `assets/index-C5R3Oam1.css` |
 | Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` («Thomas' Pizza v3») |
-| Ambiente di produzione | `production`, sottodominio `thomascalc` |
-| Bundle in produzione | `assets/index-OOibmodH.js`, `assets/index-Xwr3EGh0.css` |
+| Ambienti | `production` = v5.27 · `preview` = v5.3 (non più necessaria) |
+| Backup v4 | `artifacts/pubblicazione-2026-10-25/` |
+| Backup v5 | `artifacts/consegna-v5-2026-10-25/` |
+| Consegna v5.1 (versione precedente) | `artifacts/consegna-v51-2026-10-25/` |
+| Consegna v5.2 | `artifacts/consegna-v52-2026-10-25/` |
+| Consegna v5.3 | `artifacts/consegna-v53-2026-10-26/` |
+| Consegna v5.4 | `artifacts/consegna-v54-2026-10-26/` |
+| Consegna v5.25 | `artifacts/consegna-v525-2026-10-26/` |
+| Consegna v5.26 | `artifacts/consegna-v526-2026-10-26/` |
+| Consegna v5.27 | `artifacts/consegna-v527-2026-10-26/` |
+| Consegna v6 | `artifacts/consegna-v6-2026-10-26/` |
+| Consegna v6.1 | `artifacts/consegna-v61-2026-10-26/` |
+| Consegna v6 (27/10) | `artifacts/consegna-v6-2026-10-27/` |
+| Consegna v7 (27/10) | `artifacts/consegna-v7-2026-10-27/` |
+| Consegna v8 (attuale, 27/10) | `artifacts/consegna-v8-2026-10-27/` |
+| Backup v7 prima della v8 | `artifacts/backup-v7-prima-v8-2026-10-27/` (dist pubblicato scaricato dal sito) |
 
 Le altre cartelle non vanno toccate:
 
 - `src/`, `index.html`, `package.json` alla radice e `backup-v1/`: la v1;
-- `thomas-pizza-v2/`: la v2, con il suo sito pubblicato separato;
+- `thomas-pizza-v2/` e `thomas-pizza-v3/`: versioni storiche;
 - `dist/`, `freebuff-sites-build/`, `artifacts/`, `.wrangler/`: output di build e
   file di lavoro, ignorati da Git.
 
-## Stato attuale (23 ottobre 2026)
+## Stato attuale (27 ottobre 2026)
 
-Verificato sui sorgenti di `thomas-pizza-v3` con le dipendenze installate
-(`npm ci`):
+Verificato sui sorgenti di `thomas-pizza` con le dipendenze installate:
 
-- `npm test` → 106 test, 10 file, tutti verdi;
+- `npm test` → 201 test, 13 file, tutti verdi;
 - `npm run typecheck` → nessun errore;
-- `npm run build` → genera esattamente `index-BnUpGoKR.js` e
-  `index-D5Ws0A6U.css`, cioè gli stessi file che servono oggi
-  `thomascalc.freebuff.page`. **I sorgenti corrispondono alla versione
-  pubblicata**: non c'è lavoro non ancora online.
+- `npm run build` → `index-Bv_kPAgU.js` e `index-BZPVRzqs.css`, gli stessi file
+  serviti dal sito pubblico (SHA-256 identici).
 
-Funzioni presenti: tre ricette (Pizza in teglia con biga, Trancio Milanese,
-Pizza contemporanea Canotto), calcolo per panetti / farina / teglie, lievito
-fresco o secco, autolisi dove prevista, tema chiaro e scuro, icone degli
-ingredienti, esportazione JPG e PDF, salvataggio locale, layout mobile-first.
+La v8 è pubblicata in `production`; l'ambiente `preview` ospita ancora la
+v5.3 e non serve più. La versione precedente (v5.1) resta ricostruibile dagli
+archivi in `artifacts/consegna-v51-2026-10-25/` (copiati anche in
+`artifacts/consegna-v54-2026-10-26/archivi-versione-precedente-v5.1/`).
+
+Nella v6.1 la quarta ricetta si chiama **Impasto Tuttofare** (slug
+`impasto-tuttofare`, usato nei nomi dei file scaricati; l'id interno resta
+`diretto-tuttofare` per non invalidare il salvataggio locale degli utenti). Il
+Trancio Milanese non mostra più la nota sull'olio nel tab «Risultato» e, al
+posto della frase sulla teglia 30 × 40 cm, riporta la durata complessiva. I due
+pulsanti della Home hanno i colori invertiti.
+
+Funzioni: quattro ricette (Pizza in teglia con biga, Trancio Milanese, Pizza
+contemporanea con biga, Impasto Tuttofare), calcolo per panetti / farina /
+teglie / prodotti, lievito fresco o secco, autolisi dove prevista,
+**personalizzazione delle percentuali con il pannello «Modifica ricetta» e
+cursori**, **quota di biga 25–100%**, avanzo dell'impasto nel risultato, tema
+chiaro e scuro, icone degli ingredienti, esportazione JPG e PDF, salvataggio
+locale, layout mobile-first.
 
 ## Comandi
 
 ```bash
-cd thomas-pizza-v3
-npm ci            # solo la prima volta (o dopo un ripristino della macchina)
-npm run dev       # http://localhost:3002
+cd thomas-pizza        # oppure thomas-pizza-v4 per il sito pubblico
+npm ci                    # solo la prima volta (o dopo un ripristino della macchina)
+npm run dev               # http://localhost:3000
 npm test
 npm run typecheck
 npm run build
@@ -52,19 +86,18 @@ npm run build
 
 ## Pubblicare una modifica
 
-1. Applicare la modifica in `thomas-pizza-v3/src` (o `index.html`, `src/index.css`).
+1. Applicare la modifica nella cartella della versione giusta: oggi il sito
+   pubblico è `thomas-pizza/src`; `thomas-pizza-v4/` è solo la versione
+   storica 5.1.
 2. `npm test && npm run typecheck && npm run build`.
-3. Controllare che la build serva davvero la pagina: `npm run preview` e aprire
-   <http://localhost:3002>, oppure usare l'anteprima della chat.
-4. Deploy del manifest `thomas-pizza-v3/sites.manifest.json` (assets `./dist`,
-   worker `./worker/index.js`) sull'ambiente `production` del progetto
-   `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35`.
-5. Dopo il deploy, verificare che `https://thomascalc.freebuff.page/` serva il
-   nuovo hash del bundle (`curl -s https://thomascalc.freebuff.page/ | grep assets/`).
-6. Aggiornare in questo file la riga «Bundle in produzione».
-
-Il sito è già pubblicato: un deploy nuovo codice non richiede di ripubblicare,
-ma se l'ambiente risultasse non pubblicato va riattivato.
+3. Controllare la build con `npm run preview` (porta 3000) o l'anteprima della chat.
+4. Deploy del manifest `sites.manifest.json` (assets `./dist`, worker
+   `./worker/index.js`) sull'ambiente giusto del progetto
+   `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35`: `production` è il sito pubblico,
+   **aggiornarlo solo su autorizzazione**.
+5. Dopo il deploy verificare hash e `content-type` del bundle servito
+   (`curl -s <url> | grep assets/` e confronto SHA-256 con `dist/`).
+6. Aggiornare in questo file le righe dei bundle e la data dello stato.
 
 ## Modifiche richieste, da eseguire
 
@@ -82,11 +115,20 @@ Quando una richiesta viene eseguita, spostala in fondo con la data e l'esito.
 Rimasti aperti dopo l’aggiornamento dei testi del 23 ottobre, da confermare prima
 di pubblicare o in un secondo momento:
 
-- **Autolisi del Canotto**: i Tips & Tricks non indicano più la temperatura di
-  conservazione, ma tempi e procedimento dicono ancora «a temperatura ambiente
-  per tutta la notte». Serve una decisione, non una correzione automatica.
+- **Autolisi, dato interno dei tempi**: nelle due ricette con biga il badge
+  dice «Prima di impastare» (come richiesto). Il campo `tempiETemperature`
+  contiene ancora «La sera prima, fino al momento dell'impastamento finale»,
+  ma non viene mostrato né sul sito né nelle esportazioni (lo usano solo i
+  test): da confermare se allineare anche il dato.
+- **Trancio in modalità farina**: non prevede il peso del panetto (usa la stima
+  delle teglie), quindi non mostra l'avanzo; la resa esatta resta nella modalità
+  panetti. Da confermare se serve il peso panetto anche qui.
 - **Temperatura di chiusura 25 °C**: resta nei parametri del pannello risultato
   (dato necessario), ma non più nella scheda in home.
+- **Diretto Tuttofare, parametri**: il riquadro «Parametri della ricetta» di PDF
+  e JPG elenca farina, idratazione, lievito, sale e olio ma non lo zucchero
+  (che compare comunque fra gli ingredienti al 4%). Comportamento preesistente,
+  non toccato nella 5.4: da confermare se aggiungerlo.
 
 ## Fatto in questa sessione
 
@@ -148,3 +190,114 @@ di pubblicare o in un secondo momento:
   tiepida o calda nel rinfresco per tornare a 22–23 °C. Primo e terzo consiglio
   invariati. Test 127 verdi, PDF riletto. Pubblicato con il bundle
   `index-OOibmodH.js` (deploy `50ac2b1f`).
+- 25 ottobre: pubblicata la **v4** su `thomascalc.freebuff.page` (deploy
+  `1f5ee909`, bundle `index-CiwIKTXC.js`), con le rifiniture grafiche delle
+  esportazioni. Archivi: `artifacts/pubblicazione-2026-10-25/` (sorgenti + FTP).
+- 25 ottobre: creata la **v5 «Personalizzazione percentuali»** in
+  `thomas-pizza/`: pannello «Modifica ricetta» nelle tre ricette, parametri
+  per ricetta salvati in `impasti-pizza:v1`, export basati sul risultato
+  calcolato. 160 test verdi, 74 controlli browser locali e 74 sul sito di prova.
+  Pubblicata solo sull'ambiente `preview` (deploy `29fb9d51`, bundle
+  `index-C8QVwZkW.js`). Archivi e riepilogo:
+  `artifacts/consegna-v5-2026-10-25/`.
+- 25 ottobre, aggiornamento **5.2 «Correzioni al procedimento»** (punti 21–30
+  dell'ordine tuttofare, solo quelli): etichetta autolisi «Prima di impastare»
+  nelle due ricette con biga, biga con formulazione unica e dosi dinamiche, un
+  solo passo di rinfresco nella contemporanea (prima era doppio con autolisi
+  attiva), puntata/appretto/panetti e cottura riscritti, «Basi da farcire»
+  spostata nei Tips, cottura del Trancio con nota salamino al posto di quella
+  sulla mozzarella. 174 test verdi, 43 controlli browser+export. Deploy di
+  prova `b60b6676` su `preview` (bundle `index-KC9yMxsk.js`); **production non
+  toccata**. Dettagli e checklist: `artifacts/consegna-v52-2026-10-25/`.
+- 26 ottobre, aggiornamento **5.3** (punti 1–20 dell'ordine tuttofare, non
+  ancora applicati, più le correzioni A e B): biga della teglia al 55%,
+  consiglio unico sulla farina forte, rinomina in «Pizza contemporanea con
+  biga» (slug `pizza-contemporanea-con-biga`, migrazione dello stato salvato e
+  del vecchio id), quarta ricetta **Diretto Tuttofare** con calcolatore misto a
+  quattro formati e formula fissa (1,752 / 1,740 di peso per farina), avanzo
+  dell'impasto nella resa, badge autolisi unico, «Farina» al posto di «Farina 00
+  forte», staglio e Tips allineati, Trancio a 6 g di lievito (1,6%) e W 180–220.
+  188 test verdi, typecheck e build ok, 43 controlli browser locali su desktop e
+  mobile nei due temi, 4 PDF e 2 JPG riletti (margini, sovrapposizioni e glifi
+  controllati). Deploy di prova `69943277` su `preview` (bundle
+  `index-bBNKfUJr.js`, `index-C5R3Oam1.css`, hash SHA-256 identici fra sito e
+  `dist/`); **production non toccata**. Dettagli e checklist:
+  `artifacts/consegna-v53-2026-10-26/README.md`.
+- 25 ottobre, aggiornamento **5.1**: controllo **«% biga» 25–100%** nelle due
+  ricette con biga, cursore cliccabile e trascinabile sotto ogni percentuale,
+  valore e % sempre visibili, autolisi e procedimento coerenti al 100% di biga.
+  166 test verdi, 55 controlli browser nuovi e 74 di regressione. Pubblicata in
+  `production` su autorizzazione (deploy `1cd1d6a3`, bundle `index-CVvSX4wk.js`,
+  `index-DNRGziW7.css`); hash identici fra sito e `dist/`. Archivi ZIP sorgenti
+  e FTP in `artifacts/consegna-v51-2026-10-25/`, backup v4 e v5 invariati.
+- 26 ottobre, aggiornamento **5.4** (punti 1–4 e relative note): Trancio
+  Milanese con procedimento e Tips & Tricks riscritti e quantità dinamiche nel
+  punto 1 (lievito, malto, miele, acqua iniziale, olio in tre riprese, acqua
+  finale restante), nota sulla mozzarella spostata nella sequenza di cottura;
+  riquadro del Diretto Tuttofare riscritto e modalità **Prodotti/Farina** con
+  ripartizione indicativa fra i formati; **tasti − e +** su tutti i campi
+  numerici configurabili fuori da «Modifica ricetta» (passo 1, 5 g, 50 g, 1 cm);
+  nuovo **ordine delle ricette** e badge **«Indiretto»/«Diretto»** in alto a
+  destra del riquadro «Ricetta selezionata». 196 test verdi (13 file),
+  typecheck e build ok; 80 controlli browser sul sito pubblicato (65 della
+  suite 5.4 più 15 mirati sulle righe prodotto), 5 PDF riletti (margini,
+  sovrapposizioni e glifi) e JPG ispezionati. Pubblicata in `production`
+  **insieme alla 5.3**, come autorizzato (deploy `851fce4f`, bundle
+  `index-zIILGMat.js` e `index-7qqx2L1W.css`, hash identici fra sito e `dist/`).
+  Archivi, checklist e controlli: `artifacts/consegna-v54-2026-10-26/`;
+  la v5.1 precedente resta in `artifacts/consegna-v51-2026-10-25/`.
+- 26 ottobre, aggiornamento **5.23**: nel Diretto Tuttofare il punto «Bauletti
+  / pane in cassetta» diventa un unico paragrafo con il riferimento allo stampo
+  **dinamico** («{pesoBauletti}», es. 500 g o il peso scelto), lievitazione ai
+  tre quarti dello stampo e cottura 180 °C per circa 40 minuti fino a doratura.
+  196 test verdi, typecheck e build ok, 14 controlli su sito pubblicato e PDF.
+  Pubblicata in `production` (deploy `67d73c10`).
+- 26 ottobre, aggiornamento **5.25**: Tips & Tricks del Diretto Tuttofare
+  ripuliti dai doppioni — istruzione dei semi solo nel punto 5, condimento
+  delle focacce solo nel punto 7, rimossa la nota sullo stampo del bauletto con
+  il vecchio riferimento al **formato quadrato** e all'adattamento manuale.
+  Badge del Diretto Tuttofare confermato **«Diretto»** (il file chiedeva
+  «Indiretto», in contrasto con il tipo di impasto e con la 5.4: scelta
+  confermata dall'utente). 196 test verdi, typecheck e build ok, 17 controlli
+  sul sito pubblicato + PDF (3 pagine) e JPG. Pubblicata in `production`
+  (deploy `d8856fa3`, bundle `index-9fPx1X-m.js` e `index-7qqx2L1W.css`, hash
+  identici fra sito e `dist/`). Archivi in
+  `artifacts/consegna-v525-2026-10-26/`.
+- 26 ottobre, aggiornamento **5.26**: il consiglio del bauletto nei Tips &
+  Tricks torna presente con il peso **dinamico** del formato
+  (`{pesoBauletti}`), allineato al punto 4: 750 g con bauletti da 750 g,
+  500 g in modalità Farina. Per sostenerlo `tipsRicetta` risolve i segnaposto
+  `{peso<Formato>}` con i pesi effettivi. Badge in home riverificati
+  (teglia/contemporanea «Indiretto», Trancio/Tuttofare «Diretto»). 196 test
+  verdi, typecheck e build ok, 18 controlli sul sito pubblicato + 2 PDF in due
+  modalità + JPG. Pubblicata in `production` (deploy `2ff4831e`, bundle
+  `index-rZw2sLaS.js`, hash identici fra sito e `dist/`). Archivi in
+  `artifacts/consegna-v526-2026-10-26/`.
+- 26 ottobre, versione **6** (aggiornamenti 5.5–5.10): Trancio Milanese con il
+  punto 1 «Impasto» e acqua iniziale senza «fredda»; badge confermati in
+  elenco, PDF e JPG; righe prodotto del Diretto Tuttofare con titoli più
+  evidenti, etichette centrate, campi impilati su smartphone e terza variabile
+  per formato; **diametro** delle focacce (24 cm = 200 g) e **stampo** dei
+  bauletti (20 × 10 cm = 500 g) con ±1 cm e peso ricalcolato dalla superficie
+  (arrotondato ai 5 g, sempre modificabile); formati in ordine di peso e punto
+  4 «Prodotti lievitati» in ordine di infornata; lievitazione dopo la formatura
+  in una sola frase; tip sulla farina senza la tipologia 00. Il punto 1
+  «Impasto in giornata» del Tuttofare è diventato «Impasto», come richiesto
+  dalla stessa voce di lavoro. 199 test verdi, typecheck e build ok, 40
+  controlli su build locale e 40 sul sito pubblicato (con PDF e JPG riletti e
+  pagine ispezionate). Pubblicata in `production` (deploy `e7054d9d`, bundle
+  `index-zG4KrO50.js` e `index-B0Opfl6H.css`, hash identici fra sito e
+  `dist/`). Archivi in `artifacts/consegna-v6-2026-10-26/`.
+- 26 ottobre, aggiornamento **5.27**: badge «Diretto»/«Indiretto» anche nella
+  tab «Scegli la ricetta» e nelle intestazioni di **PDF** e **JPG**; il
+  procedimento del Diretto Tuttofare ha un unico punto numerato **«Prodotti»**
+  con i formati come **elenco puntato rientrato** (Pizzette, Panini, Focacce,
+  Bauletti) al posto dei punti 5–7; pizzette con la formulazione sulla **pietra
+  refrattaria**; focacce con «Riferimento dinamico»; rimosso il tip duplicato
+  della carta forno. Introdotto `voci` in `PassoProcedimento` (filtro per
+  condizione e segnaposto risolti a qualsiasi profondità) e resa PDF dedicata.
+  196 test verdi, typecheck e build ok; PDF e JPG ispezionati su desktop e
+  smartphone; 21 controlli sul sito pubblicato. Pubblicata in `production`
+  (deploy `088dccef`, bundle `index-BUobZs2n.js` e `index-DxWExYAy.css`, hash
+  identici fra sito e `dist/`). Archivi in
+  `artifacts/consegna-v527-2026-10-26/`.

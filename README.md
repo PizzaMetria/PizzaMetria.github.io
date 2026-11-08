@@ -1,9 +1,9 @@
 # Thomas' Pizza
 
-> **Versione attiva: [`thomas-pizza-v3/`](thomas-pizza-v3/README.md)** — online su
-> <https://thomascalc.freebuff.page/>. La v1 (questo `src/` alla radice) e la
-> [`thomas-pizza-v2/`](thomas-pizza-v2/README.md) restano come sono. Stato del
-> lavoro, comandi e modifiche in sospeso: [`HANDOVER.md`](HANDOVER.md).
+> **Versione attiva: [`thomas-pizza/`](thomas-pizza/README.md)** — online su
+> <https://thomascalc.freebuff.page/>. Questo `src/` alla radice, `thomas-pizza-v2/`,
+> `thomas-pizza-v3/` e `thomas-pizza-v4/` sono copie storiche e restano come sono.
+> Stato del lavoro, comandi e modifiche in sospeso: [`HANDOVER.md`](HANDOVER.md).
 
 Web app in italiano per calcolare tre impasti: **Pizza in teglia con biga**,
 **Trancio Milanese** e **Pizza contemporanea Canotto**. Tutti i calcoli e le

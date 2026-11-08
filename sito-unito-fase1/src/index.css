@@ -1,0 +1,344 @@
+@import "tailwindcss";
+
+/*
+ * PELLE UNICA DEL SITO — latte e crema
+ * ------------------------------------
+ * Una sola tavolozza: fondo crema (#f5f1ea), carte bianche, inchiostro
+ * charcoal (#3a342c) e un solo accento, il latte tostato (#b99b77).
+ * L'accento chiaro non si usa per i testi: su crema sta a 2,3:1, quindi i
+ * testi d'accento e le etichette piccole vanno in latte scuro (#8a6d4e, 4,8:1
+ * su bianco) e sopra i bottoni pieni si scrive in charcoal (4,7:1).
+ *
+ * I nomi dei token restano quelli del calcolatore (terracotta, oro, carta…):
+ * cambiare questa tavolozza cambia tutto il sito senza toccare i componenti.
+ */
+@theme {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif:
+    "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Angoli: il prototipo latte è più tondo del vecchio sito. */
+  --radius-lg: 0.85rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.375rem;
+
+  /* Superfici */
+  --color-crema: #f5f1ea;
+  --color-crema-scuro: #faf6ef;
+  --color-carta: #ffffff;
+
+  /* Testo */
+  --color-inchiostro: #3a342c;
+  --color-inchiostro-tenue: #7a7064;
+  --color-su-oro: #3a342c;
+
+  /* Unico accento: latte tostato */
+  --color-terracotta: #b99b77;
+  --color-terracotta-scuro: #a8875f;
+  --color-terracotta-tenue: #f2e8da;
+  --color-oro-chiaro: #8a6d4e;
+  --color-oro-scuro: #8a6d4e;
+  --color-oro-luce: #b99b77;
+  --color-oro-velo: #b99b7724;
+  --marchio-oro: #b99b77;
+  /* Ombre calde, mai grigie: sul crema il grigio sembra sporco. */
+  --color-ombra: #8a6d4e;
+
+  --color-bordo: #e4dcce;
+  --color-errore: #a5261b;
+  --color-avviso: #8a5a00;
+  --color-avviso-tenue: #f6ead8;
+
+  --gradiente-oro-1: #c9ae8b;
+  --gradiente-oro-2: #b99b77;
+  --gradiente-oro-3: #a08159;
+  --bagliore-1: rgba(185, 155, 119, 0.16);
+  --bagliore-2: rgba(185, 155, 119, 0.08);
+  --filigrana: rgba(138, 109, 78, 0.06);
+  --sfondo-iniziale: #f5f1ea;
+  --alone-1: 0 22px 40px -24px rgba(138, 109, 78, 0.35);
+  --alone-2: 0 10px 24px -14px rgba(185, 155, 119, 0.28);
+}
+
+/*
+ * Il sito ha una pelle sola. Questi due selettori restano perché una scelta
+ * di tema salvata da una versione precedente non deve riportare il tema scuro.
+ */
+html[data-tema="chiaro"],
+html[data-tema="scuro"] {
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+    scroll-behavior: smooth;
+  }
+
+  /*
+   * Schermi larghi: il progetto nasce su 16 px, ma su un 24" o più gli occhi
+   * stanno più lontani e a 100% sembra tutto piccolo. Alzare la radice
+   * ingrandisce testi, margini e schede insieme, in proporzione: è quello che
+   * fa lo zoom del browser, ma senza sfocare il testo e senza rompere il
+   * layout (niente `zoom` o `transform: scale`).
+   */
+  @media (min-width: 1280px) {
+    html {
+      font-size: 17.5px;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    html {
+      font-size: 19px;
+    }
+  }
+
+  @media (min-width: 1750px) {
+    html {
+      font-size: 21px;
+    }
+  }
+
+  body {
+    background-color: var(--color-crema);
+    background-image:
+      radial-gradient(ellipse 70% 45% at 50% -8%, var(--bagliore-1), transparent 70%),
+      radial-gradient(ellipse 50% 40% at 100% 8%, var(--bagliore-2), transparent 65%);
+    background-repeat: no-repeat;
+    color: var(--color-inchiostro);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-width: 320px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  legend {
+    font-family: var(--font-serif);
+    letter-spacing: -0.022em;
+    font-weight: 800;
+  }
+
+  /* Ogni comando risponde al tocco: il mouse solleva, il dito comprime. */
+  button,
+  summary {
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.25s ease,
+      transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+
+  button:not(:disabled):active {
+    transform: scale(0.975);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-terracotta);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+
+  ::selection {
+    background-color: var(--color-terracotta-tenue);
+    color: var(--color-inchiostro);
+  }
+}
+
+@layer utilities {
+  .testo-oro {
+    background-image: linear-gradient(
+      135deg,
+      var(--gradiente-oro-1) 0%,
+      var(--gradiente-oro-2) 48%,
+      var(--gradiente-oro-3) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .filigrana-oro {
+    background-image: repeating-linear-gradient(
+      135deg,
+      var(--filigrana) 0 1px,
+      transparent 1px 9px
+    );
+  }
+
+  /*
+   * Card che si solleva: è l'effetto del prototipo latte. Sui telefoni
+   * l'hover non esiste, quindi lì resta solo la compressione al tocco.
+   */
+  .solleva {
+    transition:
+      transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1),
+      box-shadow 0.28s ease,
+      border-color 0.2s ease;
+  }
+
+  @media (hover: hover) {
+    .solleva:hover {
+      transform: translateY(-4px);
+      border-color: #e9dcc6;
+      box-shadow:
+        0 24px 40px -18px rgba(138, 109, 78, 0.35),
+        0 6px 16px -8px rgba(58, 52, 44, 0.08);
+    }
+  }
+
+}
+
+/*
+ * Stampa e salvataggio in PDF: i token passano a una tavolozza chiara, così il
+ * foglio esce leggibile senza riscrivere i componenti.
+ */
+@media print {
+  :root,
+  html[data-tema] {
+    --color-crema: #ffffff;
+    --color-crema-scuro: #ffffff;
+    --color-carta: #ffffff;
+    --color-inchiostro: #111111;
+    --color-inchiostro-tenue: #444444;
+    --color-bordo: #cccccc;
+    --color-terracotta: #8a6d4e;
+    --color-oro-chiaro: #6b543a;
+    --color-su-oro: #ffffff;
+    --color-terracotta-tenue: #f3ece2;
+    --color-avviso: #6b4a00;
+    --color-avviso-tenue: #fbf4e2;
+    --color-errore: #a3281c;
+  }
+
+  body {
+    background-image: none !important;
+  }
+
+  section {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+}
+
+/* Menu laterale: entra da destra, il velo compare in dissolvenza. */
+@keyframes menu-entra {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes velo-entra {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sali-entra {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-laterale {
+  animation: menu-entra 0.24s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.menu-velo {
+  animation: velo-entra 0.18s ease-out;
+}
+
+/* Il riquadro del passo appena aperto entra dal basso, senza scatti. */
+.passo-entra {
+  animation: sali-entra 0.26s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-laterale,
+  .menu-velo,
+  .passo-entra {
+    animation: none;
+  }
+
+  * {
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Cursore della personalizzazione ricetta. Senza queste regole Chrome disegna
+ * il cursore nativo blu, l'unico pezzo fuori tavolozza rimasto nel sito.
+ */
+.cursore-percentuale {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 1.6rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cursore-percentuale::-webkit-slider-runnable-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--color-terracotta) 0 var(--riempimento, 0%),
+    var(--color-bordo) var(--riempimento, 0%) 100%
+  );
+}
+
+.cursore-percentuale::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -0.33rem;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 999px;
+  border: 2px solid var(--color-terracotta);
+  background: var(--color-carta);
+  box-shadow: var(--alone-2);
+}
+
+.cursore-percentuale::-moz-range-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--color-bordo);
+}
+
+.cursore-percentuale::-moz-range-progress {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--color-terracotta);
+}
+
+.cursore-percentuale::-moz-range-thumb {
+  height: 1rem;
+  width: 1rem;
+  border-radius: 999px;
+  border: 2px solid var(--color-terracotta);
+  background: var(--color-carta);
+  box-shadow: var(--alone-2);
+}
