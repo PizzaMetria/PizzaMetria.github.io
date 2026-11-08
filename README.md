@@ -1,8 +1,12 @@
 # Thomas' Pizza
 
-> **Versione attiva: [`thomas-pizza/`](thomas-pizza/README.md)** — online su
-> <https://thomascalc.freebuff.page/>. Questo `src/` alla radice, `thomas-pizza-v2/`,
-> `thomas-pizza-v3/` e `thomas-pizza-v4/` sono copie storiche e restano come sono.
+> **Versione attiva: [`sito-unito-fase1/`](sito-unito-fase1/README.md)** — online su
+> <https://test-pizzametria.freebuff.page/>. È il sito unico (ricette personalizzate
+> più calcolatore), installabile come app da Chrome e disponibile anche come APK
+> Android. Questo `src/` alla radice e le cartelle `thomas-pizza*` sono copie
+> storiche e restano come sono.
+> Comandi: `cd sito-unito-fase1` poi `npm ci`, `npm run dev` (anteprima),
+> `npm test` (469 test), `npm run build` (sito compilato in `dist/`).
 > Stato del lavoro, comandi e modifiche in sospeso: [`HANDOVER.md`](HANDOVER.md).
 
 Web app in italiano per calcolare tre impasti: **Pizza in teglia con biga**,
