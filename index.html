@@ -1,17 +1,32 @@
 <!doctype html>
-<html lang="it">
+<html lang="it" data-tema="chiaro">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Thomas' Pizza: calcola farina, acqua, lievito, sale e olio per pizza in teglia con biga, Trancio Milanese e Canotto, poi salva la ricetta in JPG o PDF."
+      content="PizzaMetria: le quattro ricette personalizzate con biga, autolisi e trancio milanese, più le ricette classiche con il calcolatore di impasti su ore, temperature e forza della farina."
     />
-    <meta name="theme-color" content="#faf4ec" />
-    <title>Thomas' Pizza — Calcola il tuo impasto</title>
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f5f1ea" />
+    <title>PizzaMetria — ricette personalizzate e calcolatore</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="PizzaMetria" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <style>
+      /* Il primo paint è già latte: nessun lampo scuro prima dell'app. */
+      html,
+      body {
+        background-color: #f5f1ea;
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-CBlbx6pP.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CsNwdhqu.css">
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
