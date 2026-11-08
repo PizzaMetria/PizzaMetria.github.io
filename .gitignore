@@ -23,3 +23,6 @@ libcapstone.so
 /calcolatore-libero/
 /thomas-pizza/
 /candidato a definitivo v8/
+
+# Chiave per pubblicare su GitHub: non entra mai nel repository.
+.github-token

@@ -1,34 +1,55 @@
 #!/usr/bin/env bash
 #
-# Pubblica il progetto su GitHub senza chiedere la chiave ogni volta.
+# Pubblica il progetto su GitHub senza chiedere la chiave a ogni push.
 #
-# La chiave si mette una volta sola in $HOME/.github-token (una riga, fuori dal
-# progetto: non finisce mai nel repository). Questo script imposta il remote e
-# un credential helper locale che legge quel file, così dopo basta `git push`.
+# La chiave si mette una volta sola e viene cercata in quest'ordine:
+#   1. variabile d'ambiente GH_TOKEN
+#   2. file .github-token nella radice del progetto (ignorato da git)
+#   3. file $HOME/.github-token
+# Lo script imposta il remote e un credential helper valido solo per questo
+# repository: da lì in poi basta `git push` e non chiede niente.
 #
 # Uso:  scripts/pubblica-github.sh <utente>/<nome-repo> [nuovo]
-#   nuovo = crea prima il repository su GitHub (serve gh autenticato o il token)
+#   nuovo = crea prima il repository su GitHub (serve gh + chiave)
 
 set -euo pipefail
 
 REPO="${1:-}"
 CREA="${2:-}"
-CHIAVE="$HOME/.github-token"
+RADICE="$(cd "$(dirname "$0")/.." && pwd)"
 
 if [[ -z "$REPO" ]]; then
   echo "Uso: scripts/pubblica-github.sh <utente>/<nome-repo> [nuovo]" >&2
   exit 2
 fi
 
-if [[ ! -s "$CHIAVE" ]]; then
-  echo "Manca la chiave in $CHIAVE (una riga sola, permessi 600)." >&2
+trova_chiave() {
+  if [[ -n "${GH_TOKEN:-}" ]]; then
+    echo "env"
+    return 0
+  fi
+  for file in "$RADICE/.github-token" "$HOME/.github-token"; do
+    if [[ -s "$file" ]]; then
+      chmod 600 "$file" 2>/dev/null || true
+      echo "$file"
+      return 0
+    fi
+  done
+  return 1
+}
+
+CHIAVE="$(trova_chiave || true)"
+if [[ -z "$CHIAVE" ]]; then
+  echo "Manca la chiave: mettila in .github-token nella radice (una riga) o in \$HOME/.github-token." >&2
   exit 3
 fi
 
-chmod 600 "$CHIAVE"
-
-# Impostazioni valide solo per questo repository: nessun token scritto in chiaro.
-git config --local credential.helper '!f() { test "$1" = get && echo username=x-access-token && printf "password=%s\n" "$(cat "$HOME/.github-token")"; }; f'
+# Credential helper solo per questo repository: la chiave non finisce in config.
+if [[ "$CHIAVE" == "env" ]]; then
+  git config --local credential.helper '!f() { test "$1" = get && echo username=x-access-token && printf "password=%s\n" "$GH_TOKEN"; }; f'
+else
+  git config --local credential.helper "!f() { test \"\$1\" = get && echo username=x-access-token && printf \"password=%s\\n\" \"\$(cat '$CHIAVE')\"; }; f"
+fi
 
 REMOTO="https://github.com/$REPO.git"
 if git remote get-url origin >/dev/null 2>&1; then
@@ -39,7 +60,11 @@ fi
 
 if [[ "$CREA" == "nuovo" ]]; then
   if command -v gh >/dev/null 2>&1; then
-    GH_TOKEN="$(cat "$CHIAVE")" gh repo create "$REPO" --private --source . --remote origin 2>/dev/null || true
+    if [[ "$CHIAVE" == "env" ]]; then
+      gh repo create "$REPO" --private --source . --remote origin 2>/dev/null || true
+    else
+      GH_TOKEN="$(cat "$CHIAVE")" gh repo create "$REPO" --private --source . --remote origin 2>/dev/null || true
+    fi
   else
     echo "gh non disponibile: crea il repository vuoto su github.com e rilancia senza 'nuovo'." >&2
     exit 4
