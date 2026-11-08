@@ -26,3 +26,15 @@ libcapstone.so
 
 # Chiave per pubblicare su GitHub: non entra mai nel repository.
 .github-token
+
+# Copie storiche del progetto: restano nel computer, non nel sito pubblicato.
+/thomas-pizza*/
+/backup-v1/
+/src/
+/worker/
+/package.json
+/package-lock.json
+/tsconfig.json
+/vite.config.ts
+/sites.manifest.json
+/wrangler.sites.jsonc
