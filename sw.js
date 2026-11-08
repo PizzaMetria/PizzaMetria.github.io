@@ -14,7 +14,7 @@
  * far funzionare il sito.
  */
 
-const CACHE = 'pizzametria-v5';
+const CACHE = 'pizzametria-v6';
 
 const GUSCIO = [
   './',
