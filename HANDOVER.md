@@ -1,13 +1,13 @@
-# Thomas' Pizza — nota di passaggio
+# PizzaMetria — nota di passaggio
 
-> **Cartella rinominata il 27 ottobre 2026:** il progetto attivo è ora `thomas-pizza/` (prima `thomas-pizza-v5/`). Le note di consegna dentro `artifacts/consegna-*/` e i vecchi log citano ancora il nome precedente.
+> **Cartella rinominata il 27 ottobre 2026:** il progetto attivo è il sito unico, che prima aveva un altro nome. Le note di consegna dentro `artifacts/consegna-*/` e i vecchi log citano ancora il nome precedente.
 
 Questo file serve a riprendere il lavoro in una nuova chat senza ricostruire il
 contesto. Aggiornalo quando cambia qualcosa di importante.
 
 ## Stato attuale — 9 novembre 2026 (PizzaMetria, `sito-unito-fase1/`)
 
-Le sezioni sotto sono storiche (Thomas' Pizza v8, ottobre 2026). Il progetto
+Le sezioni sotto sono storiche (v8, ottobre 2026). Il progetto
 attivo oggi è **PizzaMetria** in `sito-unito-fase1/`.
 
 | Voce | Valore |
@@ -47,21 +47,21 @@ attivo oggi è **PizzaMetria** in `sito-unito-fase1/`.
 - La card "Tabella di marcia" a schermo mostra inizio e nota, non fine e durata:
   scelta da confermare con l'utente.
 
-## Progetto attivo
+## Progetto precedente (v8, ottobre 2026)
 
-**`thomas-pizza/`** — contiene la **v8**, pubblicata sul sito pubblico il
+**La cartella del progetto di allora** — contiene la **v8**, pubblicata sul sito pubblico il
 27 ottobre 2026. Comprende tutti gli aggiornamenti precedenti (5.1, 5.2, 5.3,
 5.4, 5.23, 5.25, 5.26, 5.27), gli aggiornamenti 5.5–5.10 della v6,
 l'aggiornamento v6.1, il procedimento del Trancio e la v7 (pulsanti).
 
 | Voce | Valore |
 | --- | --- |
-| Sito pubblico (v8) | <https://thomascalc.freebuff.page/> |
+| Sito pubblico (v8) | vecchio dominio, oggi dismesso |
 | Bundle in produzione | `assets/index-Bv_kPAgU.js`, `assets/index-BZPVRzqs.css` |
 | Deploy di pubblicazione | `09181f32-fe7c-468a-8690-0e0835a679e7` (27/10/2026 08:38 UTC) |
 | Sito di prova `preview` (v5.3) | <https://site-82456be856a94b12bb45d97a16daaa6f.freebuff.page/> |
 | Bundle in prova | `assets/index-bBNKfUJr.js`, `assets/index-C5R3Oam1.css` |
-| Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` («Thomas' Pizza v3») |
+| Progetto Sites | `c2f4a1d8-5b3e-4a97-8f61-2d7c9e0b4a35` (progetto precedente, v3) |
 | Ambienti | `production` = v5.27 · `preview` = v5.3 (non più necessaria) |
 | Backup v4 | `artifacts/pubblicazione-2026-10-25/` |
 | Backup v5 | `artifacts/consegna-v5-2026-10-25/` |
@@ -82,13 +82,13 @@ l'aggiornamento v6.1, il procedimento del Trancio e la v7 (pulsanti).
 Le altre cartelle non vanno toccate:
 
 - `src/`, `index.html`, `package.json` alla radice e `backup-v1/`: la v1;
-- `thomas-pizza-v2/` e `thomas-pizza-v3/`: versioni storiche;
+- `v2/` e `v3/`: versioni storiche, non più presenti;
 - `dist/`, `freebuff-sites-build/`, `artifacts/`, `.wrangler/`: output di build e
   file di lavoro, ignorati da Git.
 
 ## Stato attuale (27 ottobre 2026)
 
-Verificato sui sorgenti di `thomas-pizza` con le dipendenze installate:
+Verificato sui sorgenti di allora con le dipendenze installate:
 
 - `npm test` → 201 test, 13 file, tutti verdi;
 - `npm run typecheck` → nessun errore;
@@ -118,7 +118,7 @@ locale, layout mobile-first.
 ## Comandi
 
 ```bash
-cd thomas-pizza        # oppure thomas-pizza-v4 per il sito pubblico
+cd sito-unito-fase1    # il progetto attivo
 npm ci                    # solo la prima volta (o dopo un ripristino della macchina)
 npm run dev               # http://localhost:3000
 npm test
@@ -128,9 +128,7 @@ npm run build
 
 ## Pubblicare una modifica
 
-1. Applicare la modifica nella cartella della versione giusta: oggi il sito
-   pubblico è `thomas-pizza/src`; `thomas-pizza-v4/` è solo la versione
-   storica 5.1.
+1. Applicare la modifica in `sito-unito-fase1/`, che è il progetto attivo.
 2. `npm test && npm run typecheck && npm run build`.
 3. Controllare la build con `npm run preview` (porta 3000) o l'anteprima della chat.
 4. Deploy del manifest `sites.manifest.json` (assets `./dist`, worker
@@ -143,7 +141,7 @@ npm run build
 
 ## Modifiche richieste, da eseguire
 
-Thomas indicherà qui le modifiche una per una e chiederà di applicarle in un
+L'autore indicherà qui le modifiche una per una e chiederà di applicarle in un
 secondo momento. Non applicare nulla finché non lo dice.
 
 Elenco delle richieste ricevute ma non ancora eseguite:
@@ -174,7 +172,7 @@ di pubblicare o in un secondo momento:
 
 ## Fatto in questa sessione
 
-- Sorgenti di `thomas-pizza-v3` allineati alla versione pubblicata e committati
+- Sorgenti della v3 allineati alla versione pubblicata e committati
   sul branch `freebuff/3e8da9f944cbe470e8ed6e43`, così una nuova chat li ritrova.
 - README della v3 aggiornato con gli URL reali e le istruzioni di pubblicazione
   (prima citava URL di anteprima vecchi).
@@ -183,10 +181,10 @@ di pubblicare o in un secondo momento:
   paragrafi ed elenco, nuovi Tips & Tricks su riposo iniziale e autolisi (testi
   unici in `TIP_RIPOSO_BIGA` e `TIP_AUTOLISI`), `VoceConfig` esteso con
   `paragrafi` ed `elenco`. Test 116 verdi, build ok, verifiche DOM e PDF ok.
-  Pubblicato su `thomascalc.freebuff.page` con il bundle `index-BAHTDgUT.js`
+  Pubblicato sul sito di prova di allora con il bundle `index-BAHTDgUT.js`
   (deploy `d6801d39`); le stesse verifiche DOM passano sulla build servita.
 - 23 ottobre, seconda passata: rimossi dalla home i due riquadri richiudibili
-  («Tempi e temperature» e «Tips & Tricks») su richiesta di Thomas, che vuole la
+  («Tempi e temperature» e «Tips & Tricks») su richiesta, che vuole la
   home dedicata al calcolo. Pubblicato con il bundle `index-C0jOyM04.js`
   (deploy `c820bf40`). Test 116 verdi, nessun errore in console, calcolo intatto.
 - 23 ottobre, quinta passata: anche il Trancio Milanese si può calcolare **per
@@ -232,11 +230,11 @@ di pubblicare o in un secondo momento:
   tiepida o calda nel rinfresco per tornare a 22–23 °C. Primo e terzo consiglio
   invariati. Test 127 verdi, PDF riletto. Pubblicato con il bundle
   `index-OOibmodH.js` (deploy `50ac2b1f`).
-- 25 ottobre: pubblicata la **v4** su `thomascalc.freebuff.page` (deploy
+- 25 ottobre: pubblicata la **v4** sul sito di prova di allora (deploy
   `1f5ee909`, bundle `index-CiwIKTXC.js`), con le rifiniture grafiche delle
   esportazioni. Archivi: `artifacts/pubblicazione-2026-10-25/` (sorgenti + FTP).
 - 25 ottobre: creata la **v5 «Personalizzazione percentuali»** in
-  `thomas-pizza/`: pannello «Modifica ricetta» nelle tre ricette, parametri
+  nella cartella del progetto: pannello «Modifica ricetta» nelle tre ricette, parametri
   per ricetta salvati in `impasti-pizza:v1`, export basati sul risultato
   calcolato. 160 test verdi, 74 controlli browser locali e 74 sul sito di prova.
   Pubblicata solo sull'ambiente `preview` (deploy `29fb9d51`, bundle
