@@ -13,6 +13,7 @@ import {
 import { creaVistaRicetta } from './vista';
 import { componiProcedimento } from './procedimento';
 import { validaModalitaProdotti } from './validazione';
+import { valoriIniziali } from './persistenza';
 
 function righe(
   valori: Partial<Record<string, [number, number]>>,
@@ -184,20 +185,25 @@ describe('Impasto Tuttofare — modalità farina', () => {
     expect(risultato.pesoImpastoG).toBeCloseTo(1752, 6);
 
     // Pezzature di riferimento in ordine di peso: pizzette 50 g, panini 90 g,
-    // focacce 200 g, bauletti 500 g.
+    // focaccia rotonda 200 g, bauletti 500 g, focaccia in teglia 530 g.
     expect(risultato.prodotti?.map((prodotto) => prodotto.quantita)).toEqual([
-      35, 19, 8, 3,
+      35, 19, 8, 3, 3,
     ]);
-    expect(risultato.prodotti?.[0].residuoG).toBeCloseTo(2, 6);
-    expect(risultato.prodotti?.[2].residuoG).toBeCloseTo(152, 6);
-    expect(risultato.prodotti?.[3].residuoG).toBeCloseTo(252, 6);
+    const perId = Object.fromEntries(
+      (risultato.prodotti ?? []).map((prodotto) => [prodotto.id, prodotto]),
+    );
+    expect(perId.pizzette.residuoG).toBeCloseTo(2, 6);
+    expect(perId.focacce.residuoG).toBeCloseTo(152, 6);
+    expect(perId.bauletti.residuoG).toBeCloseTo(252, 6);
+    expect(perId['focacce-teglia'].residuoG).toBeCloseTo(162, 6);
 
     expect(vista.resa).toBe('Dosi per 1 kg di farina · 1.752 g di impasto');
     expect(vista.ripartizione.map((voce) => voce.etichetta)).toEqual([
       'Pizzette',
       'Panini',
-      'Focacce',
+      'Focaccia rotonda',
       'Bauletti / pane in cassetta',
+      'Focaccia in teglia',
     ]);
     expect(vista.ripartizione[0].valore).toBe('35 pezzi da 50 g · avanzo 2 g');
     expect(vista.riepilogoTecnico[1].voci[0]).toEqual({
@@ -228,7 +234,7 @@ describe('Impasto Tuttofare — modalità farina', () => {
 
     expect(testo).not.toContain('{');
     expect(testo).toContain(
-      'Dividi l’impasto secondo i formati che vuoi preparare: le pezzature di riferimento sono pizzetta 50 g, panino 90 g, focaccia 200 g, bauletto 500 g.',
+      'Dividi l’impasto secondo i formati che vuoi preparare: le pezzature di riferimento sono pizzetta 50 g, panino 90 g, focaccia rotonda 200 g, bauletto 500 g, focaccia in teglia 530 g.',
     );
 
     const tips = tipsRicetta(RICETTA_TUTTOFARE, risultato);
@@ -301,9 +307,11 @@ describe('Impasto Tuttofare — procedimento e consigli', () => {
 
   it('ricava il peso del pezzo dalla superficie di teglietta e stampo', () => {
     const focacce = PRODOTTI_TUTTOFARE.find((voce) => voce.id === 'focacce');
+    const teglia = PRODOTTI_TUTTOFARE.find((voce) => voce.id === 'focacce-teglia');
     const bauletti = PRODOTTI_TUTTOFARE.find((voce) => voce.id === 'bauletti');
     const diametro = focacce?.dimensione;
     const stampo = bauletti?.dimensione;
+    const tegliaFocaccia = teglia?.dimensione;
 
     expect(diametro && pesoDaDimensione(diametro, 24)).toBe(200);
     expect(diametro && pesoDaDimensione(diametro, 26)).toBe(235);
@@ -311,11 +319,16 @@ describe('Impasto Tuttofare — procedimento e consigli', () => {
     expect(stampo && pesoDaDimensione(stampo, 20, 10)).toBe(500);
     expect(stampo && pesoDaDimensione(stampo, 20, 12)).toBe(600);
     expect(stampo && pesoDaDimensione(stampo, 22, 10)).toBe(550);
+
+    // Stessa focaccia, stessa altezza al cm²: 24 cm di cerchio = 200 g,
+    // quindi una teglia 30 × 40 porta 530 g.
+    expect(tegliaFocaccia && pesoDaDimensione(tegliaFocaccia, 30, 40)).toBe(530);
+    expect(tegliaFocaccia && pesoDaDimensione(tegliaFocaccia, 35, 40)).toBe(620);
   });
 
-  it('ordina i formati per peso crescente, da 50 g a 500 g', () => {
+  it('ordina i formati per peso crescente, da 50 g a 530 g', () => {
     expect(PRODOTTI_TUTTOFARE.map((prodotto) => prodotto.pesoBaseG)).toEqual([
-      50, 90, 200, 500,
+      50, 90, 200, 500, 530,
     ]);
   });
 
@@ -366,5 +379,83 @@ describe('Impasto Tuttofare — procedimento e consigli', () => {
 
     expect(testo).not.toMatch(/3–4 giorni|4 giorni|giorni in frigorifero/);
     expect(testo).not.toContain('da verificare');
+  });
+});
+
+describe('focacce del calcolatore misto', () => {
+  function voceFocacce(valori: Partial<Record<string, [number, number]>>) {
+    const risultato = calcolaPerProdotti(RICETTA_TUTTOFARE, righe(valori));
+    return componiProcedimento(RICETTA_TUTTOFARE, risultato)
+      .find((passo) => passo.titolo === 'Prodotti lievitati')
+      ?.voci?.find((voce) => voce.titolo === 'Focacce');
+  }
+
+  it('ha due voci: focaccia rotonda e focaccia in teglia', () => {
+    const rotonda = PRODOTTI_TUTTOFARE.find((voce) => voce.id === 'focacce');
+    const teglia = PRODOTTI_TUTTOFARE.find(
+      (voce) => voce.id === 'focacce-teglia',
+    );
+
+    expect(rotonda?.nome).toBe('Focaccia rotonda');
+    expect(teglia?.nome).toBe('Focaccia in teglia');
+    expect(teglia?.nota).toContain('30 × 40');
+  });
+
+  it('tiene lo stesso spessore della tonda da 24 cm', () => {
+    const rotonda = PRODOTTI_TUTTOFARE.find((voce) => voce.id === 'focacce');
+    const teglia = PRODOTTI_TUTTOFARE.find(
+      (voce) => voce.id === 'focacce-teglia',
+    );
+
+    expect(rotonda?.dimensione && pesoDaDimensione(rotonda.dimensione, 24)).toBe(
+      200,
+    );
+    expect(teglia?.dimensione && pesoDaDimensione(teglia.dimensione, 30, 40)).toBe(
+      530,
+    );
+  });
+
+  it('usa lo stesso procedimento per la tonda e per la teglia', () => {
+    const tonda = voceFocacce({ focacce: [1, 200] });
+    const teglia = voceFocacce({ 'focacce-teglia': [1, 530] });
+
+    expect(tonda?.paragrafi.length).toBeGreaterThan(0);
+    expect(teglia?.paragrafi).toEqual(tonda?.paragrafi);
+  });
+
+  it('non ha più riferimento dinamico, pomodorini premuti e pezzatura base', () => {
+    const testo =
+      voceFocacce({
+        focacce: [1, 200],
+        'focacce-teglia': [1, 530],
+      })?.paragrafi.join(' ') ?? '';
+
+    expect(testo).not.toContain('Riferimento dinamico');
+    expect(testo).not.toContain('Premi i pomodorini');
+    expect(testo).not.toContain('alla pezzatura base');
+    expect(testo).not.toContain('Controlla superficie e fondo');
+    expect(testo).toContain('Sforna');
+  });
+
+  it('non mostra il punto focacce se non è scelto nessun formato', () => {
+    expect(voceFocacce({ panini: [1, 90] })).toBeUndefined();
+  });
+
+  it('parte con tutti i formati a zero', () => {
+    const prodotti = valoriIniziali(RICETTA_TUTTOFARE.id).prodotti;
+    const quantita = Object.values(prodotti).map((riga) => riga.quantita);
+
+    expect(quantita).toHaveLength(PRODOTTI_TUTTOFARE.length);
+    expect(quantita.every((valore) => valore === '0')).toBe(true);
+  });
+
+  it('nasce con la teglia 30 × 40 e 530 g di impasto', () => {
+    const teglia = PRODOTTI_TUTTOFARE.find(
+      (voce) => voce.id === 'focacce-teglia',
+    );
+
+    expect(teglia?.pesoBaseG).toBe(530);
+    expect(teglia?.dimensione?.baseA).toBe(30);
+    expect(teglia?.dimensione?.baseB).toBe(40);
   });
 });

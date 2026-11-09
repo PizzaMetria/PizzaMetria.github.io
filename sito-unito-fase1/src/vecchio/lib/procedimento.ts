@@ -241,6 +241,14 @@ export function componiProcedimento(
       return valore;
     });
 
+  // Una voce è attiva quando la sua condizione è vera; le condizioni
+  // alternative (tonda e in teglia) bastano una sola.
+  const attiva = (condizione: string | undefined): boolean =>
+    condizione === undefined || condizioni[condizione] === true;
+  const visibile = (passo: PassoProcedimento): boolean =>
+    attiva(passo.condizione) &&
+    (passo.condizioni === undefined || passo.condizioni.some(attiva));
+
   // Le sotto-voci (i formati dell'Impasto Tuttofare) seguono le stesse regole:
   // filtro per condizione e segnaposto risolti, a qualsiasi profondità.
   const componi = (passo: PassoProcedimento): PassoProcedimento => ({
@@ -249,19 +257,10 @@ export function componiProcedimento(
     ...(passo.elenco ? { elenco: passo.elenco.map(risolvi) } : {}),
     ...(passo.voci
       ? {
-          voci: passo.voci
-            .filter(
-              (voce) =>
-                voce.condizione === undefined || condizioni[voce.condizione],
-            )
-            .map(componi),
+          voci: passo.voci.filter(visibile).map(componi),
         }
       : {}),
   });
 
-  return ricetta.procedimento
-    .filter(
-      (passo) => passo.condizione === undefined || condizioni[passo.condizione],
-    )
-    .map(componi);
+  return ricetta.procedimento.filter(visibile).map(componi);
 }

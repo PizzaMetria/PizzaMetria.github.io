@@ -10,6 +10,9 @@ import {
   trovaRicetta,
 } from './ricette';
 import { parametriScheda, sottotitoloRicetta, tipoImpasto } from '../lib/vista';
+import { calcolaBigaSola } from '../lib/biga-sola';
+import { calcolaPerPanetti } from '../lib/calcolo';
+import { componiProcedimento } from '../lib/procedimento';
 
 function voce(ricetta: typeof RICETTA_TEGLIA_BIGA, etichetta: string) {
   return ricetta.tempiETemperature.find((voce) => voce.etichetta === etichetta);
@@ -235,20 +238,20 @@ describe('correzioni della versione 5.4', () => {
     expect(sottotitoloRicetta(RICETTA_TUTTOFARE)).toBe(
       'Un unico impasto per focacce, pizzette, panini e bauletti. Scegli i formati, combina le quantità e calcola tutte le dosi in un’unica volta.',
     );
-    expect(RICETTA_TUTTOFARE.farinaScheda).toBe('Farina forte W ≥ 280');
+    expect(RICETTA_TUTTOFARE.farinaScheda).toBe('Farina forte W 280');
     expect(RICETTA_TUTTOFARE.notaScheda).toBe(
       'Impasto pratico e flessibile: pronto in circa 3 ore, oppure preparalo in anticipo e conservalo in frigo per il giorno successivo.',
     );
     expect(RICETTA_TUTTOFARE.tips).toContain(
-      'Utilizza una farina forte, indicativamente W ≥ 280 e con almeno il 12% di proteine.',
+      'Utilizza una farina forte, indicativamente W 280 e con almeno il 12% di proteine.',
     );
 
     const scheda = parametriScheda(RICETTA_TUTTOFARE);
     expect(scheda).toContainEqual({
       etichetta: 'Farina',
-      valore: 'Farina forte W ≥ 280',
+      valore: 'Farina forte W 280',
     });
-    expect(scheda).toContainEqual({ etichetta: 'Formati', valore: '4' });
+    expect(scheda).toContainEqual({ etichetta: 'Formati', valore: '5' });
     expect(scheda).toContainEqual({
       etichetta: 'Idratazione',
       valore: '60%',
@@ -260,5 +263,50 @@ describe('correzioni della versione 5.4', () => {
     expect(tipoImpasto(RICETTA_CANOTTO)).toBe('Indiretto');
     expect(tipoImpasto(RICETTA_TRANCIO)).toBe('Diretto');
     expect(tipoImpasto(RICETTA_TUTTOFARE)).toBe('Diretto');
+  });
+});
+
+describe('testi aggiornati di biga e calcolatore', () => {
+  const configBiga = () =>
+    calcolaBigaSola({
+      farinaKg: 1,
+      temperatura: 21,
+      temperaturaFrigo: 4,
+      ore: 24,
+      lievito: 'fresco',
+    }).config;
+
+  it('descrive la biga come prefermento che matura', () => {
+    expect(configBiga().descrizione).toBe(
+      'Solo prefermento: farina, acqua e lievito. L’idratazione varia in base a tempi e temperature, per avere sempre un prefermento maturo.',
+    );
+  });
+
+  it('chiude la biga in ermetico e non la fa tornare a temperatura ambiente', () => {
+    const passo = configBiga().procedimento.find(
+      (voce) => voce.titolo === 'Lascia maturare',
+    );
+    const testo = passo?.paragrafi.join(' ') ?? '';
+
+    expect(testo).toContain(
+      'Chiudi la biga in un contenitore ermetico e lasciala maturare',
+    );
+    expect(testo).toContain('usala direttamente nell’impasto finale');
+    expect(testo).not.toContain('formano profumo e forza');
+  });
+
+  it('toglie dal procedimento della ricetta la frase sul motore', () => {
+    const risultato = calcolaPerPanetti(RICETTA_TEGLIA_BIGA, 3, 710);
+    const testo = componiProcedimento(RICETTA_TEGLIA_BIGA, risultato)
+      .flatMap((passo) => passo.paragrafi)
+      .join(' ');
+
+    expect(testo).not.toContain('la decide il motore con l’attesa scelta');
+    expect(testo).toContain('di idratazione)');
+  });
+
+  it('scrive W 280 senza simbolo di potenza', () => {
+    expect(RICETTA_TUTTOFARE.farinaScheda).toBe('Farina forte W 280');
+    expect(RICETTA_TUTTOFARE.tips.join(' ')).not.toContain('≥');
   });
 });

@@ -39,18 +39,26 @@ export function pesoDaDimensione(
 ): number {
   const rettangolare = dimensione.tipo === 'stampo';
   const secondoLato = b ?? dimensione.baseB ?? 1;
+  // Superficie vera: il cerchio vale πr², lo stampo il prodotto dei lati.
+  const superficie = rettangolare ? a * secondoLato : Math.PI * (a / 2) ** 2;
+
+  if (!(superficie > 0)) return dimensione.pesoBaseG;
+
+  // Formati con lo spessore dichiarato: il peso è lo spessore per la
+  // superficie, così la tonda e la teglia restano uguali al cm² anche
+  // cambiando forma.
+  if (dimensione.grammiPerCm2 !== undefined) {
+    return arrotondaAl5(dimensione.grammiPerCm2 * superficie);
+  }
+
   const riferimento = rettangolare
     ? dimensione.baseA * (dimensione.baseB ?? 1)
     : dimensione.baseA * dimensione.baseA;
-  const superficie = rettangolare
-    ? a * secondoLato
-    : a * a;
+  const superficieRapporto = rettangolare ? a * secondoLato : a * a;
 
-  if (!(riferimento > 0) || !(superficie > 0)) {
-    return dimensione.pesoBaseG;
-  }
+  if (!(riferimento > 0)) return dimensione.pesoBaseG;
 
-  return arrotondaAl5((dimensione.pesoBaseG * superficie) / riferimento);
+  return arrotondaAl5((dimensione.pesoBaseG * superficieRapporto) / riferimento);
 }
 
 function richiediPositivo(nome: string, valore: number): void {

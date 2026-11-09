@@ -113,7 +113,7 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
     {
       titolo: 'Prepara la biga',
       paragrafi: [
-        'Mescola la farina da {farinaBiga}, l’acqua da {acquaBiga} ({idratazioneBiga} di idratazione, la decide il motore con l’attesa scelta) e il lievito da {lievito}. Il composto deve risultare grezzo ma uniforme, senza essere lavorato a lungo. La temperatura della biga a fine impasto deve essere di circa 25 °C. Riponila in un contenitore ermetico: matura {maturazioneBiga}.',
+        'Mescola la farina da {farinaBiga}, l’acqua da {acquaBiga} ({idratazioneBiga} di idratazione) e il lievito da {lievito}. Il composto deve risultare grezzo ma uniforme, senza essere lavorato a lungo. La temperatura della biga a fine impasto deve essere di circa 25 °C. Riponila in un contenitore ermetico: matura {maturazioneBiga}.',
       ],
     },
     {
@@ -385,7 +385,7 @@ export const RICETTA_CANOTTO: RicettaConfig = {
     {
       titolo: 'Prepara la biga',
       paragrafi: [
-        'Mescola la farina da {farinaBiga}, l’acqua da {acquaBiga} ({idratazioneBiga} di idratazione, la decide il motore con l’attesa scelta) e il lievito da {lievito}. Il composto deve risultare grezzo ma uniforme, senza essere lavorato a lungo. La temperatura della biga a fine impasto deve essere di circa 25 °C. Riponila in un contenitore ermetico: matura {maturazioneBiga}.',
+        'Mescola la farina da {farinaBiga}, l’acqua da {acquaBiga} ({idratazioneBiga} di idratazione) e il lievito da {lievito}. Il composto deve risultare grezzo ma uniforme, senza essere lavorato a lungo. La temperatura della biga a fine impasto deve essere di circa 25 °C. Riponila in un contenitore ermetico: matura {maturazioneBiga}.',
       ],
     },
     {
@@ -480,9 +480,9 @@ export const PRODOTTI_TUTTOFARE: readonly ProdottoConfig[] = [
   },
   {
     id: 'focacce',
-    nome: 'Focacce',
-    singolare: 'focaccia',
-    plurale: 'focacce',
+    nome: 'Focaccia rotonda',
+    singolare: 'focaccia rotonda',
+    plurale: 'focacce rotonde',
     pesoBaseG: 200,
     nota: 'Teglietta circolare di circa 24 cm',
     // Il peso segue la superficie della teglietta: 24 cm = 200 g.
@@ -517,6 +517,28 @@ export const PRODOTTI_TUTTOFARE: readonly ProdottoConfig[] = [
       unita: 'cm',
     },
   },
+  {
+    id: 'focacce-teglia',
+    nome: 'Focaccia in teglia',
+    singolare: 'focaccia in teglia',
+    plurale: 'focacce in teglia',
+    pesoBaseG: 530,
+    nota: 'Teglia quadrata o rettangolare 30 × 40 cm',
+    // Stesso spessore della tonda: 200 g su un cerchio da 24 cm sono 0,442
+    // g/cm², quindi una teglia 30 × 40 porta 530 g di impasto.
+    dimensione: {
+      tipo: 'stampo',
+      etichetta: 'Teglia',
+      baseA: 30,
+      baseB: 40,
+      pesoBaseG: 530,
+      grammiPerCm2: 200 / (Math.PI * 12 * 12),
+      incremento: 1,
+      min: 5,
+      max: 60,
+      unita: 'cm',
+    },
+  },
 ];
 
 export const RICETTA_TUTTOFARE: RicettaConfig = {
@@ -526,7 +548,7 @@ export const RICETTA_TUTTOFARE: RicettaConfig = {
   descrizione:
     'Un unico impasto per focacce, pizzette, panini e bauletti. Scegli i formati, combina le quantità e calcola tutte le dosi in un’unica volta.',
   /** Dicitura della farina nel riquadro, con il simbolo ≥. */
-  farinaScheda: 'Farina forte W ≥ 280',
+  farinaScheda: 'Farina forte W 280',
   notaScheda:
     'Impasto pratico e flessibile: pronto in circa 3 ore, oppure preparalo in anticipo e conservalo in frigo per il giorno successivo.',
   famiglia: 'diretto',
@@ -618,15 +640,16 @@ export const RICETTA_TUTTOFARE: RicettaConfig = {
           ],
         },
         {
+          // Tonda e in teglia hanno lo stesso procedimento: cambia solo la
+          // forma, non il modo di lavorare l’impasto.
           titolo: 'Focacce',
-          condizione: 'prodotto-focacce',
+          condizioni: ['prodotto-focacce', 'prodotto-focacce-teglia'],
           paragrafi: [
-            'Sistema le palline nelle tegliette unte. Riferimento dinamico: {pesoFocacce} per teglietta circolare di circa 24 cm, calcolato in base ai parametri selezionati.',
+            'Sistema le palline nelle teglie unte.',
             'Dopo la lievitazione comune, stendi delicatamente fino al bordo. Condisci con pomodorini tagliati a metà con la pelle verso l’alto, olive denocciolate, un velo di passata, origano e olio.',
-            'Premi i pomodorini nell’impasto. La passata completa il condimento quando i pomodorini sono tagliati in anticipo. Controlla che nelle olive non restino noccioli.',
             'Dopo il condimento lascia ricrescere per altri 30–40 minuti: non infornare subito.',
-            'Cottura: circa 200 °C per 13–15 minuti alla pezzatura base. Controlla superficie e fondo.',
-            'Sforma e trasferisci su una griglia; eventuale filo d’olio a crudo.',
+            'Cottura: circa 200 °C per 13–15 minuti.',
+            'Sforna e trasferisci su una griglia; eventuale filo d’olio a crudo.',
           ],
         },
       ],
@@ -635,7 +658,7 @@ export const RICETTA_TUTTOFARE: RicettaConfig = {
   note: [],
   noteEssenziali: [],
   tips: [
-    'Utilizza una farina forte, indicativamente W ≥ 280 e con almeno il 12% di proteine.',
+    'Utilizza una farina forte, indicativamente W 280 e con almeno il 12% di proteine.',
     'Il riposo di 20–25 minuti serve a rilassare l’impasto, non a farlo raddoppiare: una lievitazione lunga in massa rende la mollica meno fitta e regolare.',
     'La temperatura finale dell’impasto (25–29 °C) e quella di lievitazione (circa 28 °C) sono due cose diverse: la prima si misura a impasto finito, la seconda riguarda l’ambiente di crescita.',
     'I tempi di cottura dipendono dalle pezzature di riferimento: adattali al forno e alle dimensioni. Panini e bauletti hanno tempi diversi e non cuociono insieme.',

@@ -6,7 +6,7 @@
 > Android. Questo `src/` alla radice e le cartelle `thomas-pizza*` sono copie
 > storiche e restano come sono.
 > Comandi: `cd sito-unito-fase1` poi `npm ci`, `npm run dev` (anteprima),
-> `npm test` (469 test), `npm run build` (sito compilato in `dist/`).
+> `npm test` (490 test), `npm run build` (sito compilato in `dist/`).
 > Stato del lavoro, comandi e modifiche in sospeso: [`HANDOVER.md`](HANDOVER.md).
 
 Web app in italiano per calcolare tre impasti: **Pizza in teglia con biga**,

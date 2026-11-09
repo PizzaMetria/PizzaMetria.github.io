@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { TipoEsportazione, TipoLievito } from '../types';
 import { calcolaBigaSola, oreTraDate } from '../lib/biga-sola';
-import { orarioPredefinito } from '../lib/orari';
+import { impastoPredefinito } from '../lib/orari';
 import { creaNomeFile } from '../lib/nomeFile';
 import { testoMaturazione } from '../lib/vista';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -68,8 +68,8 @@ const PASSI = ['Scegli le dosi', 'Quando la vuoi', 'Il tuo impasto'];
  */
 export function CalcolatoreBiga() {
   const [farina, setFarina] = useState('1');
-  const [inizio, setInizio] = useState(() => orarioPredefinito(0));
-  const [fine, setFine] = useState(() => orarioPredefinito(1));
+  const [inizio, setInizio] = useState(() => impastoPredefinito());
+  const [fine, setFine] = useState(() => impastoPredefinito(24));
   const [temperatura, setTemperatura] = useState('21');
   const [temperaturaFrigo, setTemperaturaFrigo] = useState('4');
   const [lievito, setLievito] = useState<TipoLievito>('fresco');
@@ -131,7 +131,7 @@ export function CalcolatoreBiga() {
       // Anteprima come nel resto del sito: non si scarica da solo, e il foglio
       // è lo stesso del resto del sito.
       await document.fonts.ready;
-      const dati = datiFoglioRicetta(risultato, config, adesso, 'PREFERIMENTO');
+      const dati = datiFoglioRicetta(risultato, config, adesso, 'PREFERMENTO');
       let blob: Blob;
       if (tipo === 'pdf') {
         // Il motore dei PDF arriva solo quando serve: all'apertura del sito

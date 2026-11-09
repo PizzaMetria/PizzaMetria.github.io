@@ -17,6 +17,11 @@ describe('schermata del calcolatore', () => {
     expect(html).not.toContain('Passo 1 di 3');
   });
 
+  it('non mostra più la scheda Mini-ricetta', () => {
+    expect(html).not.toContain('Mini-ricetta');
+    expect(html).not.toContain('12 mini-ricette');
+  });
+
   it('non ha più il selettore del tema: la pelle è una sola', () => {
     // Una sola tavolozza, quella latte: niente interruttore chiaro/scuro.
     expect(html).not.toContain('Passa al tema');

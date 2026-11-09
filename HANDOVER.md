@@ -5,6 +5,48 @@
 Questo file serve a riprendere il lavoro in una nuova chat senza ricostruire il
 contesto. Aggiornalo quando cambia qualcosa di importante.
 
+## Stato attuale — 9 novembre 2026 (PizzaMetria, `sito-unito-fase1/`)
+
+Le sezioni sotto sono storiche (Thomas' Pizza v8, ottobre 2026). Il progetto
+attivo oggi è **PizzaMetria** in `sito-unito-fase1/`.
+
+| Voce | Valore |
+| --- | --- |
+| Progetto attivo | `sito-unito-fase1/` (Vite + React + TypeScript) |
+| Sito di prova | <https://test-pizzametria.freebuff.page/> |
+| Ambiente | `production` del progetto Sites `4a7f3c2e-9b18-4d5a-8e63-1c0b7a5d2f94` |
+| Bundle online | `assets/index-DIvAM-CT.js` |
+| Ultimo deploy | `4cbdb50b-b6db-45f9-8f5c-5dce11178b01` (9/11/2026 19:53 UTC) |
+| Sito pubblico GitHub | **non toccato**: `main` fermo a `db370f1` |
+| Test | 490 test in 35 file, tutti verdi |
+| Typecheck e build | puliti; build in `sito-unito-fase1/dist/` |
+
+### Cosa è stato fatto il 9 novembre 2026
+
+- Partenza dell'impasto: ora corrente + 15 minuti, arrotondata ai 5 minuti più
+  vicini (19:42 → 19:55), in `src/App.tsx` e `src/vecchio/lib/orari.ts`.
+- Biga: tolta ", la decide il motore con l'attesa scelta"; paragrafo "Lascia
+  maturare" riscritto con la maturazione in frigorifero; occhiello
+  `PREFERMENTO`.
+- Fogli JPG/PDF: titolo unico "Ingredienti", icone nel JPG, sezione
+  "PROCEDIMENTO" per le ricette, acqua consigliata solo nel PDF, simboli
+  WinAnsi per ≥, ≤ e •.
+- Focacce: "Focaccia rotonda" e "Focaccia in teglia" 30 × 40 = 530 g, stesso
+  procedimento; formati a fisarmonica chiusa e tutti a zero.
+- Modelli: "Modello frazionario" (predefinito), "Inerziale", "Vecchio".
+- Test aggiornati e riportati a 490 in 35 file.
+
+### Cosa resta aperto
+
+- Allineare il sito pubblico GitHub quando l'utente darà il via: commit e push
+  su `main`, poi `bash scripts/pubblica-github.sh "messaggio"` (nel repository
+  lo script si chiama così, non `pubblica-pages.sh`). Oggi non è stato fatto.
+- I vecchi bundle in `assets/` alla radice contengono ancora "PREFERIMENTO":
+  sono build storiche di GitHub Pages e la pubblicazione del sito di prova non
+  li usa (`sites.manifest.json` serve `./dist`).
+- La card "Tabella di marcia" a schermo mostra inizio e nota, non fine e durata:
+  scelta da confermare con l'utente.
+
 ## Progetto attivo
 
 **`thomas-pizza/`** — contiene la **v8**, pubblicata sul sito pubblico il

@@ -89,13 +89,13 @@ export function valoriIniziali(ricettaId: string): ValoriGrezzi {
   const valori = clona(INIZIALI[ricettaId] ?? INIZIALI_GENERICI);
   const ricetta = RICETTE.find((voce) => voce.id === ricettaId);
 
-  // Il primo formato parte con un pezzo, gli altri a zero: il calcolo è
-  // subito valido e basta aumentare le quantità che servono.
+  // Tutti i formati partono a zero: si sceglie dall'elenco a fisarmonica
+  // quali preparare, senza che nessuno sia già selezionato al posto nostro.
   if (ricetta?.prodotti && ricetta.prodotti.length > 0) {
     valori.prodotti = Object.fromEntries(
-      ricetta.prodotti.map((prodotto, indice) => {
+      ricetta.prodotti.map((prodotto) => {
         const riga: RigaProdottoGrezza = {
-          quantita: indice === 0 ? '1' : '0',
+          quantita: '0',
           peso: String(prodotto.pesoBaseG),
         };
 

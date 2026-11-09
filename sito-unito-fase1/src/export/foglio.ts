@@ -1,4 +1,6 @@
 import { dataUrlABlob } from '../lib/download';
+import type { TipoIngrediente } from '../vecchio/types';
+import { LATO_ICONA, disegnaIcona } from '../vecchio/lib/icone';
 
 /*
  * FOGLIO DEL RISULTATO
@@ -16,6 +18,8 @@ import { dataUrlABlob } from '../lib/download';
 export interface VoceDose {
   nome: string;
   grammi: number;
+  /** Icona dell'ingrediente, disegnata accanto alla dose. */
+  tipo?: TipoIngrediente;
   /** Percentuale sulla farina. */
   percentuale?: number;
   /** Base della percentuale: «farina totale», «farina della biga». */
@@ -42,6 +46,11 @@ export interface GruppoFoglio {
 export interface PassoFoglio {
   /** Quando avviene il passo; vuoto nelle ricette, dove è un'azione. */
   quando: string;
+  /**
+   * Riga unica della tabella di marcia: «dalle 19:55 del 09/11 alle 23:25 del
+   * 09/11 · 20 °C · 3,5 h». Nelle ricette manca, e valgono i paragrafi.
+   */
+  orario?: string;
   titolo: string;
   nota: string;
   /** Testo esteso del passo: il procedimento delle ricette. */
@@ -77,6 +86,8 @@ export interface DatiFoglio {
   riepilogo?: readonly GruppoFoglio[];
   totaleG: number;
   totaleNota: string;
+  /** «Acqua consigliata 18 °C», sotto il totale nel PDF. */
+  acquaConsigliata?: string;
   forza?: {
     consigliata: number;
     efficace: number | null;
@@ -271,6 +282,43 @@ function testoPercentuale(dose: VoceDose): string | null {
   return `% ${valore}${dose.base ? ` sulla ${dose.base}` : ''}`;
 }
 
+/** Icona dell'ingrediente sulla griglia 24 × 24, come nel PDF. */
+function icona(
+  ctx: CanvasRenderingContext2D,
+  tipo: TipoIngrediente,
+  x: number,
+  ySuperiore: number,
+  lato: number,
+): void {
+  const scala = lato / LATO_ICONA;
+  ctx.strokeStyle = COLORI.oroScuro;
+  ctx.lineWidth = 1.6;
+  disegnaIcona(tipo, {
+    polilinea: (punti, chiusa) => {
+      ctx.beginPath();
+      punti.forEach((punto, indice) => {
+        const px = x + punto.x * scala;
+        const py = ySuperiore + punto.y * scala;
+        if (indice === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      if (chiusa) ctx.closePath();
+      ctx.stroke();
+    },
+    cerchio: (cerchio) => {
+      ctx.beginPath();
+      ctx.arc(
+        x + cerchio.cx * scala,
+        ySuperiore + cerchio.cy * scala,
+        cerchio.r * scala,
+        0,
+        Math.PI * 2,
+      );
+      ctx.stroke();
+    },
+  });
+}
+
 function titoloSezione(
   ctx: CanvasRenderingContext2D,
   testo: string,
@@ -296,14 +344,15 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
   const tela = document.createElement('canvas');
   tela.width = Math.round(larghezza * scala);
   // Altezza generosa: il foglio viene ritagliato sull'ultima riga disegnata.
-  tela.height = Math.round(3200 * scala);
+  // Serve spazio anche per il procedimento completo delle ricette.
+  tela.height = Math.round(5400 * scala);
 
   const ctx = tela.getContext('2d');
   if (!ctx) throw new Error('Canvas non disponibile per l’esportazione.');
 
   ctx.scale(scala, scala);
   ctx.fillStyle = COLORI.sfondo;
-  ctx.fillRect(0, 0, larghezza, 3200);
+  ctx.fillRect(0, 0, larghezza, 5400);
 
   let y = MARGINE;
 
@@ -363,47 +412,6 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
   linea(ctx, MARGINE, y, larghezza - MARGINE, COLORI.bordo);
   y += 40;
 
-  // Tre riquadri di apertura
-  const spazio = 22;
-  const larghezzaRiquadro = (interno - spazio * 2) / 3;
-  const riquadri = [
-    {
-      etichetta: (dati.etichettaLievito ?? dati.tipoLievito).toUpperCase(),
-      valore: numero(dati.lievitoG),
-      nota: dati.lievitoNota,
-    },
-    {
-      etichetta: 'FARINA',
-      valore: numero(dati.farinaG ?? dati.dosi?.[0]?.grammi ?? 0),
-      nota: dati.totaleNota,
-    },
-    { etichetta: 'IMPASTO TOTALE', valore: numero(dati.totaleG), nota: 'tutte le dosi insieme' },
-  ];
-
-  riquadri.forEach((riquadro, indice) => {
-    const x = MARGINE + indice * (larghezzaRiquadro + spazio);
-    rettangolo(ctx, x, y, larghezzaRiquadro, 182);
-
-    scrivi(ctx, riquadro.etichetta, x + 26, y + 40, font(600, 16), COLORI.tenue);
-
-    const fontValore = font(600, 44, SERIF);
-    ctx.font = fontValore;
-    const larghezzaValore = ctx.measureText(riquadro.valore).width;
-    scrivi(ctx, riquadro.valore, x + 26, y + 100, fontValore, COLORI.oroScuro);
-    scrivi(ctx, 'g', x + 32 + larghezzaValore, y + 100, font(400, 22), COLORI.tenue);
-
-    const righeNota = dividiRighe(
-      ctx,
-      riquadro.nota,
-      font(400, 16),
-      larghezzaRiquadro - 52,
-    ).slice(0, 2);
-    righeNota.forEach((riga, posizione) => {
-      scrivi(ctx, riga, x + 26, y + 132 + posizione * 21, font(400, 16), COLORI.tenue);
-    });
-  });
-  y += 182 + 40;
-
   // Riepilogo tecnico delle ricette: due gruppi, senza riquadri.
   for (const gruppo of dati.riepilogo ?? []) {
     scrivi(
@@ -455,7 +463,12 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
   // Dosi: fasi della ricetta oppure elenco piatto del calcolatore libero.
   const altezzaRiga = 58;
   const scriviDose = (dose: VoceDose, separatore: boolean): void => {
-    scrivi(ctx, dose.nome, MARGINE, y + 37, font(500, 25), COLORI.testo);
+    let xNome = MARGINE;
+    if (dose.tipo) {
+      icona(ctx, dose.tipo, MARGINE, y + 12, 26);
+      xNome = MARGINE + 38;
+    }
+    scrivi(ctx, dose.nome, xNome, y + 37, font(500, 25), COLORI.testo);
     const percentuale = testoPercentuale(dose);
     if (percentuale) {
       scrivi(
@@ -482,9 +495,13 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
   };
 
   const fasi = dati.fasi ?? [];
+  // Un titolo solo per tutte le dosi; le fasi delle ricette restano come
+  // etichette più piccole dentro la stessa sezione.
+  y = titoloSezione(ctx, 'Ingredienti', y);
   if (fasi.length > 0) {
     for (const fase of fasi) {
-      y = titoloSezione(ctx, fase.titolo, y);
+      scrivi(ctx, fase.titolo, MARGINE, y + 26, font(600, 23, SERIF), COLORI.oroScuro);
+      y += 38;
 
       if (fase.nota) {
         const righeNota = dividiRighe(ctx, fase.nota, font(400, 20), interno);
@@ -528,7 +545,6 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
       y += 34;
     }
   } else {
-    y = titoloSezione(ctx, 'Dosi', y);
     const dosi = dati.dosi ?? [];
     dosi.forEach((dose, indice) => scriviDose(dose, indice < dosi.length - 1));
   }
@@ -547,6 +563,91 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
     'right',
   );
   y += 58 + 40;
+
+  // Tabella di marcia (calcolatore) oppure procedimento (ricette): una riga
+  // per fase con orario, temperatura e durata.
+  if (dati.passi.length > 0) {
+    const titolo =
+      dati.passi.some((passo) => passo.orario) ? 'Tabella di marcia' : 'PROCEDIMENTO';
+    y = titoloSezione(ctx, titolo, y);
+
+    for (const passo of dati.passi) {
+      ctx.fillStyle = COLORI.oro;
+      ctx.fillRect(MARGINE, y + 9, 4, 4);
+      scrivi(ctx, passo.titolo, MARGINE + 12, y + 22, font(600, 20), COLORI.testo);
+      y += 30;
+
+      if (passo.orario) {
+        scrivi(ctx, passo.orario, MARGINE + 12, y + 14, font(400, 17), COLORI.tenue);
+        y += 20;
+      } else {
+        for (const testoPasso of passo.paragrafi ?? []) {
+          y = paragrafo(
+            ctx,
+            testoPasso,
+            MARGINE + 12,
+            y,
+            interno - 12,
+            font(400, 17),
+            17,
+            COLORI.tenue,
+            23,
+          );
+          y += 6;
+        }
+        for (const voce of passo.elenco ?? []) {
+          y = paragrafo(
+            ctx,
+            `•  ${voce}`,
+            MARGINE + 12,
+            y,
+            interno - 12,
+            font(400, 17),
+            17,
+            COLORI.tenue,
+            23,
+          );
+        }
+        for (const voce of passo.voci ?? []) {
+          scrivi(ctx, `•  ${voce.titolo}`, MARGINE + 12, y + 20, font(600, 17), COLORI.testo);
+          y += 26;
+          for (const testoVoce of voce.paragrafi) {
+            y = paragrafo(
+              ctx,
+              testoVoce,
+              MARGINE + 26,
+              y,
+              interno - 26,
+              font(400, 16),
+              16,
+              COLORI.tenue,
+              22,
+            );
+            y += 4;
+          }
+        }
+      }
+      y += 16;
+    }
+  }
+
+  // Nota: nel calcolatore resta solo la riga sulle dosi che sono stime.
+  if (dati.noteTitolo === 'NOTA' && dati.note.length > 0) {
+    y = titoloSezione(ctx, 'Nota', y);
+    for (const nota of dati.note) {
+      y = paragrafo(
+        ctx,
+        `•  ${nota}`,
+        MARGINE,
+        y,
+        interno,
+        font(400, 17),
+        17,
+        COLORI.tenue,
+        23,
+      );
+    }
+  }
 
   y += 24;
   linea(ctx, MARGINE, y, larghezza - MARGINE, COLORI.bordo);

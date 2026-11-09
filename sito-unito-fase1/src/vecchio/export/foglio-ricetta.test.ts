@@ -71,7 +71,7 @@ describe('foglio della ricetta', () => {
     expect(pdf.startsWith('%PDF-1.4')).toBe(true);
     expect(pdf).toContain('(LE MIE RICETTE) Tj');
     expect(pdf).toContain('(PARAMETRI DELLA RICETTA) Tj');
-    expect(pdf).toContain('(TABELLA DI MARCIA) Tj');
+    expect(pdf).toContain('(PROCEDIMENTO) Tj');
     expect(pdf).toContain('(CONSIGLI) Tj');
     expect(pdf).toContain('(Impasto totale) Tj');
     // Il procedimento completo non sta in una facciata sola.

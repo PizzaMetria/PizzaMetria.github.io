@@ -43,7 +43,7 @@ ricette di casa, la biga.
 | Avviso idratazione | assente | `AvvisoIdratazione`, collegato a `config/idratazioni.ts` |
 | Risoluzione JPG | 1× nel calcolatore nuovo, 1,5× nelle ricette | una costante `SCALA_JPG = 1.5` per tutto il sito |
 | Piede di PDF e JPG | «calcolatore libero» nel nuovo, «le mie ricette» nelle ricette | un solo `FIRMA_FOGLIO` |
-| Occhiello di PDF e JPG | fisso per gruppo, assente per la biga | parametro per gruppo: `CALCOLA LA TUA PIZZA`, `LE MIE RICETTE`, `PREFERIMENTO` |
+| Occhiello di PDF e JPG | fisso per gruppo, assente per la biga | parametro per gruppo: `CALCOLA LA TUA PIZZA`, `LE MIE RICETTE`, `PREFERMENTO` |
 
 ### Differenze necessarie (da NON unificare)
 

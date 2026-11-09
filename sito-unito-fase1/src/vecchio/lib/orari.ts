@@ -33,6 +33,19 @@ export function orarioPredefinito(
 }
 
 /**
+ * L'impasto predefinito: quindici minuti dopo l'apertura, arrotondati ai
+ * cinque minuti più vicini. Chi apre alle 18:59 impasta alle 19:15; chi apre
+ * alle 19:42 impasta alle 19:55. `oreDopo` serve alla biga pronta, che di
+ * norma parte a ventiquattro ore di distanza.
+ */
+export function impastoPredefinito(oreDopo = 0, adesso = new Date()): string {
+  const data = new Date(adesso.getTime() + (15 + oreDopo * 60) * 60_000);
+  data.setSeconds(0, 0);
+  data.setMinutes(Math.round(data.getMinutes() / 5) * 5);
+  return testoDataLocale(data);
+}
+
+/**
  * Ore fra due istanti completi. Una fine che non viene dopo l'inizio è un
  * errore, non un'attesa: si restituisce `null`.
  */

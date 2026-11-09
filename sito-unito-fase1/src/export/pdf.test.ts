@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { creaPdf, dividiInRighe, misura } from './pdf';
 import { nomeFoglio } from './nomeFile';
 import type { DatiFoglio } from './foglio';
+import { datiFoglioRicetta } from '../vecchio/export/foglio-ricetta';
+import { RICETTA_TEGLIA_BIGA } from '../vecchio/config/ricette';
+import { calcolaPerPanetti } from '../vecchio/lib/calcolo';
 
 function dati(): DatiFoglio {
   return {
@@ -97,9 +100,17 @@ describe('PDF vettoriale del foglio', () => {
     expect(testo).toContain('(Lievito fresco) Tj');
   });
 
-  it('codifica le accentate in WinAnsi', () => {
+  it('codifica le accentate e i simboli in WinAnsi', () => {
     expect(testo).toContain('(ATTIVIT\u00c0 DEL LIEVITO) Tj');
-    expect(testo).toContain('(COME \u00c8 STATO CALCOLATO) Tj');
+    expect(testo).toContain('(NOTA) Tj');
+
+    // ≥, ≤ e il punto elenco hanno un byte proprio in WinAnsi: senza la
+    // mappa uscirebbero come punti interrogativi.
+    const simboli = new TextDecoder('latin1').decode(
+      creaPdf({ ...dati(), titolo: 'W ≥ 280 ≤ 300 •' }),
+    );
+    // TextDecoder('latin1') segue Windows-1252: il byte 0x95 torna «•».
+    expect(simboli).toContain('(W > 280 < 300 •) Tj');
   });
 
   it('disegna il grafico come tracciati vettoriali', () => {
@@ -262,5 +273,84 @@ describe('nome del file esportato', () => {
     expect(nomeFoglio('teglia', 'pdf', new Date(2026, 11, 31))).toBe(
       'pizzametria-teglia-2026-12-31.pdf',
     );
+  });
+});
+
+function datiNota(): DatiFoglio {
+  return {
+    titolo: 'Pizza tonda verace',
+    sottotitolo: '62% di idratazione · 6 panetti da 250 g',
+    tipoLievito: 'Lievito fresco',
+    lievitoG: 0.58,
+    lievitoNota: '0,06% sulla farina',
+    dosi: [
+      { nome: 'Farina', tipo: 'farina', grammi: 912, percentuale: 100 },
+      { nome: 'Acqua', tipo: 'acqua', grammi: 565, percentuale: 62 },
+      { nome: 'Lievito fresco', tipo: 'lievito', grammi: 0.58, percentuale: 0.064 },
+    ],
+    totaleG: 1500,
+    totaleNota: '6 panetti da 250 g',
+    passi: [
+      {
+        quando: '',
+        orario: 'dalle 19:55 del 09/11 alle 23:25 del 09/11 · 20 °C · 3,5 h',
+        titolo: 'Puntata',
+        nota: '',
+      },
+    ],
+    note: [
+      'Le dosi sono stime: la prima pizza serve a correggere la dose, non il contrario.',
+    ],
+    noteTitolo: 'NOTA',
+    acquaConsigliata: 'Acqua consigliata 18 °C',
+  };
+}
+
+const testoPdf = (pdf: Uint8Array) => new TextDecoder('latin1').decode(pdf);
+
+describe('foglio aggiornato', () => {
+  it('ha un titolo unico «Ingredienti», senza i tre riquadri in testa', () => {
+    const pdf = testoPdf(creaPdf(datiNota()));
+
+    expect(pdf).toContain('(INGREDIENTI) Tj');
+    expect(pdf).not.toContain('(DOSI) Tj');
+    expect(pdf).not.toContain('(IMPASTO TOTALE) Tj');
+    expect(pdf).not.toContain('(FARINA) Tj');
+  });
+
+  it('stampa la tabella di marcia come una riga per fase', () => {
+    const pdf = testoPdf(creaPdf(datiNota()));
+
+    expect(pdf).toContain('(TABELLA DI MARCIA) Tj');
+    expect(pdf).toContain('dalle 19:55 del 09/11 alle 23:25 del 09/11');
+    expect(pdf).toContain('20 °C · 3,5 h');
+  });
+
+  it('chiama «Procedimento» la sezione dei passi delle ricette', () => {
+    const risultato = calcolaPerPanetti(RICETTA_TEGLIA_BIGA, 3, 710);
+    const pdf = testoPdf(
+      creaPdf(datiFoglioRicetta(risultato, RICETTA_TEGLIA_BIGA)),
+    );
+
+    expect(pdf).toContain('(PROCEDIMENTO) Tj');
+    expect(pdf).not.toContain('(TABELLA DI MARCIA) Tj');
+  });
+
+  it('mette l’acqua consigliata sotto il totale', () => {
+    expect(testoPdf(creaPdf(datiNota()))).toContain(
+      '(Acqua consigliata 18 °C) Tj',
+    );
+  });
+
+  it('sotto il titolo NOTA lascia solo la riga sulle dosi stimate', () => {
+    const pdf = testoPdf(creaPdf(datiNota()));
+
+    expect(pdf).toContain('(NOTA) Tj');
+    expect(pdf).not.toContain('COME È STATO CALCOLATO');
+    expect(pdf).toContain('Le dosi sono stime');
+  });
+
+  it('disegna le icone degli ingredienti anche nel foglio vettoriale', () => {
+    expect(testoPdf(creaPdf(datiNota()))).toContain(' RG 0.8 w ');
   });
 });

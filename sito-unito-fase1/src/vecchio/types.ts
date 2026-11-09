@@ -118,6 +118,11 @@ export interface PassoProcedimento {
     | 'senzaAutolisi'
     | 'senzaFarinaRinfresco'
     | `prodotto-${string}`;
+  /**
+   * Condizioni alternative: il passo compare quando almeno una è vera, come
+   * per le focacce, che hanno lo stesso procedimento nella tonda e in teglia.
+   */
+  condizioni?: readonly string[];
 }
 
 /**
@@ -135,6 +140,12 @@ export interface DimensioneProdotto {
   baseB?: number;
   /** Peso corrispondente alle misure di riferimento, in grammi. */
   pesoBaseG: number;
+  /**
+   * Spessore dichiarato, in grammi per cm²: quando c'è, il peso è questo per
+   * la superficie reale (cerchio compreso), così tonda e teglia hanno lo
+   * stesso spessore anche cambiando forma.
+   */
+  grammiPerCm2?: number;
   /** Passo dei tasti − e +. */
   incremento: number;
   /** Limiti dei campi, in centimetri. */

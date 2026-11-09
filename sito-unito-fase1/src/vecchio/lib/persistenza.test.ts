@@ -75,14 +75,16 @@ describe('persistenza locale per ricetta', () => {
       },
     });
 
-    // Il calcolatore misto parte con il primo formato a un pezzo e gli altri a
-    // zero; teglietta e stampo partono dalle misure di riferimento.
+    // Il calcolatore misto parte con tutti i formati a zero: si sceglie
+    // dall’elenco a fisarmonica; teglietta e stampo partono dalle misure di
+    // riferimento.
     expect(stato.ricette[RICETTA_TUTTOFARE.id].modalita).toBe('prodotti');
     expect(stato.ricette[RICETTA_TUTTOFARE.id].valori.prodotti).toEqual({
-      pizzette: { quantita: '1', peso: '50' },
+      pizzette: { quantita: '0', peso: '50' },
       panini: { quantita: '0', peso: '90' },
       focacce: { quantita: '0', peso: '200', dimA: '24' },
       bauletti: { quantita: '0', peso: '500', dimA: '20', dimB: '10' },
+      'focacce-teglia': { quantita: '0', peso: '530', dimA: '30', dimB: '40' },
     });
   });
 

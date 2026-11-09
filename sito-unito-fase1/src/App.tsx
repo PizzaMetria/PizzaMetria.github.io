@@ -26,7 +26,6 @@ import {
   apriNellApp,
 } from './lib/anteprima';
 import { scaricaBlob } from './lib/download';
-import { SchedaMiniRicetta } from './components/SchedaMiniRicetta';
 import type { ImmagineFoglio } from './export/foglio';
 import { rasterizzaSvg } from './lib/immagine';
 import type { DatiFoglio, VoceDose } from './export/foglio';
@@ -122,15 +121,15 @@ function consiglioFarina(w: number): string {
 }
 
 /**
- * L'impasto parte adesso, arrotondato ai dieci minuti: chi apre il sito alle
- * 14:23 impasta alle 14:30, non alle 15:00. È il momento in cui si comincia
- * davvero, e non va spostato quando si sceglie l'ora della pizza.
+ * L'impasto parte quindici minuti dopo l'apertura, arrotondati ai cinque
+ * minuti più vicini: chi apre alle 18:59 impasta alle 19:15, chi apre alle
+ * 19:42 impasta alle 19:55. È il momento in cui si comincia davvero, e non va
+ * spostato quando si sceglie l'ora della pizza.
  */
 function oraDiPartenza(): string {
-  const data = new Date();
+  const data = new Date(Date.now() + 15 * 60_000);
   data.setSeconds(0, 0);
-  const resto = data.getMinutes() % 10;
-  if (resto !== 0) data.setMinutes(data.getMinutes() + (10 - resto));
+  data.setMinutes(Math.round(data.getMinutes() / 5) * 5);
   return aInputData(data);
 }
 
@@ -167,6 +166,15 @@ function sommaOre(partenza: string, quante: number): Date | null {
   const data = new Date(partenza);
   if (Number.isNaN(data.getTime())) return null;
   return new Date(data.getTime() + quante * 3_600_000);
+}
+
+/** «19:55 del 09/11»: l'orario delle fasi nella tabella di marcia esportata. */
+function orarioFase(data: Date | null): string {
+  if (!data || Number.isNaN(data.getTime())) return '—';
+  const due = (valore: number) => String(valore).padStart(2, '0');
+  return `${due(data.getHours())}:${due(data.getMinutes())} del ${due(
+    data.getDate(),
+  )}/${due(data.getMonth() + 1)}`;
 }
 
 const GIORNI_BREVI = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
@@ -350,8 +358,8 @@ const VOCI_STAGLIO_FACILE: readonly { id: Staglio; nome: string }[] = [
 ];
 
 const VOCI_MODELLO: readonly { id: Modello; nome: string }[] = [
-  { id: 'miniRicette', nome: '12 mini-ricette' },
-  { id: 'nuovo', nome: 'Nuovo (inerzia)' },
+  { id: 'miniRicette', nome: 'Modello frazionario' },
+  { id: 'nuovo', nome: 'Inerziale' },
   { id: 'vecchio', nome: 'Vecchio' },
 ];
 
@@ -908,18 +916,29 @@ export default function App({
       r.farinaG > 0 ? (valore / r.farinaG) * 100 : 0;
 
     const dosi: VoceDose[] = [
-      { nome: 'Farina', grammi: r.farinaG, percentuale: 100 },
-      { nome: 'Acqua', grammi: r.acquaG, percentuale: idrNum },
-      { nome: 'Sale', grammi: r.saleG, percentuale: percentoSuFarina(r.saleG) },
+      { nome: 'Farina', tipo: 'farina', grammi: r.farinaG, percentuale: 100 },
+      { nome: 'Acqua', tipo: 'acqua', grammi: r.acquaG, percentuale: idrNum },
+      { nome: 'Sale', tipo: 'sale', grammi: r.saleG, percentuale: percentoSuFarina(r.saleG) },
     ];
     if (r.olioG > 0) {
-      dosi.push({ nome: 'Olio', grammi: r.olioG, percentuale: percentoSuFarina(r.olioG) });
+      dosi.push({
+        nome: 'Olio',
+        tipo: 'olio',
+        grammi: r.olioG,
+        percentuale: percentoSuFarina(r.olioG),
+      });
     }
     if (r.maltoG > 0) {
-      dosi.push({ nome: 'Malto', grammi: r.maltoG, percentuale: percentoSuFarina(r.maltoG) });
+      dosi.push({
+        nome: 'Malto',
+        tipo: 'malto',
+        grammi: r.maltoG,
+        percentuale: percentoSuFarina(r.maltoG),
+      });
     }
     dosi.push({
       nome: NOMI_LIEVITO[tipoLievito],
+      tipo: 'lievito',
       grammi: r.lievitoG,
       percentuale: r.percentualeLievito,
     });
@@ -960,11 +979,21 @@ export default function App({
                 r.forzaMassima,
               )}`
             : 'Il W non è dichiarato nel mix: le dosi non cambiano, ma non posso dirti se la farina è adatta a queste ore.',
-      },              passi: r.passi.map((passo) => ({
-                quando: formattaQuando(passo.quando),
-                titolo: passo.titolo,
-                nota: passo.nota,
-              })),
+      },
+      // Tabella di marcia: una riga per fase, con orario, temperatura e
+      // durata, come la si legge sul foglio.
+      passi: r.fasce.map((fascia) => ({
+        quando: '',
+        orario:
+          `dalle ${orarioFase(sommaOre(inizio, fascia.da))} alle ${orarioFase(
+            sommaOre(inizio, fascia.a),
+          )} · ${formatta(
+            Number((fascia.inFrigo ? tc : ta).replace(',', '.')),
+            0,
+          )} °C · ${ore(fascia.a - fascia.da)} h`,
+        titolo: fascia.nome,
+        nota: '',
+      })),
               // Il grafico viaggia con il foglio: lo usa il PDF vettoriale.
               curva: r.curva.map((punto) => ({ ora: punto.ora, attivita: punto.attivita })),
               fasce: r.fasce.map((fascia) => ({
@@ -973,14 +1002,11 @@ export default function App({
                 inFrigo: fascia.inFrigo,
               })),
               oreTotali: oreTotaliGrafico,
+      acquaConsigliata: `Acqua consigliata ${formatta(r.temperaturaAcqua, 0)} °C`,
       note: [
-        `${ore(r.oreEquivalenti)} ore equivalenti a 20 °C · ${formatta(
-          r.lievitoPerKgFarina,
-          1,
-        )} g di lievito fresco per kg di farina.`,
-        `Acqua consigliata ${formatta(r.temperaturaAcqua, 0)} °C: 3 × ${temperaturaImpasto} (impasto) − ${ta} (ambiente) − ${temperaturaFarina} (farina) − ${riscaldamento} (impastatrice).`,
         'Le dosi sono stime: la prima pizza serve a correggere la dose, non il contrario.',
       ],
+      noteTitolo: 'NOTA',
     };
   }
 
@@ -1576,8 +1602,6 @@ export default function App({
                   </p>
                 ) : null}
               </Card>
-
-              <SchedaMiniRicetta risultato={r.miniRicetta} attivo={r.modello === 'miniRicette'} />
 
               <Card titolo="Tabella di marcia">
                 <ol className="space-y-3">
@@ -2361,7 +2385,7 @@ export default function App({
 
                 <Card
                   titolo="Modello di calcolo"
-                  nota="Stesso impasto, due letture termiche a confronto. Il modello a 12 mini-ricette non conta le ore così: le sue due letture stanno nella scheda qui sotto."
+                  nota="Tre modelli di calcolo: scegli e utilizza il più adatto alle tue esigenze nella scheda qui sotto."
                 >
                   <Segmentato voci={VOCI_MODELLO} attivo={modello} onChange={setModello} />
                   <p className="text-xs leading-relaxed text-inchiostro-tenue">
@@ -2378,38 +2402,40 @@ export default function App({
                           <th scope="col" className="px-2.5 py-2 text-left font-semibold">
                             <span className="sr-only">Misura</span>
                           </th>
-                          <th
-                            scope="col"
-                            className={`px-2 py-2 text-right font-semibold ${
-                              modello === 'nuovo' ? 'text-oro-chiaro' : ''
-                            }`}
-                          >
-                            Nuovo inerziale
-                          </th>
-                          <th
-                            scope="col"
-                            className={`px-2.5 py-2 text-right font-semibold ${
-                              modello === 'vecchio' ? 'text-oro-chiaro' : ''
-                            }`}
-                          >
-                            Vecchio
-                          </th>
+                          {(['miniRicette', 'nuovo', 'vecchio'] as const).map((id) => (
+                            <th
+                              key={id}
+                              scope="col"
+                              className={`px-1.5 py-2 text-right font-semibold ${
+                                modello === id ? 'text-oro-chiaro' : ''
+                              }`}
+                            >
+                              {id === 'miniRicette'
+                                ? 'Frazionario'
+                                : id === 'nuovo'
+                                  ? 'Inerziale'
+                                  : 'Vecchio'}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-bordo/60">
                         {[
                           {
                             etichetta: 'Ore equivalenti',
+                            miniRicette: ore(r.miniRicetta.iMat),
                             nuovo: ore(r.confronto.oreEquivalentiNuovo),
                             vecchio: ore(r.confronto.oreEquivalentiVecchio),
                           },
                           {
                             etichetta: NOMI_LIEVITO[tipoLievito],
+                            miniRicette: `${grammi(r.confronto.lievitoMiniG)} g`,
                             nuovo: `${grammi(r.confronto.lievitoNuovoG)} g`,
                             vecchio: `${grammi(r.confronto.lievitoVecchioG)} g`,
                           },
                           {
                             etichetta: 'W consigliato',
+                            miniRicette: `W ${r.confronto.forzaMini}`,
                             nuovo: `W ${r.confronto.forzaNuovo}`,
                             vecchio: `W ${r.confronto.forzaVecchio}`,
                           },
@@ -2421,24 +2447,20 @@ export default function App({
                             >
                               {riga.etichetta}
                             </th>
-                            <td
-                              className={`px-2 py-2 text-right tabular-nums ${
-                                modello === 'nuovo'
-                                  ? 'font-semibold text-inchiostro'
-                                  : 'text-inchiostro-tenue'
-                              }`}
-                            >
-                              {riga.nuovo}
-                            </td>
-                            <td
-                              className={`px-2.5 py-2 text-right tabular-nums ${
-                                modello === 'vecchio'
-                                  ? 'font-semibold text-inchiostro'
-                                  : 'text-inchiostro-tenue'
-                              }`}
-                            >
-                              {riga.vecchio}
-                            </td>
+                            {(['miniRicette', 'nuovo', 'vecchio'] as const).map(
+                              (id) => (
+                                <td
+                                  key={id}
+                                  className={`px-1.5 py-2 text-right tabular-nums ${
+                                    modello === id
+                                      ? 'font-semibold text-inchiostro'
+                                      : 'text-inchiostro-tenue'
+                                  }`}
+                                >
+                                  {riga[id]}
+                                </td>
+                              ),
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -2446,9 +2468,7 @@ export default function App({
                   </div>
                 </Card>
 
-                <SchedaMiniRicetta risultato={r.miniRicetta} attivo={r.modello === 'miniRicette'} />
-
-                <Card titolo="Dosi">
+                  <Card titolo="Dosi">
                   <dl className="divide-y divide-bordo/60 text-sm">
                     <Riga
                       etichetta="Farina"

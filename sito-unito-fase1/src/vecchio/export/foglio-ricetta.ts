@@ -40,6 +40,7 @@ export function datiFoglioRicetta(
       avviso: fase.avviso,
       voci: fase.voci.map((voce, indiceVoce) => ({
         nome: voce.etichetta,
+        tipo: voce.tipo,
         grammi: calcolata?.voci[indiceVoce]?.grammi ?? 0,
         // Nella vista la percentuale è una frazione: il foglio la vuole sul cento.
         percentuale:

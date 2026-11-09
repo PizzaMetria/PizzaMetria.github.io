@@ -73,7 +73,7 @@ function configurazione(
     slug: 'biga',
     nome: 'Biga',
     descrizione:
-      'Solo prefermento: farina, acqua e lievito. L’idratazione e la ripartizione fra ambiente e frigorifero le decide il motore.',
+      'Solo prefermento: farina, acqua e lievito. L’idratazione varia in base a tempi e temperature, per avere sempre un prefermento maturo.',
     sottotitolo: `${testoMaturazione(piano)} · biga al ${piano.idratazione}%`,
     famiglia: 'biga-rinfresco',
     modalita: ['farina'],
@@ -115,15 +115,14 @@ function configurazione(
       {
         titolo: 'Prepara la Biga',
         paragrafi: [
-          'Mescola la farina da {farinaBiga} con l’acqua da {acquaBiga} ({idratazioneBiga} di idratazione, la decide il motore con l’attesa scelta) e il lievito da {lievito}. Il composto deve risultare grezzo ma uniforme, senza essere lavorato a lungo.',
+          'Mescola la farina da {farinaBiga} con l’acqua da {acquaBiga} ({idratazioneBiga} di idratazione) e il lievito da {lievito}. Il composto deve risultare grezzo ma uniforme, senza essere lavorato a lungo.',
           'La temperatura della biga a fine impasto dovrebbe stare intorno ai 22–23 °C: se la farina è fredda, usa acqua tiepida per arrivarci.',
         ],
       },
       {
         titolo: 'Lascia maturare',
         paragrafi: [
-          'Chiudila in un contenitore ermetico e lasciala stare senza toccarla: matura {maturazioneBiga}. È la fase in cui si formano profumo e forza.',
-          'Se il motore la mette in frigorifero, la biga va tolta dal freddo solo al momento dell’impasto finale: non serve aspettare che torni a temperatura ambiente.',
+          'Chiudi la biga in un contenitore ermetico e lasciala maturare {maturazioneBiga}. Se hai scelto la maturazione in frigorifero, usala direttamente nell’impasto finale: non serve riportarla a temperatura ambiente.',
         ],
       },
       {

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type {
   ErroriCampi,
   ModalitaCalcolo,
@@ -88,6 +89,9 @@ export function FormCalcolo({
   const senzaFarinaRinfresco = quotaFarinaAutolisi <= 0;
   const mostraDosi = sezione !== 'personalizza';
   const mostraPersonalizzazione = sezione !== 'dosi';
+  // I formati sono un elenco a fisarmonica: se ne apre uno per volta, e tutti
+  // partono a zero, così si sceglie soltanto quello che serve.
+  const [apertoProdotto, setApertoProdotto] = useState<string | null>(null);
 
   // Il motore della biga: l'idratazione della biga non è più una percentuale
   // fissa, la ricava dall'attesa e dalle due temperature.
@@ -572,15 +576,52 @@ export function FormCalcolo({
                 key={prodotto.id}
                 className="rounded-xl border border-bordo/70 bg-crema-scuro/40 p-3.5 sm:p-4"
               >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-                  <p className="font-serif text-base leading-tight font-bold text-inchiostro">
-                    {prodotto.nome}
-                  </p>
-                  <p className="text-[11px] text-inchiostro-tenue">
-                    {prodotto.nota}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  aria-expanded={apertoProdotto === prodotto.id}
+                  aria-controls={`prodotto-${prodotto.id}-dettagli`}
+                  onClick={() =>
+                    setApertoProdotto(
+                      apertoProdotto === prodotto.id ? null : prodotto.id,
+                    )
+                  }
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block font-serif text-base leading-tight font-bold text-inchiostro">
+                      {prodotto.nome}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-inchiostro-tenue">
+                      {prodotto.nota}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-right text-[11px] leading-tight text-inchiostro-tenue tabular-nums">
+                      <span className="block font-semibold text-inchiostro">
+                        {riga ? Number.parseInt(riga.quantita, 10) || 0 : 0} pezzi
+                      </span>
+                      {formattatoreGrammi.format(subtotale)} g
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      focusable="false"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`h-3.5 w-3.5 shrink-0 text-inchiostro-tenue transition-transform duration-200 motion-reduce:transition-none ${
+                        apertoProdotto === prodotto.id ? 'rotate-90' : ''
+                      }`}
+                    >
+                      <path d="M4 2l4 4-4 4" />
+                    </svg>
+                  </span>
+                </button>
 
+                {apertoProdotto === prodotto.id ? (
+                  <div id={`prodotto-${prodotto.id}-dettagli`}>
                 {/* Su smartphone i due campi stanno uno sotto l'altro: con i
                     tasti − e + affiancati il valore resterebbe illeggibile. */}
                 <div className="mt-3 grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
@@ -709,6 +750,8 @@ export function FormCalcolo({
                   Subtotale:{' '}
                   {formattatoreGrammi.format(subtotale)} g
                 </p>
+                  </div>
+                ) : null}
               </div>
             );
           })}

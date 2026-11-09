@@ -1,5 +1,7 @@
 import { FIRMA_FOGLIO, TITOLI_GRAFICI } from './foglio';
 import type { DatiFoglio, VoceDose } from './foglio';
+import type { TipoIngrediente } from '../vecchio/types';
+import { LATO_ICONA, disegnaIcona } from '../vecchio/lib/icone';
 
 /*
  * PDF VETTORIALE DEL FOGLIO
@@ -117,6 +119,9 @@ const BASE_LETTERA: Record<string, string> = {
   '≈': '~',
   '±': '+',
   '€': 'E',
+  '≥': '>',
+  '≤': '<',
+  '•': '.',
 };
 
 /** Caratteri fuori ASCII stampabile, codificati in WinAnsi. */
@@ -153,6 +158,9 @@ const WINANSI: Record<string, number> = {
   '≈': 0xbb,
   '±': 0xb1,
   '€': 0x80,
+  '≥': 0x3e,
+  '≤': 0x3c,
+  '•': 0x95,
 };
 
 function colore(esadecimale: string): Colore {
@@ -386,6 +394,42 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     );
   };
 
+  /** Icona dell'ingrediente in vettoriale, sulla griglia 24 × 24. */
+  const iconaPdf = (
+    tipo: TipoIngrediente,
+    x: number,
+    ySuperiore: number,
+    lato: number,
+  ): void => {
+    const scala = lato / LATO_ICONA;
+    const inchiostro = ORO_SCURO.join(' ');
+    const k = 0.5523;
+
+    disegnaIcona(tipo, {
+      polilinea: (punti, chiusa) => {
+        let percorso = '';
+        punti.forEach((punto, indice) => {
+          const px = x + punto.x * scala;
+          const py = alto(ySuperiore + punto.y * scala);
+          percorso += `${px.toFixed(2)} ${py.toFixed(2)} ${indice === 0 ? 'm' : 'l'} `;
+        });
+        aggiungi(`${inchiostro} RG 0.8 w ${percorso}${chiusa ? 'h ' : ''}S\n`);
+      },
+      cerchio: (cerchio) => {
+        const cx = x + cerchio.cx * scala;
+        const cy = alto(ySuperiore + cerchio.cy * scala);
+        const r = cerchio.r * scala;
+        aggiungi(
+          `${inchiostro} RG 0.8 w ${(cx + r).toFixed(2)} ${cy.toFixed(2)} m ` +
+            `${(cx + r).toFixed(2)} ${(cy + k * r).toFixed(2)} ${(cx + k * r).toFixed(2)} ${(cy + r).toFixed(2)} ${cx.toFixed(2)} ${(cy + r).toFixed(2)} c ` +
+            `${(cx - k * r).toFixed(2)} ${(cy + r).toFixed(2)} ${(cx - r).toFixed(2)} ${(cy + k * r).toFixed(2)} ${(cx - r).toFixed(2)} ${cy.toFixed(2)} c ` +
+            `${(cx - r).toFixed(2)} ${(cy - k * r).toFixed(2)} ${(cx - k * r).toFixed(2)} ${(cy - r).toFixed(2)} ${cx.toFixed(2)} ${(cy - r).toFixed(2)} c ` +
+            `${(cx + k * r).toFixed(2)} ${(cy - r).toFixed(2)} ${(cx + r).toFixed(2)} ${(cy - k * r).toFixed(2)} ${(cx + r).toFixed(2)} ${cy.toFixed(2)} c h S\n`,
+        );
+      },
+    });
+  };
+
   const sinistra = PAGINA.margine;
   const destra = PAGINA.larghezza - PAGINA.margine;
   let y = PAGINA.margine;
@@ -460,43 +504,6 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   linea({ x: sinistra, y }, { x: destra, y });
   y += 14;
 
-  // Tre riquadri di apertura
-  const spazioBox = 8;
-  const larghezzaBox = (LARGHEZZA_UTILE - spazioBox * 2) / 3;
-  const riquadri = [
-    {
-      etichetta: (dati.etichettaLievito ?? dati.tipoLievito).toUpperCase(),
-      valore: numero(dati.lievitoG),
-      nota: dati.lievitoNota,
-    },
-    {
-      etichetta: 'FARINA',
-      valore: numero(dati.farinaG ?? dati.dosi?.[0]?.grammi ?? 0),
-      nota: dati.totaleNota,
-    },
-    { etichetta: 'IMPASTO TOTALE', valore: numero(dati.totaleG), nota: 'tutte le dosi insieme' },
-  ];
-
-  riquadri.forEach((riquadro, indice) => {
-    const x = sinistra + indice * (larghezzaBox + spazioBox);
-    rettangolo(x, y, larghezzaBox, 64, { riempimento: SUPERFICIE, bordo: BORDO });
-
-    testo(x + 9, y + 12, riquadro.etichetta, { font: 'F2', dimensione: 6.6, colore: TENUE });
-
-    const larghezzaValore = testo(x + 9, y + 33, riquadro.valore, {
-      font: 'F4',
-      dimensione: 19,
-      colore: ORO_SCURO,
-    });
-    testo(x + 12 + larghezzaValore, y + 33, 'g', { dimensione: 9, colore: TENUE });
-
-    const righeNota = dividiInRighe(riquadro.nota, 'F1', 6.4, larghezzaBox - 18).slice(0, 2);
-    righeNota.forEach((riga, posizione) => {
-      testo(x + 9, y + 45 + posizione * 8, riga, { dimensione: 6.4, colore: TENUE });
-    });
-  });
-  y += 64 + 16;
-
   /** «% 62,3 sulla farina totale», come nella tabella del foglio JPG. */
   const percentualeDose = (dose: VoceDose): string | null =>
     typeof dose.percentuale === 'number'
@@ -523,8 +530,13 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     assicuraSpazio(altezza + 4);
 
     const base = y + 9;
+    let xNome = sinistra;
+    if (dose.tipo) {
+      iconaPdf(dose.tipo, sinistra, y + 1, 9);
+      xNome = sinistra + 14;
+    }
     righeNome.forEach((riga, indice) => {
-      testo(sinistra, base + indice * 11, riga, { dimensione: 10 });
+      testo(xNome, base + indice * 11, riga, { dimensione: 10 });
     });
     righePercentuale.forEach((riga, indice) => {
       testo(xPercentuale, base + indice * 8, riga, {
@@ -588,15 +600,27 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
 
   // Dosi: le fasi delle ricette oppure l'elenco piatto del calcolatore libero.
   const fasi = dati.fasi ?? [];
+  assicuraSpazio(24);
+  // Titolo unico per tutte le dosi: le fasi delle ricette restano come
+  // etichette più piccole dentro la stessa sezione.
+  testo(sinistra, y + 8, 'INGREDIENTI', {
+    font: 'F4',
+    dimensione: 10.4,
+    colore: ORO_SCURO,
+  });
+  y += 15;
+
   if (fasi.length > 0) {
     for (const fase of fasi) {
-      assicuraSpazio(34);
+      assicuraSpazio(24);
       testo(sinistra, y + 8, fase.titolo.toUpperCase(), {
         font: 'F4',
-        dimensione: 10.4,
+        dimensione: 8.6,
         colore: ORO_SCURO,
       });
-      y += 15;
+      y += 12;
+      linea({ x: sinistra, y }, { x: destra, y });
+      y += 6;
 
       if (fase.nota) {
         dividiInRighe(fase.nota, 'F1', 7.6, LARGHEZZA_UTILE).forEach((riga) => {
@@ -646,9 +670,6 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       y += 12;
     }
   } else {
-    testo(sinistra, y + 6, 'DOSI', { font: 'F4', dimensione: 10.4, colore: ORO_SCURO });
-    y += 15;
-
     const dosi = dati.dosi ?? [];
     dosi.forEach((dose, indice) => rigaDose(dose, indice < dosi.length - 1));
   }
@@ -664,6 +685,13 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     allineamento: 'destra',
   });
   y += 20;
+
+  // Acqua consigliata: riga discreta sotto il totale, non una nota in fondo.
+  if (dati.acquaConsigliata) {
+    assicuraSpazio(14);
+    testo(sinistra, y + 5, dati.acquaConsigliata, { dimensione: 9, colore: TENUE });
+    y += 14;
+  }
 
   // Forza della farina: la dichiara il calcolatore libero, non le ricette.
   const forza = dati.forza;
@@ -889,11 +917,12 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   // passi del procedimento, con i loro paragrafi e i loro elenchi.
   if (dati.passi.length > 0) {
     assicuraSpazio(34);
-    testo(sinistra, y + 6, 'TABELLA DI MARCIA', {
-      font: 'F4',
-      dimensione: 10.4,
-      colore: ORO_SCURO,
-    });
+    testo(
+      sinistra,
+      y + 6,
+      dati.passi.some((passo) => passo.orario) ? 'TABELLA DI MARCIA' : 'PROCEDIMENTO',
+      { font: 'F4', dimensione: 10.4, colore: ORO_SCURO },
+    );
     y += 18;
 
     dati.passi.forEach((passo) => {
@@ -908,7 +937,16 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       });
       y += righeTitolo.length * 11 + 4;
 
-      if (riepilogo) {
+      if (passo.orario) {
+        dividiInRighe(passo.orario, 'F1', 7.8, LARGHEZZA_UTILE - 12).forEach((riga) => {
+          assicuraSpazio(11);
+          testo(sinistra + 10, y + 7, riga, { dimensione: 7.8, colore: TENUE });
+          y += 9.2;
+        });
+        y += 2;
+      }
+
+      if (!passo.orario && riepilogo) {
         dividiInRighe(riepilogo, 'F1', 7.8, LARGHEZZA_UTILE - 12).forEach((riga) => {
           assicuraSpazio(11);
           testo(sinistra + 10, y + 7, riga, { dimensione: 7.8, colore: TENUE });
@@ -968,7 +1006,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   // Note: come è stato calcolato il foglio libero, i consigli nelle ricette.
   if (dati.note.length > 0) {
     assicuraSpazio(34);
-    testo(sinistra, y + 6, dati.noteTitolo ?? 'COME È STATO CALCOLATO', {
+    testo(sinistra, y + 6, dati.noteTitolo ?? 'NOTA', {
       font: 'F4',
       dimensione: 10.4,
       colore: ORO_SCURO,
