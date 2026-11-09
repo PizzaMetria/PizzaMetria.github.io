@@ -753,9 +753,12 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   const altezzaNoteStima =
     16 +
     dati.note.reduce(
-      (somma, nota) => somma + dividiInRighe(nota, 'F1', 7.4, LARGHEZZA_UTILE).length * 8.6,
+      (somma, nota, indice) =>
+        somma +
+        dividiInRighe(nota, 'F1', 8.2, LARGHEZZA_UTILE - 10).length * 10.6 +
+        (indice > 0 ? 6 : 0),
       0,
-    );
+    ) + 2;
 
   const larghezzaLegenda = 148;
   const larghezzaImmagine = LARGHEZZA_UTILE - larghezzaLegenda - 10;
@@ -841,9 +844,12 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   const altezzaNote =
     16 +
     dati.note.reduce(
-      (somma, nota) => somma + dividiInRighe(nota, 'F1', 7.4, LARGHEZZA_UTILE).length * 8.6,
+      (somma, nota, indice) =>
+        somma +
+        dividiInRighe(nota, 'F1', 8.2, LARGHEZZA_UTILE - 10).length * 10.6 +
+        (indice > 0 ? 6 : 0),
       0,
-    );
+    ) + 2;
 
   const spazioGrafico = FONDO_PAGINA - y - altezzaTabella - altezzaNote - 12;
   const altezzaGrafico = Math.max(46, Math.min(78, spazioGrafico));
@@ -1004,22 +1010,30 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   }
 
   // Note: come è stato calcolato il foglio libero, i consigli nelle ricette.
+  // Si leggono come un elenco: un pallino, righe più alte e un po' d'aria fra
+  // una voce e l'altra, come nella scheda a schermo.
   if (dati.note.length > 0) {
-    assicuraSpazio(34);
+    assicuraSpazio(38);
     testo(sinistra, y + 6, dati.noteTitolo ?? 'NOTA', {
       font: 'F4',
       dimensione: 10.4,
       colore: ORO_SCURO,
     });
-    y += 15;
+    y += 19;
 
-    dati.note.forEach((nota) => {
-      dividiInRighe(nota, 'F1', 7.4, LARGHEZZA_UTILE).forEach((riga) => {
-        assicuraSpazio(10);
-        testo(sinistra, y + 6, riga, { dimensione: 7.4, colore: TENUE });
-        y += 8.6;
+    dati.note.forEach((nota, indice) => {
+      if (indice > 0) y += 6;
+      const righe = dividiInRighe(nota, 'F1', 8.2, LARGHEZZA_UTILE - 10);
+      righe.forEach((riga, posizione) => {
+        assicuraSpazio(12);
+        if (posizione === 0) {
+          testo(sinistra + 1, y + 7, '•', { dimensione: 8.2, colore: ORO_SCURO });
+        }
+        testo(sinistra + 10, y + 7, riga, { dimensione: 8.2, colore: TENUE });
+        y += 10.6;
       });
     });
+    y += 2;
   }
 
   // Ultima facciata, poi il piede su ognuna: la ricetta può essere lunga.
