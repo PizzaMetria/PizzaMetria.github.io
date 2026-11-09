@@ -1,40 +1,24 @@
+# Dipendenze, build e cache
 node_modules/
 dist/
-artifacts/
-.wrangler/
-*.local
-.DS_Store
-/freebuff-sites-build/
+*.tsbuildinfo
+.vite/
+coverage/
 
-# Materiale di lavoro locale: non va su GitHub (copie storiche, backup, attrezzi, file di chat).
-/artifacts/
+# Materiale di lavoro locale: non va su GitHub
 /files/
+/artifacts/
 /.toolchain/
 /.wrangler/
+/freebuff-sites-build/
 /backup/
 /backup-v1/
-/backup-pre-allineamento-2026-11-06-1809/
 *.tar.gz
-libcapstone.so
-/sito-unito/
-/pizzametria-v1/
-/bigametrica/
-/bigametrica-latte/
-/calcolatore-libero/
-/thomas-pizza/
-/candidato a definitivo v8/
+*.log
+*.tmp
+*.local
+.DS_Store
 
-# Chiave per pubblicare su GitHub: non entra mai nel repository.
+# Chiave per pubblicare su GitHub: non entra mai nel repository
 .github-token
-
-# Copie storiche del progetto: restano nel computer, non nel sito pubblicato.
-/thomas-pizza*/
-/backup-v1/
-/src/
-/worker/
-/package.json
-/package-lock.json
-/tsconfig.json
-/vite.config.ts
-/sites.manifest.json
-/wrangler.sites.jsonc
+libcapstone.so
