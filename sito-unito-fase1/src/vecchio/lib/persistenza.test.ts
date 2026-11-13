@@ -44,7 +44,8 @@ describe('persistenza locale per ricetta', () => {
       tipoLievito: 'fresco',
       autolisi: true,
       biga: {
-        temperatura: 27,
+        temperatura: 20,
+        tuttaInFrigo: true,
         ore: 24,
         temperaturaFrigo: 4,
         oraImpasto: '08:00',
@@ -67,7 +68,8 @@ describe('persistenza locale per ricetta', () => {
       tipoLievito: 'fresco',
       autolisi: true,
       biga: {
-        temperatura: 27,
+        temperatura: 20,
+        tuttaInFrigo: true,
         ore: 24,
         temperaturaFrigo: 4,
         oraImpasto: '08:00',
@@ -250,7 +252,7 @@ describe('opzioni lievito e autolisi', () => {
       tipoLievito: 'secco',
       autolisi: true,
       biga: {
-        temperatura: 27,
+        temperatura: 20,
         ore: 24,
         temperaturaFrigo: 4,
         oraImpasto: '08:00',
@@ -298,7 +300,7 @@ describe('opzioni lievito e autolisi', () => {
       tipoLievito: 'fresco',
       autolisi: true,
       biga: {
-        temperatura: 27,
+        temperatura: 20,
         ore: 24,
         temperaturaFrigo: 4,
         oraImpasto: '08:00',

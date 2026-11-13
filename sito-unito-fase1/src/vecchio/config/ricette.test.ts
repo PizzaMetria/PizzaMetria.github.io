@@ -182,10 +182,9 @@ describe('Tips & Tricks condivisi dalle ricette con biga', () => {
   });
 
   it('non rende obbligatoria l’autolisi e non impone la sera prima', () => {
-    expect(TIP_AUTOLISI).toContain('L’autolisi è opzionale');
-    expect(TIP_AUTOLISI).toContain('mezz’ora prima del rinfresco');
-    expect(TIP_AUTOLISI).toContain('anche la sera precedente');
-    expect(TIP_AUTOLISI).not.toContain('tutta la notte');
+    expect(TIP_AUTOLISI).toBe(
+      'L’autolisi è facoltativa e si prepara prima dell’impasto finale. Se la attivi, il calcolatore ripartisce l’acqua del rinfresco tra autolisi e impasto finale.',
+    );
   });
 
   it('spiega la temperatura di chiusura con il prefermento freddo', () => {

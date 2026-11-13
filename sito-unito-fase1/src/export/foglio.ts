@@ -42,7 +42,7 @@ export interface FaseFoglio {
 /** Gruppo del riepilogo tecnico: etichetta a sinistra, valore a destra. */
 export interface GruppoFoglio {
   titolo: string;
-  voci: readonly { etichetta: string; valore: string }[];
+  voci: readonly { etichetta: string; valore: string; valorePdf?: string }[];
 }
 
 export interface PassoFoglio {
@@ -68,6 +68,8 @@ export interface ImmagineFoglio {
 }
 
 export interface DatiFoglio {
+  marcia?: readonly PassoFoglio[];
+  soloProgramma?: boolean;
   titolo: string;
   sottotitolo: string;
   tipoLievito: string;
@@ -85,7 +87,6 @@ export interface DatiFoglio {
   riepilogo?: readonly GruppoFoglio[];
   totaleG: number;
   totaleNota: string;
-  /** «Acqua consigliata 18 °C», sotto il totale nel PDF. */
   forza?: {
     consigliata: number;
     efficace: number | null;
@@ -144,7 +145,7 @@ export const FIRMA_FOGLIO =
   'PizzaMetria · tutte le dosi restano nel tuo browser';
 
 const COLORI = {
-  sfondo: '#f5efe4',
+  sfondo: '#ffffff',
   superficie: '#fffdf8',
   testo: '#23262a',
   tenue: '#6b6257',
@@ -152,7 +153,7 @@ const COLORI = {
   oroScuro: '#7a5c10',
   /** Velo della pillola del lievito, come nel JPG del vecchio sito. */
   oroVelo: '#f3e9d6',
-  bordo: 'rgba(35, 38, 42, 0.12)',
+  bordo: '#d8d0c2',
 } as const;
 
 function font(peso: number, dimensione: number, famiglia = SANS): string {

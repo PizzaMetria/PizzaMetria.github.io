@@ -223,6 +223,7 @@ export function configPersonalizzata(
 ): RicettaConfig {
   const config: RicettaConfig = {
     ...ricetta,
+    motoreBiga: ricetta.motoreBiga ? opzioni.biga ?? ricetta.motoreBiga : undefined,
     idratazioneTotale: frazione(
       parametri.idratazioneTotale,
       ricetta.idratazioneTotale,

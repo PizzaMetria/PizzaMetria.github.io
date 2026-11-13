@@ -476,7 +476,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   // Pillola del lievito accanto al titolo: è la firma del foglio JPG.
   const etichettaTipo = dati.tipoLievito.replace(/^Lievito\s+/i, '').toUpperCase();
   const larghezzaBadge = misura(etichettaTipo, 'F2', 6.6) + 10;
-  if (larghezzaTitolo + 12 + larghezzaBadge <= LARGHEZZA_UTILE) {
+  if (!dati.soloProgramma && larghezzaTitolo + 12 + larghezzaBadge <= LARGHEZZA_UTILE) {
     const xBadge = destra - larghezzaBadge;
     rettangolo(xBadge, y + 3, larghezzaBadge, 11.5, {
       riempimento: [0.96, 0.93, 0.87] as const,
@@ -575,7 +575,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       const larghezzaValore = LARGHEZZA_UTILE * 0.52;
       const larghezzaEtichetta = LARGHEZZA_UTILE - larghezzaValore - 10;
       const righeEtichetta = dividiInRighe(voce.etichetta, 'F1', 8, larghezzaEtichetta);
-      const righeValore = dividiInRighe(voce.valore, 'F3', 9.2, larghezzaValore);
+      const righeValore = dividiInRighe(voce.valorePdf ?? voce.valore, 'F3', 9.2, larghezzaValore);
       const righe = Math.max(righeEtichetta.length, righeValore.length, 1);
       const altezza = righe * 10 + 7;
 
@@ -602,97 +602,99 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     y += 12;
   }
 
-  // Dosi: le fasi delle ricette oppure l'elenco piatto del calcolatore libero.
-  const fasi = dati.fasi ?? [];
-  assicuraSpazio(24);
-  // Titolo unico per tutte le dosi: le fasi delle ricette restano come
-  // etichette più piccole dentro la stessa sezione.
-  testo(sinistra, y + 8, 'INGREDIENTI', {
-    font: 'F4',
-    dimensione: 10.4,
-    colore: ORO_SCURO,
-  });
-  y += 15;
+  if (!dati.soloProgramma) {
+    // Dosi: le fasi delle ricette oppure l'elenco piatto del calcolatore libero.
+    const fasi = dati.fasi ?? [];
+    assicuraSpazio(24);
+    // Titolo unico per tutte le dosi: le fasi delle ricette restano come
+    // etichette più piccole dentro la stessa sezione.
+    testo(sinistra, y + 8, 'INGREDIENTI', {
+      font: 'F4',
+      dimensione: 10.4,
+      colore: ORO_SCURO,
+    });
+    y += 15;
 
-  if (fasi.length > 0) {
-    for (const fase of fasi) {
-      assicuraSpazio(24);
-      testo(sinistra, y + 8, fase.titolo.toUpperCase(), {
-        font: 'F4',
-        dimensione: 8.6,
-        colore: ORO_SCURO,
-      });
-      y += 12;
-      linea({ x: sinistra, y }, { x: destra, y });
-      y += 6;
-
-      if (fase.nota) {
-        dividiInRighe(fase.nota, 'F1', 7.6, LARGHEZZA_UTILE).forEach((riga) => {
-          assicuraSpazio(10);
-          testo(sinistra, y + 6, riga, { dimensione: 7.6, colore: TENUE });
-          y += 9;
-        });
-        y += 2;
-      }
-
-      if (fase.avviso) {
-        const righeAvviso = dividiInRighe(fase.avviso, 'F2', 7.6, LARGHEZZA_UTILE - 14);
-        const altezza = righeAvviso.length * 9 + 8;
-        assicuraSpazio(altezza + 6);
-        rettangolo(sinistra, y, LARGHEZZA_UTILE, altezza, {
-          riempimento: [0.96, 0.93, 0.87] as const,
-        });
-        righeAvviso.forEach((riga, indice) => {
-          testo(sinistra + 7, y + 12 + indice * 9, riga, {
-            font: 'F2',
-            dimensione: 7.6,
-            colore: ORO_SCURO,
-          });
-        });
-        y += altezza + 8;
-      }
-
-      fase.voci.forEach((dose, indice) => {
-        rigaDose(dose, indice < fase.voci.length - 1);
-      });
-
-      linea({ x: sinistra, y }, { x: destra, y });
-      y += 14;
-
-      if (fase.totale) {
-        assicuraSpazio(20);
-        testo(sinistra, y + 8, fase.totale.nome, { dimensione: 9.6, colore: TENUE });
-        testo(destra, y + 8, `${numero(fase.totale.grammi)} g`, {
+    if (fasi.length > 0) {
+      for (const fase of fasi) {
+        assicuraSpazio(24);
+        testo(sinistra, y + 8, fase.titolo.toUpperCase(), {
           font: 'F4',
-          dimensione: 10.4,
+          dimensione: 8.6,
           colore: ORO_SCURO,
-          allineamento: 'destra',
         });
-        y += 18;
+        y += 12;
+        linea({ x: sinistra, y }, { x: destra, y });
+        y += 6;
+
+        if (fase.nota) {
+          dividiInRighe(fase.nota, 'F1', 7.6, LARGHEZZA_UTILE).forEach((riga) => {
+            assicuraSpazio(10);
+            testo(sinistra, y + 6, riga, { dimensione: 7.6, colore: TENUE });
+            y += 9;
+          });
+          y += 2;
+        }
+
+        if (fase.avviso) {
+          const righeAvviso = dividiInRighe(fase.avviso, 'F2', 7.6, LARGHEZZA_UTILE - 14);
+          const altezza = righeAvviso.length * 9 + 8;
+          assicuraSpazio(altezza + 6);
+          rettangolo(sinistra, y, LARGHEZZA_UTILE, altezza, {
+            riempimento: [0.96, 0.93, 0.87] as const,
+          });
+          righeAvviso.forEach((riga, indice) => {
+            testo(sinistra + 7, y + 12 + indice * 9, riga, {
+              font: 'F2',
+              dimensione: 7.6,
+              colore: ORO_SCURO,
+            });
+          });
+          y += altezza + 8;
+        }
+
+        fase.voci.forEach((dose, indice) => {
+          rigaDose(dose, indice < fase.voci.length - 1);
+        });
+
+        linea({ x: sinistra, y }, { x: destra, y });
+        y += 14;
+
+        if (fase.totale) {
+          assicuraSpazio(20);
+          testo(sinistra, y + 8, fase.totale.nome, { dimensione: 9.6, colore: TENUE });
+          testo(destra, y + 8, `${numero(fase.totale.grammi)} g`, {
+            font: 'F4',
+            dimensione: 10.4,
+            colore: ORO_SCURO,
+            allineamento: 'destra',
+          });
+          y += 18;
+        }
+
+        y += 12;
       }
-
-      y += 12;
+    } else {
+      const dosi = dati.dosi ?? [];
+      dosi.forEach((dose, indice) => rigaDose(dose, indice < dosi.length - 1));
     }
-  } else {
-    const dosi = dati.dosi ?? [];
-    dosi.forEach((dose, indice) => rigaDose(dose, indice < dosi.length - 1));
-  }
 
-  assicuraSpazio(30);
-  linea({ x: sinistra, y }, { x: destra, y });
-  y += 15;
-  testo(sinistra, y, 'Impasto totale', { font: 'F2', dimensione: 10.5 });
-  testo(destra, y, `${numero(dati.totaleG)} g`, {
-    font: 'F4',
-    dimensione: 14,
-    colore: ORO_SCURO,
-    allineamento: 'destra',
-  });
-  y += 20;
+    assicuraSpazio(30);
+    linea({ x: sinistra, y }, { x: destra, y });
+    y += 15;
+    testo(sinistra, y, 'Impasto totale', { font: 'F2', dimensione: 10.5 });
+    testo(destra, y, `${numero(dati.totaleG)} g`, {
+      font: 'F4',
+      dimensione: 14,
+      colore: ORO_SCURO,
+      allineamento: 'destra',
+    });
+    y += 20;
+  }
 
   const larghezzaOrario = 66;
   const larghezzaAzione = LARGHEZZA_UTILE - larghezzaOrario;
-  const righeMarcia = dati.passi.map((passo) => {
+  const misuraMarcia = (passi: DatiFoglio['passi']) => passi.map((passo) => {
     if (!passo.orario) return null;
     const titolo = dividiInRighe(passo.titolo, 'F2', 9.2, larghezzaAzione);
     const nota = [passo.istruzione, passo.nota].flatMap((testo) =>
@@ -700,20 +702,21 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     );
     return { titolo, nota, altezza: Math.max(29, 10 + titolo.length * 11 + nota.length * 9.5) };
   });
-  const tabellaDiMarcia = righeMarcia.some(Boolean);
+  const tabellaDiMarcia = dati.passi.some((passo) => passo.orario);
 
-  function disegnaPassi() {
-    if (dati.passi.length === 0) return;
+  function disegnaPassi(passi = dati.passi, titolo = tabellaDiMarcia ? 'TABELLA DI MARCIA' : 'PROCEDIMENTO') {
+    if (passi.length === 0) return;
+    const righeMarcia = misuraMarcia(passi);
     assicuraSpazio(18 + (righeMarcia[0]?.altezza ?? 16));
     testo(
       sinistra,
       y + 6,
-      tabellaDiMarcia ? 'TABELLA DI MARCIA' : 'PROCEDIMENTO',
+      titolo,
       { font: 'F4', dimensione: 10.4, colore: ORO_SCURO },
     );
     y += 18;
 
-    dati.passi.forEach((passo, indice) => {
+    passi.forEach((passo, indice) => {
       const riga = righeMarcia[indice];
       if (passo.orario && riga) {
         assicuraSpazio(riga.altezza);
@@ -808,6 +811,10 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     disegnaPassi();
     y += 10;
   }
+  if (dati.marcia?.length) {
+    disegnaPassi(dati.marcia, 'TABELLA DI MARCIA DELLA BIGA');
+    y += 10;
+  }
 
   // Forza della farina: la dichiara il calcolatore libero, non le ricette.
   const forza = dati.forza;
@@ -866,31 +873,21 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       );
       return somma + 12 + righe.length * 9 + 6;
     }, 0);
-  const altezzaNoteStima =
-    16 +
-    dati.note.reduce(
-      (somma, nota, indice) =>
-        somma +
-        dividiInRighe(nota, 'F1', 8.2, LARGHEZZA_UTILE - 10).length * 10.6 +
-        (indice > 0 ? 6 : 0),
-      0,
-    ) + 2;
-
   const larghezzaLegenda = 148;
-  const larghezzaImmagine = LARGHEZZA_UTILE - larghezzaLegenda - 10;
+  const larghezzaImmagine = Math.min(270, LARGHEZZA_UTILE - larghezzaLegenda - 10);
   const altezzaImmagine = larghezzaImmagine * 0.3;
-  const altezzaBlocco = immagini.length * (7 + altezzaImmagine + 10);
-  const conImmagini =
-    immagini.length > 0 &&
-    y + 14 + altezzaBlocco + 14 + altezzaProcedimento + altezzaNoteStima + 10 <= FONDO_PAGINA;
+  const forzaVettoriale = forza && !immagini.some((immagine) => immagine.chiave === 'forza');
+  const attivitaVettoriale = dati.curva !== undefined
+    && !immagini.some((immagine) => immagine.chiave === 'attivita');
 
-  if (conImmagini) {
+  if (immagini.length > 0 || forzaVettoriale) {
+    assicuraSpazio(14 + (forzaVettoriale ? 66 : altezzaImmagine + 19));
     testo(sinistra, y + 6, 'GRAFICI', { font: 'F4', dimensione: 10.4, colore: ORO_SCURO });
     y += 14;
 
     const legenda: Record<'forza' | 'attivita', readonly { colore: Colore; testo: string }[]> = {
       forza: [
-        { colore: PANNA as Colore, testo: 'zona consigliata per queste ore' },
+        { colore: PANNA as Colore, testo: forzaVettoriale ? 'fascia tollerata' : 'zona consigliata per queste ore' },
         {
           colore: TESTO as Colore,
           testo: forza ? `serve W ${forza.consigliata}` : 'forza non dichiarata',
@@ -910,7 +907,29 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       ],
     };
 
+    if (forzaVettoriale) {
+      const valori = [forza.minima, forza.massima, forza.consigliata, forza.efficace ?? forza.consigliata];
+      const minimo = Math.min(...valori) - 20;
+      const massimo = Math.max(...valori) + 20;
+      const x = (w: number) => sinistra + (w - minimo) / (massimo - minimo) * larghezzaImmagine;
+      testo(sinistra, y + 5, TITOLI_GRAFICI.forza, { font: 'F2', dimensione: 6.6, colore: ORO_SCURO });
+      rettangolo(x(forza.minima), y + 17, x(forza.massima) - x(forza.minima), 15, { riempimento: PANNA });
+      linea({ x: sinistra, y: y + 32 }, { x: sinistra + larghezzaImmagine, y: y + 32 });
+      linea({ x: x(forza.consigliata), y: y + 14 }, { x: x(forza.consigliata), y: y + 32 }, TESTO);
+      if (forza.efficace !== null) {
+        linea({ x: x(forza.efficace), y: y + 26 }, { x: x(forza.efficace), y: y + 36 }, ORO, 2);
+      }
+      legenda.forza.forEach((voce, indice) => {
+        const xLegenda = sinistra + larghezzaImmagine + 10;
+        const yVoce = y + 14 + indice * 8.6;
+        rettangolo(xLegenda, yVoce, 4.2, 4.2, { riempimento: voce.colore });
+        testo(xLegenda + 8, yVoce + 3.8, voce.testo, { dimensione: 6.2, colore: TENUE });
+      });
+      y += 50;
+    }
+
     immagini.forEach((immagine) => {
+      assicuraSpazio(altezzaImmagine + 19);
       testo(sinistra, y + 5, TITOLI_GRAFICI[immagine.chiave], {
         font: 'F2',
         dimensione: 6.6,
@@ -936,7 +955,8 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   }
 
   // Le ricette non hanno curva né grafici: la sezione non compare affatto.
-  if (!conImmagini && dati.curva !== undefined) {
+  if (attivitaVettoriale) {
+  assicuraSpazio(78);
   // Grafico dell'attività
   testo(sinistra, y + 6, 'ATTIVITÀ DEL LIEVITO', { font: 'F4', dimensione: 10.4, colore: ORO_SCURO });
   y += 16;

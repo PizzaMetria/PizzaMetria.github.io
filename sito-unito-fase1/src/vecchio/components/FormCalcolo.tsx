@@ -1,3 +1,4 @@
+import { formattaNumero } from '../lib/formato';
 import { useState } from 'react';
 import type {
   ErroriCampi,
@@ -9,11 +10,12 @@ import type {
   TipoLievito,
   ValoriGrezzi,
 } from '../types';
-import { oreAttesa, piano as pianoMotore } from '../lib/motore-biga';
-import { completaCoppia, giornoDi, oraDi, orarioPredefinito } from '../lib/orari';
+import { FRIGO, oreAmbienteSuggerite, oreAttesa, piano as pianoMotore, stimaBigaMistaDaCampo } from '../lib/motore-biga';
+import { completaCoppia, giornoDi, oraDi, orarioPredefinito, spostaOrarioBiga } from '../lib/orari';
 import type { ChiaveParametro } from '../config/personalizzazione';
 import { LIMITI } from '../lib/validazione';
 import { testoMaturazione } from '../lib/vista';
+import { SceltaFrigoBiga } from './SceltaFrigoBiga';
 import { CampoNumero } from './CampoNumero';
 import { SelettoreModalita } from './SelettoreModalita';
 import { PannelloPersonalizzazione } from './PannelloPersonalizzazione';
@@ -113,13 +115,24 @@ export function FormCalcolo({
   const giornoPronta = giornoDi(fineBiga);
   const oraPronta = oraDi(fineBiga);
 
-  const pianoBiga = richiestaBiga
+  const oreMiste = richiestaBiga?.oreAmbienteMisto;
+  const misto = oreMiste !== undefined;
+  const stimaMista = richiestaBiga && misto && oreDagliOrari !== null
+    ? stimaBigaMistaDaCampo(richiestaBiga.temperatura, richiestaBiga.temperaturaFrigo, oreBiga, oreMiste)
+    : null;
+  const pianoBiga = stimaMista?.piano ?? (richiestaBiga
     ? pianoMotore({
         temperatura: richiestaBiga.temperatura,
         temperaturaFrigo: richiestaBiga.temperaturaFrigo,
         oreTotali: oreBiga,
+        tuttaInFrigo: richiestaBiga.tuttaInFrigo,
       })
-    : null;
+    : null);
+
+  const attivaFrigoBiga = () => {
+    const oraPronta = spostaOrarioBiga(inizioBiga, FRIGO.massimoOre);
+    if (oraPronta) cambiaBiga({ tuttaInFrigo: true, oreAmbienteMisto: undefined, oraPronta, ore: FRIGO.massimoOre });
+  };
 
   const cambiaBiga = (modifica: Partial<RichiestaBiga>) => {
     if (!richiestaBiga) return;
@@ -179,6 +192,260 @@ export function FormCalcolo({
     onCambiaCampo('teglie', 'latoB', latoB);
   }
 
+  const bigaNonValida = pianoBiga !== null && (oreDagliOrari === null || (misto ? !stimaMista?.piano : pianoBiga.stato !== 'ok'));
+
+  const configurazione = mostraPersonalizzazione ? (
+    <div
+      role="group"
+      aria-labelledby="configurazione-titolo"
+      className="mt-4 rounded-xl border border-bordo/70 bg-crema-scuro/40 p-2 sm:p-3.5"
+    >
+      <p
+        id="configurazione-titolo"
+        className="font-serif text-sm font-bold text-inchiostro"
+      >
+        Configurazione della ricetta
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-inchiostro-tenue">
+        Il lievito fresco è l’impostazione predefinita; le dosi si adeguano
+        al tipo di lievito scelto.
+      </p>
+
+      <div className="mt-3">
+        <p
+          id="tipo-lievito-titolo"
+          className="text-xs font-semibold tracking-wide text-inchiostro-tenue uppercase"
+        >
+          Tipo di lievito
+        </p>
+        <div
+          role="radiogroup"
+          aria-labelledby="tipo-lievito-titolo"
+          className="mt-1.5 grid grid-cols-2 gap-1.5 rounded-xl border border-bordo/80 bg-crema-scuro p-1.5"
+        >
+          {(['fresco', 'secco'] as const).map((tipo) => {
+            const selezionato = opzioni.tipoLievito === tipo;
+
+            return (
+              <label key={tipo} className="min-w-0 cursor-pointer">
+                <input
+                  type="radio"
+                  name="tipo-lievito"
+                  value={tipo}
+                  checked={selezionato}
+                  onChange={() => onCambiaOpzione('tipoLievito', tipo)}
+                  className="peer sr-only"
+                />
+                <span className="flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-transparent px-2 py-2 text-center text-xs font-semibold text-inchiostro-tenue transition-all peer-checked:border-terracotta/50 peer-checked:bg-terracotta/15 peer-checked:text-oro-chiaro peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-terracotta">
+                  <span
+                    aria-hidden="true"
+                    className={selezionato ? 'visible' : 'invisible'}
+                  >
+                    ✓
+                  </span>
+                  <span className="min-w-0">{ETICHETTE_LIEVITO[tipo]}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {ricetta.famiglia !== 'diretto' && senzaFarinaRinfresco ? (
+        <div className="mt-3 rounded-xl border border-bordo bg-crema-scuro/60 px-2.5 py-2.5">
+          <p className="text-sm font-semibold text-inchiostro">Autolisi</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-inchiostro-tenue">
+            Tutta la farina è nella biga: non resta farina per l’autolisi.
+          </p>
+        </div>
+      ) : ricetta.autolisiOpzionale ? (
+        <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-bordo bg-crema-scuro/60 px-2.5 py-2.5 transition-colors hover:border-terracotta/40">
+          <input
+            type="checkbox"
+            checked={opzioni.autolisi}
+            onChange={(evento) =>
+              onCambiaOpzione('autolisi', evento.target.checked)
+            }
+            className="mt-0.5 h-4 w-4 shrink-0 accent-terracotta"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-inchiostro">
+              Autolisi
+            </span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-inchiostro-tenue">
+              Facoltativa: la farina del rinfresco riposa con una parte
+              dell’acqua prima dell’impastamento finale. Il calcolatore
+              ripartisce l’acqua totale tra biga, autolisi e impasto finale.
+            </span>
+          </span>
+        </label>
+      ) : ricetta.famiglia === 'biga-autolisi' ? (
+        <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-bordo bg-crema-scuro/60 px-2.5 py-2.5">
+          <span
+            aria-hidden="true"
+            className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-[4px] bg-terracotta text-[10px] leading-none font-bold text-su-oro"
+          >
+            ✓
+          </span>
+          <span className="min-w-0">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-sm font-semibold text-inchiostro">
+                Autolisi
+              </span>
+              <span className="rounded-full border border-terracotta/30 bg-oro-velo px-2 py-0.5 text-[10px] font-semibold tracking-wide text-oro-chiaro uppercase">
+                Inclusa
+              </span>
+            </span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-inchiostro-tenue">
+              Fa parte della ricetta e non si disattiva: il{' '}
+              {quotaFarinaAutolisi}% della farina riposa con il{' '}
+              {idratazioneAutolisi}% della sua acqua la sera prima
+              dell’impastamento finale. L’acqua è già compresa nel totale.
+            </span>
+          </span>
+        </div>
+      ) : null}
+
+      {richiestaBiga && pianoBiga ? (
+        <div className="mt-3 rounded-xl border border-bordo bg-crema-scuro/60 px-2.5 py-2.5">
+          <p className="text-sm font-semibold text-inchiostro">
+            Maturazione della biga
+          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-inchiostro-tenue">
+            L’idratazione della biga la decide il motore, non è fissa: conta
+            l’attesa dall’impasto alla biga pronta e le due temperature.
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
+            <label className="block">
+              <span className="block text-xs font-semibold text-inchiostro-tenue">
+                Quando la prepari?
+              </span>
+              <input
+                type="datetime-local"
+                value={inizioBiga}
+                onChange={(evento) =>
+                  cambiaOrario('oraImpasto', evento.target.value)
+                }
+                className="mt-1 min-h-11 w-full rounded-xl border border-bordo bg-carta px-3 text-base font-semibold text-inchiostro tabular-nums"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-xs font-semibold text-inchiostro-tenue">
+                Quando ti serve la biga?
+              </span>
+              <input
+                type="datetime-local"
+                value={fineBiga}
+                onChange={(evento) =>
+                  cambiaOrario('oraPronta', evento.target.value)
+                }
+                className="mt-1 min-h-11 w-full rounded-xl border border-bordo bg-carta px-3 text-base font-semibold text-inchiostro tabular-nums"
+              />
+            </label>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
+            <CampoNumero
+              id="biga-temperatura"
+              label="Ambiente"
+              unit="°C"
+              value={testoNumero(richiestaBiga.temperatura)}
+              onChange={(valore) =>
+                cambiaBiga({
+                  temperatura: leggìNumero(valore, richiestaBiga.temperatura),
+                })
+              }
+              inputMode="decimal"
+              incremento={1}
+              minimo={LIMITI.temperaturaBiga.min}
+              massimo={LIMITI.temperaturaBiga.max}
+              decimali={1}
+            />
+            <CampoNumero
+              id="biga-frigo"
+              label="Frigorifero"
+              unit="°C"
+              value={testoNumero(richiestaBiga.temperaturaFrigo)}
+              onChange={(valore) =>
+                cambiaBiga({
+                  temperaturaFrigo: leggìNumero(
+                    valore,
+                    richiestaBiga.temperaturaFrigo,
+                  ),
+                })
+              }
+              inputMode="decimal"
+              incremento={1}
+              minimo={LIMITI.frigoBiga.min}
+              massimo={LIMITI.frigoBiga.max}
+              decimali={0}
+            />
+          </div>
+
+          <SceltaFrigoBiga
+            piano={pianoBiga}
+            dateValide={oreDagliOrari !== null}
+            inizioValido={Boolean(spostaOrarioBiga(inizioBiga, 0))}
+            scelta={richiestaBiga.tuttaInFrigo}
+            misto={{ attivo: misto, onSeleziona: () => {
+              if (misto) return;
+              const centro = oreDagliOrari === null ? null
+                : oreAmbienteSuggerite(richiestaBiga.temperatura, richiestaBiga.temperaturaFrigo, oreDagliOrari);
+              cambiaBiga({ oreAmbienteMisto: centro === null ? '' : formattaNumero(centro, 2) });
+            } }}
+            onAutomatico={() => cambiaBiga({ tuttaInFrigo: undefined, oreAmbienteMisto: undefined })}
+            onAttiva={attivaFrigoBiga}
+            onDisattiva={() => cambiaBiga({ tuttaInFrigo: false, oreAmbienteMisto: undefined })}
+          />
+
+          {misto ? (
+            <div className="mt-3">
+              <CampoNumero id="ricetta-ore-ambiente-biga" label="Tempo a temperatura ambiente" unit="h"
+                value={oreMiste}
+                onChange={(valore) => cambiaBiga({ oreAmbienteMisto: valore })}
+                inputMode="decimal" incremento={0.5} minimo={0.5} decimali={2}
+              />
+              {stimaMista?.piano ? (
+                <p className="mt-2 text-xs">
+                  Metti in frigorifero {giornoDi(spostaOrarioBiga(inizioBiga, stimaMista.piano.oreAmbiente))}
+                  {' alle '}{oraDi(spostaOrarioBiga(inizioBiga, stimaMista.piano.oreAmbiente))}.
+                </p>
+              ) : stimaMista ? <p role="status" className="mt-2 text-xs text-errore">{stimaMista.errore}</p> : null}
+            </div>
+          ) : null}
+          {oreDagliOrari === null ? (
+            <p
+              role="alert"
+              className="mt-2.5 rounded-lg border border-errore/40 bg-errore/10 px-2.5 py-2 text-xs leading-relaxed font-semibold text-errore"
+            >
+              La biga non può essere pronta prima di essere preparata: sposta
+              avanti il giorno o l’ora di fine.
+            </p>
+          ) : !bigaNonValida ? (
+            <p className="mt-2.5 text-xs leading-relaxed text-inchiostro">
+              Attesa:{' '}
+              <strong>{testoNumero(Math.round(oreBiga * 10) / 10)} ore</strong>
+              {giornoPronta && oraPronta
+                ? `, biga pronta ${giornoPronta} alle ${oraPronta}`
+                : ''}
+              . Biga al <strong>{pianoBiga.idratazione}%</strong> di
+              idratazione, matura{' '}
+              <strong>{testoMaturazione(pianoBiga)}</strong>.
+            </p>
+          ) : null}
+
+          {!misto && pianoBiga.consiglio ? (
+            <p className="mt-2 rounded-lg border border-terracotta/40 bg-terracotta/10 px-2.5 py-2 text-xs leading-relaxed text-inchiostro">
+              {pianoBiga.consiglio}
+            </p>
+          ) : null}
+
+        </div>
+      ) : null}
+    </div>
+  ) : null;
+
   return (
     <form
       id="calcolatore"
@@ -187,7 +454,7 @@ export function FormCalcolo({
         evento.preventDefault();
         // Nel passo delle dosi non c'è il comando di calcolo: Invio non deve
         // saltare alla pagina del risultato.
-        if (mostraPersonalizzazione) onCalcola();
+        if (mostraPersonalizzazione && !bigaNonValida) onCalcola();
       }}
       className="rounded-2xl border border-bordo/80 bg-carta/70 p-3 shadow-xl shadow-ombra/20 sm:p-5"
     >
@@ -216,226 +483,7 @@ export function FormCalcolo({
         </div>
       ) : null}
 
-      {mostraPersonalizzazione ? (
-      <div
-        role="group"
-        aria-labelledby="configurazione-titolo"
-        className="mt-4 rounded-xl border border-bordo/70 bg-crema-scuro/40 p-2 sm:p-3.5"
-      >
-        <p
-          id="configurazione-titolo"
-          className="font-serif text-sm font-bold text-inchiostro"
-        >
-          Configurazione della ricetta
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-inchiostro-tenue">
-          Il lievito fresco è l’impostazione predefinita; le dosi si adeguano
-          al tipo di lievito scelto.
-        </p>
-
-        <div className="mt-3">
-          <p
-            id="tipo-lievito-titolo"
-            className="text-xs font-semibold tracking-wide text-inchiostro-tenue uppercase"
-          >
-            Tipo di lievito
-          </p>
-          <div
-            role="radiogroup"
-            aria-labelledby="tipo-lievito-titolo"
-            className="mt-1.5 grid grid-cols-2 gap-1.5 rounded-xl border border-bordo/80 bg-crema-scuro p-1.5"
-          >
-            {(['fresco', 'secco'] as const).map((tipo) => {
-              const selezionato = opzioni.tipoLievito === tipo;
-
-              return (
-                <label key={tipo} className="min-w-0 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="tipo-lievito"
-                    value={tipo}
-                    checked={selezionato}
-                    onChange={() => onCambiaOpzione('tipoLievito', tipo)}
-                    className="peer sr-only"
-                  />
-                  <span className="flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-transparent px-2 py-2 text-center text-xs font-semibold text-inchiostro-tenue transition-all peer-checked:border-terracotta/50 peer-checked:bg-terracotta/15 peer-checked:text-oro-chiaro peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-terracotta">
-                    <span
-                      aria-hidden="true"
-                      className={selezionato ? 'visible' : 'invisible'}
-                    >
-                      ✓
-                    </span>
-                    <span className="min-w-0">{ETICHETTE_LIEVITO[tipo]}</span>
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {ricetta.famiglia !== 'diretto' && senzaFarinaRinfresco ? (
-          <div className="mt-3 rounded-xl border border-bordo bg-crema-scuro/60 px-2.5 py-2.5">
-            <p className="text-sm font-semibold text-inchiostro">Autolisi</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-inchiostro-tenue">
-              Tutta la farina è nella biga: non resta farina per l’autolisi.
-            </p>
-          </div>
-        ) : ricetta.autolisiOpzionale ? (
-          <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-bordo bg-crema-scuro/60 px-2.5 py-2.5 transition-colors hover:border-terracotta/40">
-            <input
-              type="checkbox"
-              checked={opzioni.autolisi}
-              onChange={(evento) =>
-                onCambiaOpzione('autolisi', evento.target.checked)
-              }
-              className="mt-0.5 h-4 w-4 shrink-0 accent-terracotta"
-            />
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-inchiostro">
-                Autolisi
-              </span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-inchiostro-tenue">
-                Facoltativa: la farina del rinfresco riposa con una parte
-                dell’acqua prima dell’impastamento finale. Il calcolatore
-                ripartisce l’acqua totale tra biga, autolisi e impasto finale.
-              </span>
-            </span>
-          </label>
-        ) : ricetta.famiglia === 'biga-autolisi' ? (
-          <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-bordo bg-crema-scuro/60 px-2.5 py-2.5">
-            <span
-              aria-hidden="true"
-              className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-[4px] bg-terracotta text-[10px] leading-none font-bold text-su-oro"
-            >
-              ✓
-            </span>
-            <span className="min-w-0">
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="text-sm font-semibold text-inchiostro">
-                  Autolisi
-                </span>
-                <span className="rounded-full border border-terracotta/30 bg-oro-velo px-2 py-0.5 text-[10px] font-semibold tracking-wide text-oro-chiaro uppercase">
-                  Inclusa
-                </span>
-              </span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-inchiostro-tenue">
-                Fa parte della ricetta e non si disattiva: il{' '}
-                {quotaFarinaAutolisi}% della farina riposa con il{' '}
-                {idratazioneAutolisi}% della sua acqua la sera prima
-                dell’impastamento finale. L’acqua è già compresa nel totale.
-              </span>
-            </span>
-          </div>
-        ) : null}
-
-        {richiestaBiga && pianoBiga ? (
-          <div className="mt-3 rounded-xl border border-bordo bg-crema-scuro/60 px-2.5 py-2.5">
-            <p className="text-sm font-semibold text-inchiostro">
-              Maturazione della biga
-            </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-inchiostro-tenue">
-              L’idratazione della biga la decide il motore, non è fissa: conta
-              l’attesa dall’impasto alla biga pronta e le due temperature.
-            </p>
-
-            <div className="mt-3 grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
-              <label className="block">
-                <span className="block text-xs font-semibold text-inchiostro-tenue">
-                  Preparo la biga il
-                </span>
-                <input
-                  type="datetime-local"
-                  value={inizioBiga}
-                  onChange={(evento) =>
-                    cambiaOrario('oraImpasto', evento.target.value)
-                  }
-                  className="mt-1 min-h-11 w-full rounded-xl border border-bordo bg-carta px-3 text-base font-semibold text-inchiostro tabular-nums"
-                />
-              </label>
-              <label className="block">
-                <span className="block text-xs font-semibold text-inchiostro-tenue">
-                  Biga pronta il
-                </span>
-                <input
-                  type="datetime-local"
-                  value={fineBiga}
-                  onChange={(evento) =>
-                    cambiaOrario('oraPronta', evento.target.value)
-                  }
-                  className="mt-1 min-h-11 w-full rounded-xl border border-bordo bg-carta px-3 text-base font-semibold text-inchiostro tabular-nums"
-                />
-              </label>
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
-              <CampoNumero
-                id="biga-temperatura"
-                label="Ambiente"
-                unit="°C"
-                value={testoNumero(richiestaBiga.temperatura)}
-                onChange={(valore) =>
-                  cambiaBiga({
-                    temperatura: leggìNumero(valore, richiestaBiga.temperatura),
-                  })
-                }
-                inputMode="decimal"
-                incremento={1}
-                minimo={LIMITI.temperaturaBiga.min}
-                massimo={LIMITI.temperaturaBiga.max}
-                decimali={1}
-              />
-              <CampoNumero
-                id="biga-frigo"
-                label="Frigorifero"
-                unit="°C"
-                value={testoNumero(richiestaBiga.temperaturaFrigo)}
-                onChange={(valore) =>
-                  cambiaBiga({
-                    temperaturaFrigo: leggìNumero(
-                      valore,
-                      richiestaBiga.temperaturaFrigo,
-                    ),
-                  })
-                }
-                inputMode="decimal"
-                incremento={1}
-                minimo={LIMITI.frigoBiga.min}
-                massimo={LIMITI.frigoBiga.max}
-                decimali={0}
-              />
-            </div>
-
-            {oreDagliOrari === null ? (
-              <p
-                role="alert"
-                className="mt-2.5 rounded-lg border border-errore/40 bg-errore/10 px-2.5 py-2 text-xs leading-relaxed font-semibold text-errore"
-              >
-                La biga non può essere pronta prima di essere preparata: sposta
-                avanti il giorno o l’ora di fine.
-              </p>
-            ) : (
-              <p className="mt-2.5 text-xs leading-relaxed text-inchiostro">
-                Attesa:{' '}
-                <strong>{testoNumero(Math.round(oreBiga * 10) / 10)} ore</strong>
-                {giornoPronta && oraPronta
-                  ? `, biga pronta ${giornoPronta} alle ${oraPronta}`
-                  : ''}
-                . Biga al <strong>{pianoBiga.idratazione}%</strong> di
-                idratazione, matura{' '}
-                <strong>{testoMaturazione(pianoBiga)}</strong>.
-              </p>
-            )}
-
-            {pianoBiga.consiglio ? (
-              <p className="mt-2 rounded-lg border border-terracotta/40 bg-terracotta/10 px-2.5 py-2 text-xs leading-relaxed text-inchiostro">
-                {pianoBiga.consiglio}
-              </p>
-            ) : null}
-
-          </div>
-        ) : null}
-      </div>
-      ) : null}
+      {ricetta.famiglia === 'diretto' ? configurazione : null}
 
       {mostraDosi && modalita === 'panetti' ? (
         <div className="mt-4 grid gap-4">
@@ -866,6 +914,8 @@ export function FormCalcolo({
         </div>
       ) : null}
 
+      {ricetta.famiglia !== 'diretto' ? configurazione : null}
+
       {ricetta.senzaPersonalizzazione === true || !mostraPersonalizzazione ? null : (
         <PannelloPersonalizzazione
           ricetta={ricetta}
@@ -893,7 +943,8 @@ export function FormCalcolo({
         <>
       <button
         type="submit"
-        className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl border border-terracotta/40 bg-transparent px-5 py-3.5 text-base font-bold text-oro-chiaro transition-all hover:-translate-y-px hover:border-terracotta/70 hover:bg-terracotta/10 active:translate-y-0"
+        disabled={bigaNonValida}
+        className="mt-5 disabled:cursor-not-allowed disabled:opacity-50 flex min-h-12 w-full items-center justify-center rounded-xl border border-terracotta/40 bg-transparent px-5 py-3.5 text-base font-bold text-oro-chiaro transition-all hover:-translate-y-px hover:border-terracotta/70 hover:bg-terracotta/10 active:translate-y-0"
       >
         Calcola impasto
       </button>

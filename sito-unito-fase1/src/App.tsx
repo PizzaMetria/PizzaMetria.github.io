@@ -26,7 +26,6 @@ import {
   apriNellApp,
 } from './lib/anteprima';
 import { scaricaBlob } from './lib/download';
-import type { ImmagineFoglio } from './export/foglio';
 import { rasterizzaSvg } from './lib/immagine';
 import type { DatiFoglio } from './export/foglio';
 import { nomeFoglio } from './export/nomeFile';
@@ -980,19 +979,6 @@ export default function App({
       await document.fonts.ready;
       const nome = nomeFoglio(tipo, formato);
 
-      // I grafici si fotografano per il PDF, dove restano utili; nel JPG non
-      // ci sono più.
-      const grafici: {
-        forza?: ImmagineFoglio | null;
-        attivita?: ImmagineFoglio | null;
-      } = {};
-      try {
-        if (forzaRef.current) grafici.forza = await rasterizzaSvg(forzaRef.current);
-        if (graficoRef.current) grafici.attivita = await rasterizzaSvg(graficoRef.current);
-      } catch {
-        // Senza immagini resta il disegno vettoriale della curva.
-      }
-
       // Il file si prepara e si mostra: niente download automatico, così chi
       // vuole solo guardarlo non se lo ritrova in Download.
       let blob: Blob;
@@ -1000,6 +986,12 @@ export default function App({
         // Il motore dei PDF arriva solo quando serve: all'apertura del sito
         // non pesa sul telefono.
         const { pdfBlob } = await import('./export/pdf');
+        // Ogni grafico può usare il ripiego vettoriale indipendentemente dall'altro.
+        const [forza, attivita] = await Promise.all([
+          forzaRef.current ? rasterizzaSvg(forzaRef.current).catch(() => null) : null,
+          graficoRef.current ? rasterizzaSvg(graficoRef.current).catch(() => null) : null,
+        ]);
+        const grafici = { forza, attivita };
         blob = pdfBlob({ ...dati, grafici }, ottimizzaSmartphone);
       } else {
         blob = await jpgBlob(dati, SCALA_JPG, ottimizzaSmartphone);

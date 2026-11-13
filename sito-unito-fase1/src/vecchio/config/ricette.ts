@@ -21,7 +21,7 @@ import { formattaGrammi } from '../lib/formato';
  * e PDF restano allineati senza duplicazioni.
  */
 export const TIP_AUTOLISI =
-  'L’autolisi è opzionale e la sua durata può essere adattata alla farina e al risultato desiderato: può essere preparata mezz’ora prima del rinfresco oppure, con farine più forti, anche la sera precedente, per smorzarne la tenacità e favorire l’estensibilità dell’impasto. Se attivata, il calcolatore ripartisce automaticamente l’acqua totale tra biga, autolisi e impastamento finale. La ripartizione riguarda la sola acqua del rinfresco tra autolisi e impastamento finale; l’acqua della biga resta invariata.';
+  'L’autolisi è facoltativa e si prepara prima dell’impasto finale. Se la attivi, il calcolatore ripartisce l’acqua del rinfresco tra autolisi e impasto finale.';
 
 export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   id: 'pizza-teglia-biga-85',
@@ -67,7 +67,9 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   fattoreLievitoSecco: 0.6,
   autolisiOpzionale: true,
   farinaEtichetta: 'Farina',
-  farinaDescrizione: '00 forte per biga e rinfresco',
+  farinaDescrizione: 'Farina forte, circa W 300–330 per la biga',
+  farinaPdf: 'W 300–330',
+  farinaScheda: 'Sia per la biga che per il rinfresco usa una farina forte, circa W 300–330.',
   oreBiga: 24,
   /**
    * Le 24 ore di casa, con la cucina a 27 °C: a questa temperatura l'attesa è
@@ -75,7 +77,8 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
    * frigorifero, come la biga classica delle 24 ore a 4 °C.
    */
   motoreBiga: {
-    temperatura: 27,
+    temperatura: 20,
+    tuttaInFrigo: true,
     ore: 24,
     temperaturaFrigo: 4,
     // Solo l'ora: il giorno lo aggiunge il modulo (datetime-local), così la
@@ -190,14 +193,13 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
     },
   ],
   note: [
-    'Farina di riferimento: 00 forte, adatta alle lunghe fermentazioni e all’alta idratazione. Il W lo calcola il sito: è più alto per la biga che per il rinfresco.',
+    'Sia per la biga che per il rinfresco usa una farina forte, circa W 300–330.',
     'Il malto diastasico è il 2% della farina della biga ed è già compreso nelle dosi.',
     'L’acqua del rinfresco è compresa nell’acqua totale: non è un’aggiunta separata.',
   ],
   noteEssenziali: [],
   senzaChiarimenti: true,
   tips: [
-    'La farina della biga deve essere più forte di quella del rinfresco: la biga matura a lungo, il rinfresco poche ore. La scheda indica i due W: per la biga scegline una di tipo 0 oppure 00, con il W che serve a reggere la lunga fermentazione senza collassare.',
     'Usando un prefermento freddo nei periodi più freddi, l’impasto potrebbe chiudersi a una temperatura inferiore a 20 °C, rallentando la lievitazione: in questo caso, utilizza acqua tiepida o calda nel rinfresco per riportare la temperatura finale del mix in target (22–23 °C).',
     TIP_AUTOLISI,
     'Cottura nel forno F1 P134H — La camera bassa e la vicinanza della resistenza superiore possono far bruciare la superficie prima che la cottura sia completata. Gli accorgimenti indicati per entrambe le cotture servono a limitare il calore dall’alto e ottenere una cottura più equilibrata. Per la seconda cottura nel F1, sfrutta il forno in caduta e limita le accensioni della resistenza superiore: la base è già precotta e deve soprattutto completarsi la cottura dei condimenti.',
@@ -339,10 +341,12 @@ export const RICETTA_CANOTTO: RicettaConfig = {
   /** L'autolisi è consigliata ma si può disattivare. */
   autolisiOpzionale: true,
   farinaEtichetta: 'Farina',
-  farinaDescrizione: '00 forte per biga e rinfresco',
+  farinaDescrizione: 'Farina forte, circa W 300–330 per la biga',
+  farinaScheda: 'Biga: farina forte, circa W 300–330.\nRinfresco: farina debole se vuoi l’impasto pronto in giornata, forte se prevedi altre 24 ore in frigo.',
   oreBiga: 24,
   motoreBiga: {
-    temperatura: 27,
+    temperatura: 20,
+    tuttaInFrigo: true,
     ore: 24,
     temperaturaFrigo: 4,
     // Solo l'ora: il giorno lo aggiunge il modulo (datetime-local), così la
@@ -364,11 +368,11 @@ export const RICETTA_CANOTTO: RicettaConfig = {
     { etichetta: 'Puntata', valore: 'Poco meno di 30 minuti' },
     {
       etichetta: 'Panetti',
-      valore: 'Circa 2 ore a temperatura ambiente, poi in frigorifero a 4 °C',
+      valore: 'A temperatura ambiente per la cottura in giornata, oppure altre 24 ore in frigo con farina forte nel rinfresco',
     },
     {
       etichetta: 'Prima della cottura',
-      valore: 'Circa 30 minuti fuori dal frigorifero, da adattare',
+      valore: 'Se refrigerati, circa 30–45 minuti fuori dal frigorifero',
     },
     {
       etichetta: 'Cottura pizza',
@@ -425,15 +429,24 @@ export const RICETTA_CANOTTO: RicettaConfig = {
       ],
     },
     {
-      titolo: 'Fuori dal frigorifero / Appretto',
+      titolo: 'Lievitazione dei panetti',
+      condizione: 'conFarinaRinfresco',
       paragrafi: [
-        'Sistema i panetti in contenitori coperti e lasciali lievitare a temperatura ambiente (circa 22 °C) finché non aumentano di volume, indicativamente fino a circa il raddoppio. Il tempo varia con la temperatura ambiente e la forza della farina. Quando i panetti sono ben sviluppati, trasferiscili in frigorifero a 4 °C.',
+        'Rinfresco con farina debole. Lascia lievitare i panetti a temperatura ambiente. Stendili e cuocili quando sono ben lievitati.',
+        'Rinfresco con farina forte. Metti i panetti in frigorifero a 4 °C per altre 24 ore prima di stenderli e cuocerli.',
+      ],
+    },
+    {
+      titolo: 'Lievitazione dei panetti',
+      condizione: 'senzaFarinaRinfresco',
+      paragrafi: [
+        'Lascia lievitare i panetti in contenitori coperti fino a quando sono ben lievitati.',
       ],
     },
     {
       titolo: 'Prepara i panetti e il forno',
       paragrafi: [
-        'Togli i panetti dal frigorifero 30–45 minuti prima della stesura. Se sono ancora freddi o tenaci, lasciali rilassare qualche minuto in più. Preriscalda il forno con l’anticipo necessario.',
+        'Se hai refrigerato i panetti, toglili dal frigorifero 30–45 minuti prima della stesura. Se sono ancora freddi o tenaci, lasciali rilassare qualche minuto in più. Preriscalda il forno con l’anticipo necessario.',
       ],
     },
     {
@@ -450,7 +463,6 @@ export const RICETTA_CANOTTO: RicettaConfig = {
     'La permanenza dei panetti in frigorifero va coordinata con l’orario di cottura e lo sviluppo dei panetti.',
   ],
   tips: [
-    'La farina della biga deve essere più forte di quella del rinfresco: la biga matura a lungo, il rinfresco poche ore. La scheda indica i due W: per la biga scegline una di tipo 0 oppure 00, con il W che serve a reggere la lunga fermentazione senza collassare.',
     'Usando un prefermento freddo nei periodi più freddi, l’impasto potrebbe chiudersi a una temperatura inferiore a 20 °C, rallentando la lievitazione: in questo caso, utilizza acqua tiepida o calda nel rinfresco per riportare la temperatura finale del mix in target (22–23 °C).',
     'Basi da farcire: per le basi imposta circa 350 °C sia di cielo sia di platea. Sistema al centro del disco di pizza lo stampo in alluminio capovolto, lasciando libero il bordo. Utilizza sempre uno stampo adatto alla temperatura di cottura. Cuoci per circa 2 minuti e 30 secondi e completa con circa 30 secondi a bocca di forno, controllando la colorazione.',
     TIP_AUTOLISI,

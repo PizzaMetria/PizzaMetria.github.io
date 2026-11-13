@@ -7,7 +7,7 @@ import {
   usaAutolisi,
 } from '../config/ricette';
 import type { RichiestaBiga } from '../types';
-import { oreAttesa, piano as pianoMotore } from './motore-biga';
+import { oreAttesa, piano as pianoMotore, stimaBigaMistaDaCampo } from './motore-biga';
 import type { Piano } from './motore-biga';
 import type {
   DimensioneProdotto,
@@ -108,10 +108,17 @@ function pianoDellaBiga(
   const richiesta = opzioni.biga ?? ricetta.motoreBiga;
   if (!richiesta) return null;
 
+  const oreTotali = oreDellaBiga(richiesta);
+  if (richiesta.oreAmbienteMisto !== undefined) {
+    const stima = stimaBigaMistaDaCampo(richiesta.temperatura, richiesta.temperaturaFrigo, oreTotali, richiesta.oreAmbienteMisto);
+    if (!stima.piano) throw new Error(stima.errore);
+    return stima.piano;
+  }
   return pianoMotore({
     temperatura: richiesta.temperatura,
     temperaturaFrigo: richiesta.temperaturaFrigo,
-    oreTotali: oreDellaBiga(richiesta),
+    oreTotali,
+    tuttaInFrigo: richiesta.tuttaInFrigo,
   });
 }
 

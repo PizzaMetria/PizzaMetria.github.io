@@ -143,6 +143,21 @@ describe('PDF vettoriale del foglio', () => {
     expect(con).not.toContain('(ATTIVITÀ DEL LIEVITO) Tj');
   });
 
+  it('mantiene i grafici anche quando la tabella di marcia occupa la pagina', () => {
+    const passi = Array.from({ length: 18 }, () => ({
+      quando: '', orario: { ora: '20:00', giorno: 'ven 13 nov' },
+      titolo: 'Prepara l’impasto', nota: 'Puntata a 20 °C per 4 ore.',
+    }));
+    const pdf = new TextDecoder('latin1').decode(creaPdf({ ...conGrafici, passi }, true));
+    expect(pdf).toContain('/Im1 Do');
+    expect(pdf).toContain('/Im2 Do');
+  });
+
+  it('disegna la forza anche quando manca il JPEG e conserva la curva', () => {
+    expect(testo).toContain('(Zona di forza richiesta e mix) Tj');
+    expect(testo).toContain('(ATTIVITÀ DEL LIEVITO) Tj');
+  });
+
   it('sotto i grafici mette didascalia e legenda dei colori', () => {
     const con = new TextDecoder('latin1').decode(creaPdf(conGrafici));
 
@@ -263,16 +278,23 @@ describe('misura del testo', () => {
 });
 
 describe('nome del file esportato', () => {
-  it('usa lo slug dell’impasto e la data', () => {
-    expect(nomeFoglio('verace', 'pdf', new Date(2026, 9, 29))).toBe(
-      'pizzametria-tonda-verace-2026-10-29.pdf',
+  it('usa lo slug dell’impasto, il giorno e l’ora', () => {
+    expect(nomeFoglio('verace', 'pdf', new Date(2026, 9, 29, 18, 40))).toBe(
+      'pizzametria-tonda-verace-2026-10-29-1840.pdf',
     );
-    expect(nomeFoglio('contemporanea', 'jpg', new Date(2026, 0, 5))).toBe(
-      'pizzametria-tonda-contemporanea-2026-01-05.jpg',
+    expect(nomeFoglio('contemporanea', 'jpg', new Date(2026, 0, 5, 7, 3))).toBe(
+      'pizzametria-tonda-contemporanea-2026-01-05-0703.jpg',
     );
-    expect(nomeFoglio('teglia', 'pdf', new Date(2026, 11, 31))).toBe(
-      'pizzametria-teglia-2026-12-31.pdf',
+    expect(nomeFoglio('teglia', 'pdf', new Date(2026, 11, 31, 23, 59))).toBe(
+      'pizzametria-teglia-2026-12-31-2359.pdf',
     );
+  });
+
+  it('non riusa lo stesso nome per due esportazioni dello stesso giorno', () => {
+    const mattina = nomeFoglio('verace', 'pdf', new Date(2026, 9, 29, 8, 15));
+    const sera = nomeFoglio('verace', 'pdf', new Date(2026, 9, 29, 21, 30));
+
+    expect(mattina).not.toBe(sera);
   });
 });
 

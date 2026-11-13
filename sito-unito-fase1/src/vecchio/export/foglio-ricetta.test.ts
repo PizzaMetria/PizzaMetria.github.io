@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RICETTA_TEGLIA_BIGA, tipsRicetta } from '../config/ricette';
+import { RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA, opzioniIniziali, tipsRicetta } from '../config/ricette';
 import { calcolaPerPanetti } from '../lib/calcolo';
 import { componiProcedimento } from '../lib/procedimento';
 import { creaVistaRicetta } from '../lib/vista';
@@ -14,6 +14,23 @@ const dati = datiFoglioRicetta(
 );
 
 describe('foglio della ricetta', () => {
+  it('stampa le due scelte del rinfresco della Contemporanea dopo la formatura', () => {
+    const ricetta = RICETTA_CANOTTO;
+    const risultato = calcolaPerPanetti(ricetta, 3, 280);
+    const foglio = datiFoglioRicetta(risultato, ricetta);
+    const indice = foglio.passi.findIndex((passo) => passo.titolo === 'Lievitazione dei panetti');
+    expect(indice).toBeGreaterThan(0);
+    expect(foglio.passi[indice - 1].titolo).toContain('formatura dei panetti');
+    expect(foglio.passi[indice].paragrafi).toEqual([
+      expect.stringContaining('Rinfresco con farina debole'),
+      expect.stringContaining('altre 24 ore'),
+    ]);
+    const pdf = new TextDecoder('latin1').decode(creaPdf(foglio));
+    expect(pdf).toContain('Lievitazione dei panetti');
+    expect(pdf).toContain('Rinfresco con farina debole');
+    expect(pdf).toContain('Rinfresco con farina forte');
+  });
+
   it('conserva le fasi, con dosi, percentuali e totali', () => {
     expect(dati.fasi).toHaveLength(risultato.fasi.length);
     expect(dati.fasi?.[0].voci.map((voce) => voce.grammi)).toEqual(
@@ -78,4 +95,30 @@ describe('foglio della ricetta', () => {
     expect(pdf).toMatch(/\/Count [2-9]/);
     expect(pdf).toContain('(Pagina 1 di ');
   });
+});
+
+it.each([RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA])('integra il piano misto nel PDF di $nome', (ricetta) => {
+  const opzioni = opzioniIniziali(ricetta);
+  const biga = {
+    temperatura: 21, temperaturaFrigo: 4, ore: 24, oreAmbienteMisto: '12',
+    oraImpasto: '2026-11-13T20:00', oraPronta: '2026-11-14T20:00',
+  };
+  const config = { ...ricetta, motoreBiga: biga };
+  const risultato = calcolaPerPanetti(config, 3, 280, { ...opzioni, biga });
+  expect(risultato.pianoBiga).toMatchObject({ oreAmbiente: 12, oreFrigo: 12 });
+  expect(risultato.pesoImpastoG).toBeCloseTo(840);
+  const foglio = datiFoglioRicetta(risultato, config);
+  expect(foglio.marcia?.map((passo) => passo.orario?.ora)).toEqual(['20:00', '08:00']);
+  expect(foglio.passi[0].titolo).toBe('Prepara la biga');
+  const pdf = new TextDecoder('latin1').decode(creaPdf(foglio));
+  expect(pdf).toContain('(PROCEDIMENTO) Tj');
+  const marcia = '(TABELLA DI MARCIA DELLA BIGA) Tj';
+  expect(pdf).toContain(marcia);
+  expect(pdf.indexOf(marcia)).toBeGreaterThan(pdf.indexOf('(Impasto totale) Tj'));
+  expect(pdf.indexOf(marcia)).toBeLessThan(pdf.indexOf('(PROCEDIMENTO) Tj'));
+  expect(pdf).not.toContain('poi 24 ore in frigorifero');
+  if (ricetta === RICETTA_TEGLIA_BIGA) {
+    const mobile = new TextDecoder('latin1').decode(creaPdf(foglio, true));
+    expect(mobile).toContain('(W 300–330) Tj');
+  }
 });

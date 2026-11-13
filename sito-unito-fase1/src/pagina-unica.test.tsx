@@ -160,7 +160,9 @@ describe('calcolatore della biga', () => {
   it('ha farina, orari e temperature, e le dosi della biga', () => {
     expect(html).toContain('Farina');
     // Giorno e ora, non solo l'ora: la biga può finire il giorno dopo.
-    expect(html).toContain('Biga pronta il');
+    expect(html).toContain('Quando ti serve la biga?');
+    expect(html).toContain('Quando la prepari?');
+    expect(html.indexOf('Quando la prepari?')).toBeLessThan(html.indexOf('Quando ti serve la biga?'));
     expect(html).toContain('datetime-local');
     expect(html).toContain('Temperatura ambiente');
     expect(html).toContain('Lievito');

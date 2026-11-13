@@ -352,7 +352,9 @@ function creaFasi(risultato: RisultatoCalcolo, ricetta: RicettaConfig): FaseVist
     id: fase.id,
     titolo: fase.titolo,
     nota: fase.nota,
-    avviso: fase.avviso,
+    avviso: fase.id === 'biga' && risultato.pianoBiga && ricetta.quotaFarinaBiga !== 1
+      ? `Chiusura a circa 25 °C. Maturazione: ${testoMaturazione(risultato.pianoBiga)}.`
+      : fase.avviso,
     voci: fase.voci.map((voce) => ({
       etichetta: voce.etichetta,
       valore: formattaGrammiIngrediente(voce.grammi, voce.tipo),
@@ -376,6 +378,13 @@ function baseMalto(ricetta: RicettaConfig): string {
   return ricetta.famiglia === 'diretto'
     ? 'della farina totale'
     : 'della farina della biga';
+}
+
+function farinaDelRisultato(ricetta: RicettaConfig, risultato: RisultatoCalcolo): string {
+  if (ricetta.farinaScheda) {
+    return (ricetta.quotaFarinaBiga ?? 1) >= 1 ? ricetta.farinaDescrizione : ricetta.farinaScheda;
+  }
+  return consiglioForzaRicetta(ricetta, risultato.pianoBiga)?.riga ?? ricetta.farinaDescrizione;
 }
 
 function creaParametri(
@@ -445,10 +454,9 @@ function creaParametri(
   }
 
   // Due farine, due forze: il W della biga non è quello del rinfresco.
-  const forza = consiglioForzaRicetta(ricetta, risultato.pianoBiga);
   parametri.push({
     etichetta: 'Farina',
-    valore: forza ? forza.riga : ricetta.farinaDescrizione,
+    valore: farinaDelRisultato(ricetta, risultato),
   });
 
   if (ricetta.idratazioneBiga !== undefined) {
@@ -580,11 +588,10 @@ function creaParametriTecnici(
   ricetta: RicettaConfig,
   risultato: RisultatoCalcolo,
 ): VoceVista[] {
-  const forza = consiglioForzaRicetta(ricetta, risultato.pianoBiga);
   const voci: VoceVista[] = [
     {
       etichetta: 'Farina',
-      valore: forza ? forza.riga : ricetta.farinaDescrizione,
+      valore: farinaDelRisultato(ricetta, risultato),
     },
   ];
 
@@ -669,11 +676,13 @@ function creaParametriTecnici(
   const miele = vocePercentuale(ricetta, risultato, 'Miele', 'miele');
   if (miele) voci.push(miele);
 
-  const sale = vocePercentuale(ricetta, risultato, 'Sale', 'sale');
-  if (sale) voci.push(sale);
+  if (!soloBiga) {
+    const sale = vocePercentuale(ricetta, risultato, 'Sale', 'sale');
+    if (sale) voci.push(sale);
 
-  const olio = vocePercentuale(ricetta, risultato, 'Olio extravergine', 'olio');
-  if (olio) voci.push(olio);
+    const olio = vocePercentuale(ricetta, risultato, 'Olio extravergine', 'olio');
+    if (olio) voci.push(olio);
+  }
 
   return voci;
 }
@@ -929,7 +938,7 @@ export function parametriScheda(ricetta: RicettaConfig): VoceVista[] {
     {
       etichetta: 'Farina',
       valore:
-        consiglioForzaRicetta(ricetta)?.riga ?? ricetta.farinaDescrizione,
+        ricetta.farinaScheda ?? consiglioForzaRicetta(ricetta)?.riga ?? ricetta.farinaDescrizione,
     },
   ];
 
@@ -960,7 +969,7 @@ export function parametriScheda(ricetta: RicettaConfig): VoceVista[] {
         }`
       : null;
 
-  if (conservazione) {
+  if (conservazione && !ricetta.farinaScheda) {
     parametri.push({
       etichetta: 'Conservazione biga',
       valore: conservazione,

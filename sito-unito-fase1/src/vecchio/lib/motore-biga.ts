@@ -255,6 +255,8 @@ export function pesoFrigo(temperatura: number, temperaturaFrigo: number): number
 }
 
 export interface RichiestaPiano {
+  /** Se non impostato, il motore sceglie in base alla finestra ambiente. */
+  tuttaInFrigo?: boolean;
   /** Temperatura dell'ambiente, in °C. */
   temperatura: number;
   /** Temperatura del frigorifero, in °C. */
@@ -340,9 +342,10 @@ export function piano(richiesta: RichiestaPiano): Piano {
   // temperature: va tutta in frigorifero, come la biga classica delle 24 ore a
   // 4 °C. Mettere in ambiente solo la parte che ci sta e il resto al freddo
   // darebbe due maturazioni in una, che non è la biga che si fa in casa.
-  const oreFrigo = troppoLungo ? Math.min(oreTotali, FRIGO.massimoOre) : 0;
-  const oreAmbiente = troppoLungo ? 0 : oreTotali;
-  const oltreTetto = troppoLungo && oreTotali > FRIGO.massimoOre + MARGINE_ORE;
+  const inFrigo = richiesta.tuttaInFrigo ?? troppoLungo;
+  const oreFrigo = inFrigo ? Math.min(oreTotali, FRIGO.massimoOre) : 0;
+  const oreAmbiente = inFrigo ? 0 : oreTotali;
+  const oltreTetto = inFrigo && oreTotali > FRIGO.massimoOre + MARGINE_ORE;
   const equivalenteFrigo = oreFrigo * peso;
   const equivalente = oreAmbiente + equivalenteFrigo;
 
@@ -375,14 +378,11 @@ export function piano(richiesta: RichiestaPiano): Piano {
     dentroFinestra,
   };
 
-  if (oltreModello(T)) {
+  if (richiesta.tuttaInFrigo !== true && oltreModello(T)) {
     return {
       ...base,
       stato: 'oltre-modello',
-      consiglio:
-        `Sopra i ${OLTRE_MODELLO} °C l’app passa a un programma in frigorifero ` +
-        `(a 35 °C: 24 ore a 4 °C) che non è stato ricostruito: qui il calcolo si ferma ` +
-        `a ${OLTRE_MODELLO} °C.`,
+      consiglio: `Sopra i ${OLTRE_MODELLO} °C scegli «24 ore in frigo» oppure abbassa la temperatura ambiente.`,
     };
   }
 
@@ -395,7 +395,15 @@ export function piano(richiesta: RichiestaPiano): Piano {
     };
   }
 
-  if (oreTotali < riquadro.min - MARGINE_ORE) {
+  if (richiesta.tuttaInFrigo === true && oreTotali < FRIGO.massimoOre - MARGINE_ORE) {
+    return {
+      ...base,
+      stato: 'troppo-corto',
+      consiglio: `Per il programma tutto in frigo imposta ${FRIGO.massimoOre} ore oppure disattiva questa scelta.`,
+    };
+  }
+
+  if (richiesta.tuttaInFrigo !== true && oreTotali < riquadro.min - MARGINE_ORE) {
     return {
       ...base,
       stato: 'troppo-corto',
@@ -403,6 +411,10 @@ export function piano(richiesta: RichiestaPiano): Piano {
         'Intervallo di tempo troppo breve: anticipa l’impasto oppure ritarda la ' +
         `fine della maturazione. ${riferimento(T, riquadro, idratazione)}`,
     };
+  }
+
+  if (troppoLungo && !inFrigo) {
+    return { ...base, stato: 'troppo-lungo', consiglio: accorcia(T, riquadro, oreTotali) };
   }
 
   if (oltreTetto) {
@@ -420,4 +432,62 @@ export function piano(richiesta: RichiestaPiano): Piano {
   // dice già «24 h a 4 °C» e l'idratazione, quindi non serve aggiungere la
   // finestra dell'ambiente, che a quel punto confonde soltanto.
   return { ...base, stato: 'ok' };
+}
+
+/** Stima per ambiente seguito da frigo, con il peso termico già usato dal motore. */
+export function stimaBigaMista(temperatura: number, frigo: number, oreAmbiente: number, oreFrigo: number) {
+  const ambiente = arrotondaTemperatura(temperatura);
+  const freddo = arrotondaTemperatura(frigo);
+  const formato = (ore: number) => numero(ore, 1);
+  if (ambiente < 8 || oltreModello(ambiente) || freddo < 0 || freddo > 12 || freddo >= ambiente) {
+    return { errore: 'Per il programma misto usa da 8 a 27 °C in ambiente e da 0 a 12 °C in frigo, con il frigo più freddo dell’ambiente.' } as const;
+  }
+  if (oreAmbiente < 1 / 60 || oreFrigo < 1 / 60 || oreFrigo > FRIGO.massimoOre) {
+    return { errore: `Imposta almeno un minuto per ciascuna fase e al massimo ${FRIGO.massimoOre} ore in frigo.` } as const;
+  }
+
+  const intervallo = finestraPro(ambiente);
+  if (oreAmbiente > intervallo.max) {
+    return { errore: `A ${formato(ambiente)} °C la fase in ambiente supera il limite del modello di ${formato(intervallo.max)} ore. Metti prima la biga in frigorifero.` } as const;
+  }
+
+  const equivalenti = oreAmbiente + oreFrigo * pesoFrigo(ambiente, freddo);
+  if (equivalenti < intervallo.min || equivalenti > intervallo.max) {
+    const modifica = equivalenti > intervallo.max ? 'Riduci le ore in ambiente.' : 'Aumenta le ore in ambiente o sposta più avanti la fine.';
+    return { errore: `Il programma vale ${formato(equivalenti)} ore equivalenti. A ${formato(ambiente)} °C la finestra è ${formato(intervallo.min)}–${formato(intervallo.max)} ore. ${modifica}` } as const;
+  }
+  const idratazione = idrPerDurata(ambiente, equivalenti);
+  const piano: Piano = {
+    temperatura: ambiente, temperaturaFrigo: freddo, oreTotali: oreAmbiente + oreFrigo,
+    oreAmbiente, oreFrigo, peso: pesoFrigo(ambiente, freddo),
+    equivalenteFrigo: equivalenti - oreAmbiente, equivalente: equivalenti,
+    idratazione, finestra: intervallo, dentroFinestra: true, stato: 'ok',
+  };
+  return { idratazione, piano } as const;
+}
+
+/** Centro delle durate in ambiente compatibili con il piano misto. */
+export function oreAmbienteSuggerite(temperatura: number, frigo: number, oreTotali: number): number | null {
+  const ambiente = arrotondaTemperatura(temperatura);
+  const peso = pesoFrigo(ambiente, frigo);
+  if (!Number.isFinite(oreTotali) || peso >= 1) return null;
+
+  const intervallo = finestraPro(ambiente);
+  const minimo = Math.max(1 / 60, oreTotali - FRIGO.massimoOre,
+    (intervallo.min - oreTotali * peso) / (1 - peso));
+  const massimo = Math.min(oreTotali - 1 / 60, intervallo.max,
+    (intervallo.max - oreTotali * peso) / (1 - peso));
+  const inizio = Math.ceil(minimo * 100);
+  const fine = Math.floor(massimo * 100);
+  if (fine < inizio) return null;
+
+  const centro = Math.round((inizio + fine) / 2) / 100;
+  return stimaBigaMista(temperatura, frigo, centro, oreTotali - centro).piano ? centro : null;
+}
+
+/** Legge le ore del campo misto e applica la stessa verifica in anteprima e nel calcolo. */
+export function stimaBigaMistaDaCampo(temperatura: number, frigo: number, totale: number, testo: string) {
+  const valore = testo.trim().replace(',', '.');
+  const ore = /^\d+(?:\.\d+)?$/.test(valore) ? Number(valore) : 0;
+  return stimaBigaMista(temperatura, frigo, ore, totale - ore);
 }

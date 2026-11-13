@@ -10,6 +10,8 @@ import {
   oltreModello,
   oreDecimali,
   pesoFrigo,
+  stimaBigaMista,
+  oreAmbienteSuggerite,
   piano,
 } from './motore-biga';
 
@@ -118,4 +120,47 @@ describe('motore della biga: il piano con il frigo', () => {
     expect(p.peso).toBeCloseTo(pesoFrigo(20, 4), 6);
     expect(p.peso).toBeLessThan(1);
   });
+});
+
+describe('scelta del frigorifero per la biga', () => {
+  it('mantiene il comportamento automatico per i programmi già salvati', () => {
+    expect(piano({ temperatura: 21, oreTotali: 24 })).toMatchObject({ oreFrigo: 24, stato: 'ok' });
+  });
+
+  it('rispetta la scelta esplicita di maturare in ambiente', () => {
+    expect(piano({ temperatura: 21, oreTotali: 24, tuttaInFrigo: false }))
+      .toMatchObject({ oreFrigo: 0, stato: 'troppo-lungo' });
+  });
+
+  it('applica il programma in frigo e segnala se gli orari vengono cambiati', () => {
+    const richiesta = { temperatura: 12, tuttaInFrigo: true, temperaturaFrigo: 4 };
+    expect(piano({ ...richiesta, oreTotali: 24 }))
+      .toMatchObject({ oreAmbiente: 0, oreFrigo: 24, idratazione: 55, stato: 'ok' });
+    expect(piano({ ...richiesta, oreTotali: 10 }).stato).toBe('troppo-corto');
+    expect(piano({ ...richiesta, oreTotali: 36 }).stato).toBe('troppo-lungo');
+  });
+});
+
+it('blocca 23,5 ore a 21 °C seguite da mezz’ora a 4 °C', () => {
+  expect(stimaBigaMista(21, 4, 23.5, 0.5).errore).toContain('supera');
+});
+
+it('stima l’idratazione soltanto per una maturazione mista compatibile', () => {
+  expect(stimaBigaMista(21, 4, 12, 12).idratazione).toBeGreaterThanOrEqual(40);
+  expect(stimaBigaMista(21, 4, 1, 1).errore).toContain('finestra');
+  expect(stimaBigaMista(21, 4, 12, 25).errore).toContain('24 ore');
+});
+
+it('propone una durata centrale compatibile modificabile in entrambe le direzioni', () => {
+  const centro = oreAmbienteSuggerite(21, 4, 24);
+  expect(centro).not.toBeNull();
+  for (const ore of [centro! - 0.5, centro!, centro! + 0.5]) {
+    expect(stimaBigaMista(21, 4, ore, 24 - ore).piano).toBeDefined();
+  }
+  expect(oreAmbienteSuggerite(21, 4, 1)).toBeNull();
+});
+
+it('permette le 24 ore in frigo anche con 29 °C in ambiente', () => {
+  expect(piano({ temperatura: 29, temperaturaFrigo: 4, oreTotali: 24, tuttaInFrigo: true }))
+    .toMatchObject({ stato: 'ok', oreAmbiente: 0, oreFrigo: 24, idratazione: 55 });
 });

@@ -132,3 +132,15 @@ export function formattaDataFile(data: Date): string {
   const giorno = String(data.getDate()).padStart(2, '0');
   return `${anno}-${mese}-${giorno}`;
 }
+
+/**
+ * Data e ora per il nome file: AAAA-MM-GG-HHmm.
+ * Serve a distinguere due esportazioni dello stesso giorno, che altrimenti
+ * arriverebbero nel telefono con lo stesso nome (e il browser le rinominerebbe
+ * con «(1)», «(2)»).
+ */
+export function formattaDataFileConOra(data: Date): string {
+  const ore = String(data.getHours()).padStart(2, '0');
+  const minuti = String(data.getMinutes()).padStart(2, '0');
+  return `${formattaDataFile(data)}-${ore}${minuti}`;
+}

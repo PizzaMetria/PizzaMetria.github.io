@@ -1,3 +1,5 @@
+import { orarioFase } from '../../lib/orari';
+import { completaCoppia, spostaOrarioBiga } from '../lib/orari';
 import type { DatiFoglio, FaseFoglio, PassoFoglio } from '../../export/foglio';
 import type { RicettaConfig, RisultatoCalcolo } from '../types';
 import { tipsRicetta } from '../config/ricette';
@@ -5,7 +7,7 @@ import { componiProcedimento } from '../lib/procedimento';
 import { creaVistaRicetta, tipoImpasto } from '../lib/vista';
 import {
   formattaDataOra,
-  formattaGrammiIngrediente,
+  formattaNumero,
   formattaPercentuale,
 } from '../lib/formato';
 
@@ -69,19 +71,25 @@ export function datiFoglioRicetta(
     }),
   );
 
-  const note: string[] = [];
-  if (risultato.acquaFinaleG !== undefined) {
-    note.push(
-      `Acqua dell’ultima fase: ${formattaGrammiIngrediente(
-        risultato.acquaFinaleG,
-        'acqua',
-      )}, già compresa nel totale di ${formattaGrammiIngrediente(
-        risultato.acquaTotaleG,
-        'acqua',
-      )}.`,
-    );
+  const piano = risultato.pianoBiga;
+  const richiesta = ricetta.motoreBiga;
+  const marcia: PassoFoglio[] = [];
+  if (piano && richiesta?.oreAmbienteMisto !== undefined && richiesta.oraImpasto && richiesta.oraPronta) {
+    const { inizio, fine } = completaCoppia(richiesta.oraImpasto, richiesta.oraPronta, data);
+    const ingressoFrigo = spostaOrarioBiga(inizio, piano.oreAmbiente);
+    for (const fase of [
+      { da: inizio, a: ingressoFrigo, titolo: 'Biga a temperatura ambiente', ore: piano.oreAmbiente, temperatura: piano.temperatura },
+      { da: ingressoFrigo, a: fine, titolo: 'Biga in frigorifero', ore: piano.oreFrigo, temperatura: piano.temperaturaFrigo },
+    ]) {
+      const fineFase = orarioFase(new Date(fase.a));
+      marcia.push({
+        quando: '', orario: orarioFase(new Date(fase.da)), titolo: fase.titolo,
+        nota: `Fino a ${fineFase.giorno} alle ${fineFase.ora} · ${formattaNumero(fase.ore, 2)} h a ${formattaNumero(fase.temperatura)} °C`,
+      });
+    }
   }
-  note.push(...tipsRicetta(ricetta, risultato));
+
+  const note = tipsRicetta(ricetta, risultato);
 
   return {
     titolo: vista.nomeRicetta,
@@ -102,11 +110,13 @@ export function datiFoglioRicetta(
       voci: gruppo.voci.map((voce) => ({
         etichetta: voce.etichetta,
         valore: voce.valore,
+        valorePdf: voce.etichetta === 'Farina' ? ricetta.farinaPdf : undefined,
       })),
     })),
     totaleG: risultato.pesoImpastoG,
     totaleNota: vista.resa,
     passi,
+    marcia: marcia.length > 0 ? marcia : undefined,
     note,
     noteTitolo: 'CONSIGLI',
     occhiello,

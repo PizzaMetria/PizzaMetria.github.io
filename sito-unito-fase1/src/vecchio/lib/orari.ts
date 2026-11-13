@@ -15,6 +15,14 @@ export function testoDataLocale(data: Date): string {
   )}T${due(data.getHours())}:${due(data.getMinutes())}`;
 }
 
+/** Sposta un orario locale del numero di ore effettive indicato. */
+export function spostaOrarioBiga(inizio: string, ore: number): string {
+  const data = new Date(inizio);
+  return Number.isFinite(data.getTime())
+    ? testoDataLocale(new Date(data.getTime() + ore * 3_600_000))
+    : '';
+}
+
 /** Vero se la stringa porta anche il giorno: «2026-11-04T08:00». */
 export function haGiorno(valore: string): boolean {
   return /^\d{4}-\d{2}-\d{2}T/.test(valore);

@@ -342,3 +342,8 @@ html[data-tema="scuro"] {
   background: var(--color-carta);
   box-shadow: var(--alone-2);
 }
+
+/* Pesi più leggeri per i testi secondari delle schede con biga. */
+.scheda-biga :is(dt, dd, label, p, li, span, strong):is(.font-bold, .font-semibold) {
+  font-weight: 500;
+}

@@ -7,7 +7,11 @@ const SLUG: Record<TipoImpasto, string> = {
   teglia: 'teglia',
 };
 
-/** `pizzametria-tonda-verace-2026-10-29.pdf`, con la data del giorno. */
+/**
+ * `pizzametria-tonda-verace-2026-10-29-1840.pdf`: l'impasto, il giorno e
+ * l'ora della creazione. L'ora serve perché due file dello stesso giorno
+ * avrebbero lo stesso nome e il telefono li rinominerebbe con «(1)».
+ */
 export function nomeFoglio(
   tipo: TipoImpasto,
   formato: 'jpg' | 'pdf',
@@ -15,6 +19,7 @@ export function nomeFoglio(
 ): string {
   const due = (numero: number): string => String(numero).padStart(2, '0');
   const giorno = `${data.getFullYear()}-${due(data.getMonth() + 1)}-${due(data.getDate())}`;
+  const ora = `${due(data.getHours())}${due(data.getMinutes())}`;
 
-  return `pizzametria-${SLUG[tipo]}-${giorno}.${formato}`;
+  return `pizzametria-${SLUG[tipo]}-${giorno}-${ora}.${formato}`;
 }

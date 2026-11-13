@@ -37,19 +37,31 @@ export function SchedaRicetta({ ricetta, incorporata = false }: Props) {
       </div>
 
       <dl className="mt-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
-        {parametri.map((parametro) => (
-          <div
-            key={parametro.etichetta}
-            className="flex min-w-0 items-baseline justify-between gap-2 rounded-xl border border-bordo/60 bg-crema-scuro/60 px-3 py-2 min-[380px]:block"
-          >
-            <dt className="text-[10px] leading-tight font-semibold tracking-wider text-inchiostro-tenue uppercase">
-              {parametro.etichetta}
-            </dt>
-            <dd className="mt-0 min-w-0 text-right text-sm font-bold break-words text-inchiostro tabular-nums min-[380px]:mt-1 min-[380px]:text-left">
-              {parametro.valore}
-            </dd>
-          </div>
-        ))}
+        {parametri.map((parametro) => {
+          const consiglioFarina = ricetta.famiglia !== 'diretto' && ricetta.farinaScheda && parametro.etichetta === 'Farina';
+          return (
+            <div
+              key={parametro.etichetta}
+              className={`min-w-0 rounded-xl border border-bordo/60 bg-crema-scuro/60 px-3 py-2 ${consiglioFarina ? 'col-span-full' : 'flex items-baseline justify-between gap-2 min-[380px]:block'}`}
+            >
+              <dt className="text-[10px] leading-tight font-semibold tracking-wider text-inchiostro-tenue uppercase">
+                {parametro.etichetta}
+              </dt>
+              <dd className={`min-w-0 break-words text-sm text-inchiostro ${consiglioFarina ? 'mt-1 font-normal' : 'text-right font-bold tabular-nums min-[380px]:mt-1 min-[380px]:text-left'}`}>
+                {consiglioFarina ? parametro.valore.split('\n').map((riga) => {
+                  const separatore = riga.indexOf(':');
+                if (separatore === -1) return <span key={riga} className="block">{riga}</span>;
+                  return (
+                    <span key={riga} className="block">
+                      <span className="font-medium">{riga.slice(0, separatore + 1)}</span>
+                      {riga.slice(separatore + 1)}
+                    </span>
+                  );
+                }) : parametro.valore}
+              </dd>
+            </div>
+          );
+        })}
       </dl>
 
       <p className="mt-4 border-l-2 border-terracotta/60 pl-3 text-xs leading-relaxed text-inchiostro-tenue">

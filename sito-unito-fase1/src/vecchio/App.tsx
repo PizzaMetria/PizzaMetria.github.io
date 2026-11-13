@@ -725,7 +725,7 @@ export default function App({
   ) : null;
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className={`flex min-h-dvh flex-col ${ricetta.famiglia !== 'diretto' && ricetta.farinaScheda ? 'scheda-biga' : ''}`}>
       <a
         href="#calcolatore"
         onClick={

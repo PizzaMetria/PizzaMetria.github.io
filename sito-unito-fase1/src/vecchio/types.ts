@@ -23,6 +23,9 @@ export type TipoIngrediente =
 
 /** Attesa e temperature con cui il motore calcola la biga. */
 export interface RichiestaBiga {
+  /** Se non impostato, il motore sceglie in base alla finestra ambiente. */
+  tuttaInFrigo?: boolean;
+  oreAmbienteMisto?: string;
   /** Temperatura dell'ambiente, in °C. */
   temperatura: number;
   /**
@@ -117,6 +120,7 @@ export interface PassoProcedimento {
     | 'autolisi'
     | 'senzaAutolisi'
     | 'senzaFarinaRinfresco'
+    | 'conFarinaRinfresco'
     | `prodotto-${string}`;
   /**
    * Condizioni alternative: il passo compare quando almeno una è vera, come
@@ -191,6 +195,7 @@ export interface RicettaConfig {
   sottotitolo?: string;
   /** Dicitura della farina nella scheda, quando differisce da quella degli export. */
   farinaScheda?: string;
+  farinaPdf?: string;
   /** Nota della scheda quando il testo richiesto è più breve di quello del calcolo. */
   notaScheda?: string;
   famiglia: FamigliaRicetta;

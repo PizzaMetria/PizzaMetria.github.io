@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { creaVistaRicetta } from './vista';
 import { creaNomeFile } from './nomeFile';
+import { stimaBigaMista } from './motore-biga';
 import { calcolaBigaSola, oreAttesa, oreTraDate } from './biga-sola';
 
 const base = {
@@ -87,7 +88,17 @@ describe('calcolo della sola biga', () => {
   });
 
   it('nomina il file come le altre ricette', () => {
-    const nome = creaNomeFile(risultato, config, new Date(2026, 10, 2), 'pdf');
-    expect(nome).toBe('biga-1kg-farina-2026-11-02.pdf');
+    const nome = creaNomeFile(risultato, config, new Date(2026, 10, 2, 9, 5), 'pdf');
+    expect(nome).toBe('biga-1kg-farina-2026-11-02-0905.pdf');
   });
+});
+
+it('usa lo stesso piano misto per la scheda e per le dosi', () => {
+  const stima = stimaBigaMista(21, 4, 12, 12);
+  expect(stima.piano).toBeDefined();
+  const { risultato, config } = calcolaBigaSola(base, stima.piano);
+  expect(risultato.pianoBiga).toMatchObject({ oreAmbiente: 12, oreFrigo: 12 });
+  expect(config.idratazioneBiga).toBe(stima.idratazione! / 100);
+  expect(risultato.ingredienti.find((voce) => voce.chiave === 'acqua-biga')?.grammi)
+    .toBe(stima.idratazione! * 10);
 });

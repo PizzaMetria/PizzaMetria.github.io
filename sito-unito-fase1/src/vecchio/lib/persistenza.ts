@@ -344,6 +344,8 @@ function sanificaBiga(
       LIMITI.frigoBiga.min,
       LIMITI.frigoBiga.max,
     ),
+    ...(typeof dati.tuttaInFrigo === 'boolean' ? { tuttaInFrigo: dati.tuttaInFrigo } : {}),
+    ...(typeof dati.oreAmbienteMisto === 'string' ? { oreAmbienteMisto: dati.oreAmbienteMisto } : {}),
     ...(oraImpasto ? { oraImpasto } : {}),
     ...(oraPronta ? { oraPronta } : {}),
   };

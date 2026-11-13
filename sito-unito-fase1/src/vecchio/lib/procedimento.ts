@@ -224,6 +224,7 @@ export function componiProcedimento(
   const condizioni: Record<string, boolean> = {
     autolisi,
     senzaAutolisi: !autolisi && conFarinaRinfresco,
+    conFarinaRinfresco,
     senzaFarinaRinfresco: !conFarinaRinfresco,
   };
 

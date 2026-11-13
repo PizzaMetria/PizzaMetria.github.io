@@ -107,17 +107,15 @@ describe('procedimento della Canotto', () => {
     expect(testo).not.toContain('0 porzioni');
   });
 
-  it('descrive l’appretto sullo sviluppo dei panetti, senza timer di frigorifero', () => {
+  it('distingue l’appretto in giornata dal riposo in frigorifero', () => {
     const risultato = calcolaPerFarina(RICETTA_CANOTTO, 1);
     const testo = testoProcedimento(
       componiProcedimento(RICETTA_CANOTTO, risultato),
     ).toLowerCase();
 
-    expect(testo).toContain('finché non aumentano di volume');
-    expect(testo).toContain('indicativamente fino a circa il raddoppio');
-    expect(testo).toContain('trasferiscili in frigorifero a 4 °c');
+    expect(testo).toContain('quando sono ben lievitati');
+    expect(testo).toContain('frigorifero a 4 °c per altre 24 ore');
     expect(testo).not.toContain('12 ore');
-    expect(testo).not.toContain('24 ore in frigorifero');
     expect(testo).not.toContain('48 ore');
   });
 });
@@ -135,14 +133,14 @@ describe('uniformità dei testi tra le ricette', () => {
     expect(JSON.stringify(autolisiTeglia)).not.toMatch(/frigorifero|tutta la notte/i);
   });
 
-  it('usa lo stesso titolo per l’impastamento finale e per l’appretto', () => {
+  it('distingue la lievitazione dei panetti della Contemporanea', () => {
     const titoliTeglia = RICETTA_TEGLIA_BIGA.procedimento.map((passo) => passo.titolo);
     const titoliCanotto = RICETTA_CANOTTO.procedimento.map((passo) => passo.titolo);
 
     expect(titoliTeglia).toContain('Completa l’impasto (rinfresco)');
     expect(titoliCanotto).toContain('Completa l’impasto (rinfresco)');
     expect(titoliTeglia).toContain('Fuori dal frigorifero / Appretto');
-    expect(titoliCanotto).toContain('Fuori dal frigorifero / Appretto');
+    expect(titoliCanotto).toContain('Lievitazione dei panetti');
   });
 });
 
@@ -370,7 +368,7 @@ describe('testi pubblici delle ricette', () => {
     expect(testo).toContain(
       'La sera prima, fino al momento dell’impastamento finale',
     );
-    expect(testo).toContain('trasferiscili in frigorifero a 4 °C');
+    expect(testo).toContain('in frigorifero a 4 °C per altre 24 ore');
     expect(testo).not.toContain('La sera prima, in frigorifero');
     expect(testo).not.toContain('temperatura ambiente; durata');
   });
@@ -547,7 +545,7 @@ describe('correzioni della versione 5.2', () => {
     const testo = testoProcedimento(passiCanotto(true));
 
     expect(testo).toContain(
-      'Togli i panetti dal frigorifero 30–45 minuti prima della stesura',
+      'Se hai refrigerato i panetti, toglili dal frigorifero 30–45 minuti prima della stesura',
     );
     expect(testo).toContain('Preriscalda il forno con l’anticipo necessario.');
   });
