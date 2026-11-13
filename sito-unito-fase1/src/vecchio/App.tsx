@@ -65,7 +65,6 @@ import { SCALA_JPG, jpgBlob } from '../export/foglio';
 import { datiFoglioRicetta } from './export/foglio-ricetta';
 import {
   anteprimaNellApp,
-  anteprimaPdfComeImmagine,
   apriNellApp,
 } from '../lib/anteprima';
 import { scaricaBlob } from './lib/download';
@@ -144,7 +143,6 @@ export default function App({
     nome: string;
     url: string;
     blob: Blob;
-    immagine?: string;
   } | null>(null);
 
   /** Scarica il file in anteprima: è l'unico punto che salva davvero. */
@@ -155,7 +153,6 @@ export default function App({
   function chiudiAnteprima() {
     if (anteprima) {
       URL.revokeObjectURL(anteprima.url);
-      if (anteprima.immagine) URL.revokeObjectURL(anteprima.immagine);
     }
     setAnteprima(null);
   }
@@ -589,13 +586,6 @@ export default function App({
         blob = await jpgBlob(dati, SCALA_JPG, smartphone);
       }
 
-      // Su Android il PDF non si vede dentro la pagina: l'anteprima diventa
-      // l'immagine dello stesso foglio, «Salva» conserva il PDF.
-      const immagine =
-        tipo === 'pdf' && anteprimaPdfComeImmagine()
-          ? URL.createObjectURL(await jpgBlob(dati, SCALA_JPG, smartphone))
-          : undefined;
-
       if (anteprimaNellApp()) {
         apriNellApp(blob, nomeFile);
         return;
@@ -603,14 +593,12 @@ export default function App({
 
       if (anteprima) {
         URL.revokeObjectURL(anteprima.url);
-        if (anteprima.immagine) URL.revokeObjectURL(anteprima.immagine);
       }
       setAnteprima({
         tipo,
         nome: nomeFile,
         blob,
         url: URL.createObjectURL(blob),
-        immagine,
       });
     } catch (errore) {
       console.error(`Errore durante l’esportazione ${tipo}`, errore);
@@ -632,7 +620,7 @@ export default function App({
       onCambia={cambiaRicetta}
     />
   );
-  const schedaRicetta = <SchedaRicetta ricetta={ricetta} />;
+  const schedaRicetta = <SchedaRicetta ricetta={ricetta} incorporata={senzaTestata} />;
   // Sul desktop il modulo è un blocco solo; nel percorso guidato si mostra un
   // pezzo per pagina (dosi, poi personalizzazione).
   const moduloCalcolo = (sezione: 'tutto' | 'dosi' | 'personalizza') => (
@@ -658,6 +646,7 @@ export default function App({
     risultato && risultato.ricettaId === ricetta.id ? (
       <PannelloRisultato
         risultato={risultato}
+        titolo={senzaTestata ? "Dosi e resa" : undefined}
         ricetta={risultato.config}
         daAggiornare={daAggiornare}
         esportazione={esportazione}

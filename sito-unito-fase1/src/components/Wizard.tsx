@@ -44,17 +44,18 @@ export function Navigazione({
 }
 
 interface WizardProps {
+  bloccaAvanti?: boolean;
   passi: readonly Passo[];
   attivo: number;
   onCambia: (indice: number) => void;
 }
 
 /** Un passo per volta, con la navigazione in fondo. */
-export function Wizard({ passi, attivo, onCambia }: WizardProps) {
+export function Wizard({ passi, attivo, onCambia, bloccaAvanti }: WizardProps) {
   return (
     <div className="space-y-4">
       {passi[attivo]?.contenuto}
-      <Navigazione passi={passi.map((passo) => passo.nome)} attivo={attivo} onCambia={onCambia} />
+      <Navigazione passi={passi.map((passo) => passo.nome)} attivo={attivo} onCambia={onCambia} bloccaAvanti={bloccaAvanti} />
     </div>
   );
 }

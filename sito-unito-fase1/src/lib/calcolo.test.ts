@@ -265,13 +265,14 @@ describe('forza del mix', () => {
       }),
     );
 
-    expect(risultato.forzaConsigliata).toBe(302);
+    expect(risultato.forzaConsigliata).toBe(324);
     expect(risultato.wEquivalente).toBeCloseTo(250, 6);
     expect(risultato.wEfficace).toBeCloseTo(200, 6);
-    expect(risultato.forzaMinima).toBe(257);
-    expect(risultato.forzaMassima).toBe(378);
+    expect(risultato.forzaMinima).toBe(275);
+    expect(risultato.forzaMassima).toBe(405);
     expect(risultato.giudizioForza).toBe('distante');
-    expect(risultato.oreMassime).toBeCloseTo(6.43, 1);
+    // Inversa della legge logaritmica: exp((200 − 119) / 64) = 3,5 ore.
+    expect(risultato.oreMassime).toBeCloseTo(3.55, 1);
     expect(risultato.suggerimentoForza).toContain('Sotto la fascia tollerata');
     expect(risultato.avvisi.length).toBeGreaterThan(0);
   });
@@ -396,7 +397,7 @@ describe('calcolo completo', () => {
       }),
     );
 
-    expect(risultato.forzaConsigliata).toBe(302);
+    expect(risultato.forzaConsigliata).toBe(324);
     expect(risultato.wEquivalente).toBeCloseTo(300, 6);
     expect(risultato.giudizioForza).toBe('ottima');
   });
@@ -453,35 +454,38 @@ describe('calcolo completo', () => {
   });
 });
 
-describe('gli ingredienti non spostano il W consigliato', () => {
-  // Misurato sul riferimento: a parità di orari il W resta 258 al 62% come al 75%,
-  // 258 con olio a 0, 2 e 4%, e 258 con 20, 40 o 60 g/l di sale. La vecchia
-  // correzione (idratazione, olio, sale, malto) alzava il W del 12% sulla
-  // contemporanea e del 21% sulla teglia: era una scelta, non una misura.
-  it('stessa maturazione, stesso W a qualunque idratazione', () => {
-    expect(calcola(inputBase()).forzaConsigliata).toBe(302);
-    expect(calcola(inputBase({ idratazione: 70 })).forzaConsigliata).toBe(302);
-    expect(calcola(inputBase({ idratazione: 55 })).forzaConsigliata).toBe(302);
-    expect(calcola(inputBase({ idratazione: 100 })).forzaConsigliata).toBe(302);
+describe('il W consigliato segue gli ingredienti', () => {
+  // Per un periodo il W è stato indipendente da acqua, sale e olio: su un solo
+  // riferimento non si vedeva effetto. Le schede dei molini dicono il
+  // contrario — Rachello chiede 300–350 oltre il 75% e 260–320 al 62%, il
+  // disciplinare romano dà 260–350 per impasti al 70–80% — e non perché
+  // l'acqua acceleri il lievito (Le-Bail 2010: fra 56 e 60% la cinetica non si
+  // muove), ma perché più acqua chiede più tenuta.
+  it('più acqua, più forza richiesta: +2,4 W per punto sopra il 62%', () => {
+    expect(calcola(inputBase()).forzaConsigliata).toBe(324);
+    expect(calcola(inputBase({ idratazione: 70 })).forzaConsigliata).toBe(344);
+    expect(calcola(inputBase({ idratazione: 55 })).forzaConsigliata).toBe(308);
+    expect(calcola(inputBase({ idratazione: 100 })).forzaConsigliata).toBe(416);
   });
 
-  it('stesso W con olio, malto e sale diversi', () => {
-    expect(calcola(inputBase({ olio: 5 })).forzaConsigliata).toBe(302);
-    expect(calcola(inputBase({ malto: 3 })).forzaConsigliata).toBe(302);
-    expect(calcola(inputBase({ sale: 4 })).forzaConsigliata).toBe(302);
+  it('il sale alza la forza richiesta, l’olio la abbassa, il malto non entra', () => {
+    expect(calcola(inputBase({ sale: 4 })).forzaConsigliata).toBe(327);
+    expect(calcola(inputBase({ olio: 5 })).forzaConsigliata).toBe(319);
+    expect(calcola(inputBase({ malto: 3 })).forzaConsigliata).toBe(324);
   });
 
-  it('la zona non si muove: un mix da 300 resta dentro a ogni idratazione', () => {
+  it('un mix da 300 resta adatto al 45% e al 62%, non al 100%', () => {
     const farine = [
       { quota: 100, w: 300 },
       { quota: 0, w: null },
       { quota: 0, w: null },
     ];
-    for (const idratazione of [45, 62, 100]) {
+    for (const idratazione of [45, 62]) {
       const risultato = calcola(inputBase({ farine, idratazione }));
-      expect(risultato.forzaConsigliata, String(idratazione)).toBe(302);
       expect(risultato.giudizioForza, String(idratazione)).toBe('ottima');
     }
+    // Al 100% la legge chiede W 416: un mix da 300 è fuori fascia, e va detto.
+    expect(calcola(inputBase({ farine, idratazione: 100 })).giudizioForza).toBe('distante');
   });
 });
 

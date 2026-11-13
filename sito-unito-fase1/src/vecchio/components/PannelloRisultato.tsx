@@ -14,6 +14,7 @@ interface Props {
   risultato: RisultatoCalcolo;
   ricetta: RicettaConfig;
   daAggiornare: boolean;
+  titolo?: string;
   esportazione: TipoEsportazione | null;
   messaggio: MessaggioEsportazione | null;
   ottimizzaSmartphone: boolean;
@@ -24,7 +25,6 @@ interface Props {
     tipo: TipoEsportazione;
     nome: string;
     url: string;
-    immagine?: string;
   } | null;
   onSalvaAnteprima: () => void;
   onChiudiAnteprima: () => void;
@@ -34,6 +34,7 @@ export function PannelloRisultato({
   risultato,
   ricetta,
   daAggiornare,
+  titolo,
   esportazione,
   messaggio,
   ottimizzaSmartphone,
@@ -61,14 +62,11 @@ export function PannelloRisultato({
     >
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold tracking-[0.2em] text-terracotta uppercase">
-            Risultato
-          </p>
           <h2
             id="risultato-titolo"
             className="mt-1 font-serif text-2xl leading-snug font-bold tracking-tight text-inchiostro"
           >
-            {vista.nomeRicetta}
+            {titolo ?? vista.nomeRicetta}
           </h2>
           <p className="mt-1 text-sm text-inchiostro-tenue">{vista.resa}</p>
         </div>

@@ -1,3 +1,4 @@
+import { consiglioForzaRicetta } from './forza-biga';
 import type {
   FaseCalcolata,
   PianoBiga,
@@ -443,9 +444,11 @@ function creaParametri(
     });
   }
 
+  // Due farine, due forze: il W della biga non è quello del rinfresco.
+  const forza = consiglioForzaRicetta(ricetta, risultato.pianoBiga);
   parametri.push({
     etichetta: 'Farina',
-    valore: ricetta.farinaDescrizione,
+    valore: forza ? forza.riga : ricetta.farinaDescrizione,
   });
 
   if (ricetta.idratazioneBiga !== undefined) {
@@ -577,8 +580,12 @@ function creaParametriTecnici(
   ricetta: RicettaConfig,
   risultato: RisultatoCalcolo,
 ): VoceVista[] {
+  const forza = consiglioForzaRicetta(ricetta, risultato.pianoBiga);
   const voci: VoceVista[] = [
-    { etichetta: 'Farina', valore: ricetta.farinaDescrizione },
+    {
+      etichetta: 'Farina',
+      valore: forza ? forza.riga : ricetta.farinaDescrizione,
+    },
   ];
 
   // Con la farina tutta nella biga (scheda della sola biga) la riga non dice
@@ -921,7 +928,8 @@ export function parametriScheda(ricetta: RicettaConfig): VoceVista[] {
     },
     {
       etichetta: 'Farina',
-      valore: ricetta.farinaDescrizione,
+      valore:
+        consiglioForzaRicetta(ricetta)?.riga ?? ricetta.farinaDescrizione,
     },
   ];
 

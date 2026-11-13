@@ -107,6 +107,7 @@ const PASSO = 1 / 60;
 const CAMPIONI = 5;
 
 function fasiDi(tempi: ParametriTempo, ingressi: IngressiInerzia): Fase[] {
+  // In teglia il pezzo è la teglia intera: non ci sono panetti separati.
   const massa = (forma: FormaMassa) =>
     forma === 'panetto' ? ingressi.pesoPezzoG : ingressi.pesoImpastoG;
   const fasi: Fase[] = [];

@@ -169,8 +169,9 @@ describe('estremi sotto controllo', () => {
 describe('due orologi', () => {
   it('a parità di ore equivalenti il frigo alza il W e non la dose', () => {
     expect(forzaConsigliata(12, 24)).toBeGreaterThan(forzaConsigliata(12, 0));
-    // Il coefficiente del frigo è 2 punti di W per ora.
-    expect(forzaConsigliata(12, 24) - forzaConsigliata(12, 0)).toBe(48);
+    // Un'ora di cella vale 0,27 ore di struttura: 24 ore in frigo aggiungono
+    // ln(15,5/12) · 64 = 17 W, non i 48 della retta precedente.
+    expect(forzaConsigliata(12, 24) - forzaConsigliata(12, 0)).toBe(17);
 
     // La dose dipende solo dalle ore equivalenti: è l'altro orologio.
     expect(dose(12, 'verace')).toBeCloseTo(dose(12, 'verace'), 6);
@@ -184,11 +185,11 @@ describe('due orologi', () => {
       }),
     );
 
-    // Le ore equivalenti da sole darebbero 162,657 + 5,8044 · eq.
-    const soloEquivalenti = Math.round(162.657 + 5.8044 * risultato.oreEquivalenti);
+    // Le ore equivalenti da sole darebbero la legge senza il termine del frigo.
+    const soloEquivalenti = forzaConsigliata(risultato.oreEquivalenti);
 
-    expect(risultato.forzaConsigliata).toBeGreaterThan(soloEquivalenti + 60);
-    expect(risultato.forzaConsigliata).toBeLessThanOrEqual(365);
+    expect(risultato.forzaConsigliata).toBeGreaterThan(soloEquivalenti + 20);
+    expect(risultato.forzaConsigliata).toBeLessThanOrEqual(420);
   });
 });
 
@@ -261,15 +262,24 @@ describe('i cinque casi di collaudo', () => {
     expect(risultato.avvisi.join(' ')).not.toContain('minimo pesabile');
   });
 
-  it('la maturazione lunga non finisce sul limite, ma sopra le 48 ore avvisa', () => {
-    const risultato = calcola(
+  it('la maturazione lunga non finisce sul limite, e oltre le 40 ore in frigo lo dice', () => {
+    const corto = calcola(
       input({
         idratazione: 65,
-        tempi: { oreTotali: 55, oreFrigo: 48, oreTaPrima: 1, oreTaDopo: 6, ta: 20, tc: 4 },
+        tempi: { oreTotali: 35, oreFrigo: 30, oreTaPrima: 1, oreTaDopo: 4, ta: 20, tc: 4 },
       }),
     );
+    expect(corto.avvisi.join(' ')).not.toContain('40 ore in frigorifero');
 
-    expect(risultato.avvisi.join(' ')).not.toContain('48 ore in frigorifero');
+    // Oltre le 40 ore il modello esce dalla zona in cui è tarato: l'avviso
+    // serve a non spacciare per stima precisa un numero che non lo è.
+    const lungo = calcola(
+      input({
+        idratazione: 65,
+        tempi: { oreTotali: 51, oreFrigo: 44, oreTaPrima: 1, oreTaDopo: 6, ta: 20, tc: 4 },
+      }),
+    );
+    expect(lungo.avvisi.join(' ')).toContain('40 ore in frigorifero');
   });
 });
 

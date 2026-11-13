@@ -1,4 +1,5 @@
 import { dataUrlABlob } from '../lib/download';
+import { grammiLievito } from '../lib/numeri';
 import type { TipoIngrediente } from '../vecchio/types';
 import { LATO_ICONA, disegnaIcona } from '../vecchio/lib/icone';
 
@@ -18,6 +19,7 @@ import { LATO_ICONA, disegnaIcona } from '../vecchio/lib/icone';
 export interface VoceDose {
   nome: string;
   grammi: number;
+  nota?: string;
   /** Icona dell'ingrediente, disegnata accanto alla dose. */
   tipo?: TipoIngrediente;
   /** Percentuale sulla farina. */
@@ -46,11 +48,8 @@ export interface GruppoFoglio {
 export interface PassoFoglio {
   /** Quando avviene il passo; vuoto nelle ricette, dove è un'azione. */
   quando: string;
-  /**
-   * Riga unica della tabella di marcia: «dalle 19:55 del 09/11 alle 23:25 del
-   * 09/11 · 20 °C · 3,5 h». Nelle ricette manca, e valgono i paragrafi.
-   */
-  orario?: string;
+  orario?: { ora: string; giorno: string };
+  istruzione?: string;
   titolo: string;
   nota: string;
   /** Testo esteso del passo: il procedimento delle ricette. */
@@ -87,7 +86,6 @@ export interface DatiFoglio {
   totaleG: number;
   totaleNota: string;
   /** «Acqua consigliata 18 °C», sotto il totale nel PDF. */
-  acquaConsigliata?: string;
   forza?: {
     consigliata: number;
     efficace: number | null;
@@ -461,14 +459,15 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
   }
 
   // Dosi: fasi della ricetta oppure elenco piatto del calcolatore libero.
-  const altezzaRiga = 58;
   const scriviDose = (dose: VoceDose, separatore: boolean): void => {
+    const altezzaRiga = dose.nota ? 80 : 58;
     let xNome = MARGINE;
     if (dose.tipo) {
       icona(ctx, dose.tipo, MARGINE, y + 12, 26);
       xNome = MARGINE + 38;
     }
     scrivi(ctx, dose.nome, xNome, y + 37, font(500, 25), COLORI.testo);
+    if (dose.nota) scrivi(ctx, dose.nota, xNome, y + 62, font(400, 19), COLORI.tenue);
     const percentuale = testoPercentuale(dose);
     if (percentuale) {
       scrivi(
@@ -483,7 +482,7 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
     }
     scrivi(
       ctx,
-      `${numero(dose.grammi)} g`,
+      `${dose.tipo === 'lievito' ? grammiLievito(dose.grammi) : numero(dose.grammi)} g`,
       larghezza - MARGINE,
       y + 37,
       font(600, 25),
@@ -578,7 +577,7 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
       y += 30;
 
       if (passo.orario) {
-        scrivi(ctx, passo.orario, MARGINE + 12, y + 14, font(400, 17), COLORI.tenue);
+        scrivi(ctx, [passo.orario.ora, passo.orario.giorno, passo.nota].filter(Boolean).join(' · '), MARGINE + 12, y + 14, font(400, 17), COLORI.tenue);
         y += 20;
       } else {
         for (const testoPasso of passo.paragrafi ?? []) {

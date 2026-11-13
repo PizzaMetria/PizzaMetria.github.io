@@ -86,7 +86,7 @@ describe('motore predefinito: modello a 12 mini-ricette', () => {
   it('porta la dose delle mini-ricette, non quella del motore termico', () => {
     // 4,64 g/kg su ~365,7 g di farina.
     expect(r.miniRicetta.doseGkg).toBeCloseTo(4.64, 2);
-    expect(r.lievitoG).toBeCloseTo(1.7, 2);
+    expect(r.lievitoG).toBeCloseTo(1.69, 2);
     expect(r.lievitoPerKgFarina).toBeCloseTo(4.64, 1);
     // Lo stesso impasto, letto dal motore termico, chiede 3,00 g: se i due
     // numeri coincidessero, il predefinito non starebbe usando il modello.
@@ -136,9 +136,9 @@ describe('le forbici del W sono la fascia del caso, non una percentuale', () => 
     const nuovo = calcola(caso('nuovo'));
     const vecchio = calcola(caso('vecchio'));
 
-    // 241 · 0,90–1,15 = 217–277; 241 · 0,85–1,25 = 205–301.
-    expect([nuovo.zonaMinima, nuovo.zonaMassima]).toEqual([217, 277]);
-    expect([nuovo.forzaMinima, nuovo.forzaMassima]).toEqual([205, 301]);
+    // 298 · 0,90–1,15 = 268–343; 298 · 0,85–1,25 = 253–373.
+    expect([nuovo.zonaMinima, nuovo.zonaMassima]).toEqual([268, 343]);
+    expect([nuovo.forzaMinima, nuovo.forzaMassima]).toEqual([253, 373]);
     expect(vecchio.forzaMinima).toBe(Math.round(vecchio.forzaConsigliata * 0.85));
   });
 });
@@ -175,19 +175,36 @@ describe('il motore vecchio resta un fallback selezionabile', () => {
   it('torna le dosi del calcolatore precedente sullo stesso impasto', () => {
     const vecchio = calcola(caso('vecchio'));
     expect(vecchio.modello).toBe('vecchio');
-    expect(vecchio.forzaConsigliata).toBe(251);
-    expect(vecchio.lievitoG).toBeCloseTo(2.64, 2);
+    expect(vecchio.forzaConsigliata).toBe(308);
+    expect(vecchio.lievitoG).toBeCloseTo(2.62, 2);
   });
 
   it('l’inerzia termica resta leggibile', () => {
     const nuovo = calcola(caso('nuovo'));
     expect(nuovo.modello).toBe('nuovo');
-    expect(nuovo.forzaConsigliata).toBe(241);
+    expect(nuovo.forzaConsigliata).toBe(298);
   });
 
   it('senza modello dichiarato il calcolo resta quello termico di prima', () => {
     const senzaModello = calcola({ ...caso('nuovo'), modello: undefined });
     expect(senzaModello.modello).toBe('nuovo');
-    expect(senzaModello.forzaConsigliata).toBe(241);
+    expect(senzaModello.forzaConsigliata).toBe(298);
+  });
+});
+
+describe('la dose per kg segue il lievito che si è scelto', () => {
+  it('con il secco i g/kg sono del secco, e il fresco resta dichiarato', () => {
+    const fresco = calcola(caso('termico'));
+    const secco = calcola(caso('termico', { tipoLievito: 'secco' }));
+
+    // Percentuale e grammi per kg devono raccontare la stessa cosa: 1:10.
+    // (Il confronto è largo perché i g/kg sono arrotondati a un decimale.)
+    expect(Math.abs(secco.lievitoPerKgFarina - secco.percentualeLievito * 10)).toBeLessThan(0.06);
+    expect(Math.abs(fresco.lievitoPerKgFarina - fresco.percentualeLievito * 10)).toBeLessThan(0.06);
+
+    // Il secco è circa un terzo del fresco, in grammi come in g/kg.
+    expect(Math.abs(secco.lievitoPerKgFarina - fresco.lievitoPerKgFarina * 0.335)).toBeLessThan(0.1);
+    // L'equivalente fresco resta disponibile, così l'etichetta non mente.
+    expect(Math.abs(secco.lievitoPerKgFarinaFresco - fresco.lievitoPerKgFarina)).toBeLessThan(0.06);
   });
 });

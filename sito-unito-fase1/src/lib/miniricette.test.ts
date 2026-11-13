@@ -573,12 +573,14 @@ describe('coerenza con i range dichiarati nei CSV', () => {
     expect(esito.doseGkg).toBeLessThanOrEqual(hi + 0.05);
   });
 
-  it('sotto le 4 ore equivalenti la dose è un minimo, non un punto della banda', () => {
+  it('sotto le 4 ore equivalenti la dose sta sopra la fascia breve, non al minimo', () => {
     const esito = teglia({ hPrima: 0, hFrigo: 4, hDopo: 3 }, { ta: 23, tc: 2 });
     expect(esito.iFerm).toBeLessThan(SOGLIE[0]);
     const b = FASCE.indexOf(esito.fasciaLievito);
     const [, hi] = intervalloDose(esito.ricetta, b, esito.fattoreDose);
-    // La scheda stampa «≥ hi»: il numero non può stare sotto il bordo alto.
+    // La legge della fascia breve vale anche sotto la soglia: la dose
+    // extrapolata sta sopra il bordo alto della fascia, e la scheda lo dice.
+    // (Prima qui i pesi andavano a zero e il numero finiva sul pavimento.)
     expect(esito.doseGkg).toBeGreaterThanOrEqual(hi - 0.05);
   });
 });

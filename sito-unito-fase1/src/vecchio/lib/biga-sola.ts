@@ -37,6 +37,7 @@ export function oreTraDate(inizio: string, fine: string): number | null {
   return ore >= 0 ? ore : null;
 }
 import { testoMaturazione } from './vista';
+import { consiglioForza } from './forza-biga';
 
 /** Lievito fresco sulla farina della biga, come nelle ricette di casa. */
 export const LIEVITO_FRESCO_SU_FARINA = 0.01;
@@ -68,6 +69,14 @@ function configurazione(
   piano: Piano,
   richiesta: RichiestaBigaSola,
 ): RicettaConfig {
+  // Nella sola biga non ci sono sale né olio, e l'idratazione è quella del
+  // prefermento: la correzione degli ingredienti usa questi valori.
+  const forza = consiglioForza(
+    piano,
+    { idratazione: piano.idratazione, sale: 0, olio: 0 },
+    1,
+  );
+
   return {
     id: BIGA_SOLA_ID,
     slug: 'biga',
@@ -88,7 +97,9 @@ function configurazione(
     fattoreLievitoSecco: FATTORE_LIEVITO_SECCO,
 
     farinaEtichetta: 'Farina',
-    farinaDescrizione: '00 forte, W 300–320',
+    // Il W dipende dalle ore che l'utente ha chiesto: la biga dura quanto matura,
+    // e la farina deve reggere quella durata, non un «almeno 300» fissato.
+    farinaDescrizione: forza.riga,
 
     oreBiga: piano.oreTotali,
     motoreBiga: {
@@ -138,6 +149,7 @@ function configurazione(
       'Questa scheda calcola solo la biga: l’impasto finale si fa con la tua ricetta.',
     ],
     tips: [
+      forza.frase,
       'Più l’attesa è lunga, più il motore asciuga la biga: sotto il 45% di idratazione il composto resta sbriciolato e va solo mescolato, non impastato.',
       'Se l’attesa è fuori misura, accorciala o abbassa la temperatura prima di allungare il frigorifero: è il consiglio che dà il motore.',
       'Tieni la biga in un contenitore largo e basso: in frigorifero cresce poco, ma resta più uniforme.',

@@ -15,7 +15,7 @@ function dati(): DatiFoglio {
     lievitoNota: '0,06% sulla farina · 0,6 g per kg',
     dosi: [
       { nome: 'Farina', grammi: 912, percentuale: 100 },
-      { nome: 'Acqua', grammi: 565, percentuale: 62 },
+      { nome: 'Acqua', grammi: 565, percentuale: 62, nota: '18 °C consigliati' },
       { nome: 'Sale', grammi: 23, percentuale: 2.5 },
       { nome: 'Lievito fresco', grammi: 0.58, percentuale: 0.064 },
     ],
@@ -285,7 +285,7 @@ function datiNota(): DatiFoglio {
     lievitoNota: '0,06% sulla farina',
     dosi: [
       { nome: 'Farina', tipo: 'farina', grammi: 912, percentuale: 100 },
-      { nome: 'Acqua', tipo: 'acqua', grammi: 565, percentuale: 62 },
+      { nome: 'Acqua', tipo: 'acqua', grammi: 565, percentuale: 62, nota: '18 °C consigliati' },
       { nome: 'Lievito fresco', tipo: 'lievito', grammi: 0.58, percentuale: 0.064 },
     ],
     totaleG: 1500,
@@ -293,16 +293,16 @@ function datiNota(): DatiFoglio {
     passi: [
       {
         quando: '',
-        orario: 'dalle 19:55 del 09/11 alle 23:25 del 09/11 · 20 °C · 3,5 h',
-        titolo: 'Puntata',
-        nota: '',
+        orario: { ora: '19:55', giorno: 'lun 9 nov' },
+        titolo: 'Prepara l’impasto',
+        istruzione: 'Chiudi l’impasto a 21 °C.',
+        nota: 'Puntata a 20 °C per 3,5 ore.',
       },
     ],
     note: [
       'Le dosi sono stime: la prima pizza serve a correggere la dose, non il contrario.',
     ],
     noteTitolo: 'NOTA',
-    acquaConsigliata: 'Acqua consigliata 18 °C',
   };
 }
 
@@ -322,8 +322,13 @@ describe('foglio aggiornato', () => {
     const pdf = testoPdf(creaPdf(datiNota()));
 
     expect(pdf).toContain('(TABELLA DI MARCIA) Tj');
-    expect(pdf).toContain('dalle 19:55 del 09/11 alle 23:25 del 09/11');
-    expect(pdf).toContain('20 °C · 3,5 h');
+    expect(pdf.indexOf('(TABELLA DI MARCIA) Tj')).toBeGreaterThan(pdf.indexOf('(Impasto totale) Tj'));
+    expect(pdf.indexOf('(TABELLA DI MARCIA) Tj')).toBeLessThan(pdf.indexOf('(NOTA) Tj'));
+    expect(pdf).toContain('(19:55) Tj');
+    expect(pdf).toContain('(lun 9 nov) Tj');
+    expect(pdf).toContain('Chiudi l’impasto a 21 °C.');
+    expect(pdf.indexOf('Chiudi l’impasto a 21 °C.')).toBeLessThan(pdf.indexOf('20 °C per 3,5 ore.'));
+    expect(pdf).toContain('20 °C per 3,5 ore.');
   });
 
   it('chiama «Procedimento» la sezione dei passi delle ricette', () => {
@@ -336,10 +341,12 @@ describe('foglio aggiornato', () => {
     expect(pdf).not.toContain('(TABELLA DI MARCIA) Tj');
   });
 
-  it('mette l’acqua consigliata sotto il totale', () => {
-    expect(testoPdf(creaPdf(datiNota()))).toContain(
-      '(Acqua consigliata 18 °C) Tj',
-    );
+  it('stampa la temperatura consigliata nella voce Acqua prima del totale', () => {
+    const pdf = testoPdf(creaPdf(datiNota()));
+    const nota = '(18 °C consigliati) Tj';
+    expect(pdf).toContain(nota);
+    expect(pdf.indexOf(nota)).toBeGreaterThan(pdf.indexOf('(Acqua) Tj'));
+    expect(pdf.indexOf(nota)).toBeLessThan(pdf.indexOf('(Impasto totale) Tj'));
   });
 
   it('sotto il titolo NOTA lascia solo la riga sulle dosi stimate', () => {

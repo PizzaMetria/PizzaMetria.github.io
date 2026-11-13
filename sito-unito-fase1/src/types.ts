@@ -30,11 +30,11 @@ export type Staglio = 'prima' | 'dopo';
 
 /**
  * Quale modello di calcolo si sta leggendo: il modello a 12 mini-ricette (il
- * predefinito), quello a inerzia termica oppure la sua emulazione del
- * calcolatore precedente. Il vecchio resta selezionabile per confronto e per
- * ripristinare le dosi di prima.
+ * predefinito), il Termico (inerzia termica più orologio del lievito e la legge
+ * dei 193 impasti), quello a inerzia termica storica oppure la sua emulazione
+ * del calcolatore precedente.
  */
-export type Modello = 'miniRicette' | 'nuovo' | 'vecchio';
+export type Modello = 'miniRicette' | 'termico' | 'nuovo' | 'vecchio';
 
 /** Le due letture dello stesso impasto, per la card di confronto. */
 export interface ConfrontoModelli {
@@ -46,6 +46,12 @@ export interface ConfrontoModelli {
   forzaVecchio: number;
   /** W del modello a 12 mini-ricette per lo stesso impasto. */
   forzaMini: number;
+  /** Ore equivalenti del modello Termico: profilo termico più orologio del lievito. */
+  oreEquivalentiTermico: number;
+  /** La sua dose, nel lievito scelto qui sopra. */
+  lievitoTermicoG: number;
+  /** W del modello Termico: la legge dell'inerzia, invariata. */
+  forzaTermico: number;
   /** La sua dose, nel lievito scelto qui sopra. */
   lievitoMiniG: number;
 }
@@ -159,6 +165,7 @@ export interface InputCalcolo {
 
 /** Passo della tabella di marcia. */
 export interface PassoTempo {
+  temperaturaChiusura?: number;
   quando: Date;
   titolo: string;
   nota: string;
@@ -200,6 +207,8 @@ export interface RisultatoCalcolo {
   percentualeLievito: number;
   /** Modello con cui è stato letto questo risultato. */
   modello: Modello;
+  /** Stile scelto: serve alle forchette di dose, che cambiano per stile. */
+  ramo: Ramo;
   /** Gli stessi numeri calcolati con entrambi i modelli. */
   confronto: ConfrontoModelli;
   oreEquivalenti: number;
@@ -217,6 +226,12 @@ export interface RisultatoCalcolo {
   forzaConsigliata: number;
   /** W del mix, null se nessuna farina ha il W dichiarato. */
   wEquivalente: number | null;
+  /**
+   * C'è una farina con la quota ma senza W: il W del mix non si calcola, come
+   * se i campi fossero vuoti. Serve a dire il perché, invece di sembrare
+   * un'omissione dell'utente.
+   */
+  wIncompleto: boolean;
   giudizioForza: GiudizioForza | null;
   /** W del mix corretto per l'eterogeneità delle farine. */
   wEfficace: number | null;
@@ -238,8 +253,10 @@ export interface RisultatoCalcolo {
   passi: PassoTempo[];
   /** Temperatura dell'acqua per chiudere l'impasto alla temperatura voluta. */
   temperaturaAcqua: number;
-  /** Grammi di lievito fresco per kg di farina. */
+  /** Grammi per kg di farina del lievito scelto (secco o fresco). */
   lievitoPerKgFarina: number;
+  /** Gli stessi grammi espressi in equivalente fresco. */
+  lievitoPerKgFarinaFresco: number;
   curva: PuntoCurva[];
   fasce: FasciaCurva[];
   /**

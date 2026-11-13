@@ -1,3 +1,4 @@
+import { FisarmonicaRisultato } from './components/FisarmonicaRisultato';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Modello } from './types';
 import { CampoNumero } from './components/CampoNumero';
@@ -8,7 +9,7 @@ import { MAX_FARINE, MixFarine } from './components/MixFarine';
 import type { RigaFarina } from './components/MixFarine';
 import { Navigazione, Wizard } from './components/Wizard';
 import type { Passo } from './components/Wizard';
-import { IMPASTI, LIMITI, SPESSORI, trovaImpasto } from './config/impasti';
+import { IMPASTI, LIMITI, SPESSORI, problemaOreTotali, trovaImpasto } from './config/impasti';
 import { ripartizioneFacile } from './lib/facile';
 import { useMediaQuery } from './lib/useMediaQuery';
 import { MenuLaterale } from './components/MenuLaterale';
@@ -22,22 +23,29 @@ import { Pannello as Card } from './components/ui/Pannello';
 import { SCALA_JPG, jpgBlob } from './export/foglio';
 import {
   anteprimaNellApp,
-  anteprimaPdfComeImmagine,
   apriNellApp,
 } from './lib/anteprima';
 import { scaricaBlob } from './lib/download';
 import type { ImmagineFoglio } from './export/foglio';
 import { rasterizzaSvg } from './lib/immagine';
-import type { DatiFoglio, VoceDose } from './export/foglio';
+import type { DatiFoglio } from './export/foglio';
 import { nomeFoglio } from './export/nomeFile';
 import {
   aInputData,
   formatta,
   formattaQuando,
   grammi,
+  grammiLievito,
   leggiNumeroDecimale,
   ore,
 } from './lib/numeri';
+import { MESSAGGIO_DATI_CAMBIATI, bloccoExport } from './export/blocco';
+import {
+  ETICHETTE_GIUDIZIO,
+  foglioDiretto,
+  testoGiudizio,
+} from './export/foglio-diretto';
+import { istruzioneChiusura, orarioFase, sommaOre, titoloAzione } from './lib/orari';
 import type {
   Farina,
   FormaTeglia,
@@ -74,34 +82,6 @@ const STILI_GIUDIZIO: Record<GiudizioForza, string> = {
   accettabile: 'border-avviso/50 bg-avviso-tenue text-avviso',
   distante: 'border-errore/50 bg-errore/10 text-errore',
 };
-
-const ETICHETTE_GIUDIZIO: Record<GiudizioForza, string> = {
-  ottima: 'Forza in linea',
-  accettabile: 'Forza accettabile',
-  distante: 'Forza da rivedere',
-};
-
-function testoGiudizio(
-  giudizio: GiudizioForza,
-  weff: number,
-  consigliato: number,
-  minima: number,
-  massima: number,
-): string {
-  const scarto = Math.round(((weff - consigliato) / consigliato) * 100);
-  switch (giudizio) {
-    case 'ottima':
-      return `Il mix è a W ${Math.round(weff)}: per il modello sta nella zona consigliata per queste ore.`;
-    case 'accettabile':
-      return scarto < 0
-        ? `W ${Math.round(weff)} sta sotto la zona consigliata (${scarto}%): il modello lo considera ancora tollerato, ma vicino al limite. Tieni il frigo basso e non allungare i tempi.`
-        : `W ${Math.round(weff)} è sopra la zona consigliata (+${scarto}%): il modello lo considera ancora tollerato, ma l’impasto resta più tenace del necessario. Puoi valutare una maturazione più lunga.`;
-    case 'distante':
-      return scarto < 0
-        ? `W ${Math.round(weff)} è sotto la fascia tollerata ${minima}–${massima} per queste ore: il modello indica una maglia al limite. Accorcia i tempi o aggiungi una farina più forte.`
-        : `W ${Math.round(weff)} è sopra la fascia tollerata ${minima}–${massima}: il modello indica un impasto più tenace del necessario. Puoi valutare una maturazione più lunga o un’idratazione più alta.`;
-  }
-}
 
 /**
  * Consiglio sulla farina in parole, per la Modalità Facile: lì il W non si
@@ -143,10 +123,12 @@ function Riga({
   etichetta,
   valore,
   tipo,
+  nota,
 }: {
   etichetta: string;
   valore: string;
   tipo?: TipoIngrediente;
+  nota?: string;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
@@ -154,27 +136,14 @@ function Riga({
         {tipo ? (
           <IconaIngrediente tipo={tipo} className="text-terracotta" />
         ) : null}
-        <span className="min-w-0">{etichetta}</span>
+        <span className="min-w-0">
+          {etichetta}
+          {nota ? <span className="block text-xs">{nota}</span> : null}
+        </span>
       </dt>
       <dd className="font-semibold tabular-nums">{valore}</dd>
     </div>
   );
-}
-
-/** Aggiunge ore a un orario ISO: null se la data non è valida. */
-function sommaOre(partenza: string, quante: number): Date | null {
-  const data = new Date(partenza);
-  if (Number.isNaN(data.getTime())) return null;
-  return new Date(data.getTime() + quante * 3_600_000);
-}
-
-/** «19:55 del 09/11»: l'orario delle fasi nella tabella di marcia esportata. */
-function orarioFase(data: Date | null): string {
-  if (!data || Number.isNaN(data.getTime())) return '—';
-  const due = (valore: number) => String(valore).padStart(2, '0');
-  return `${due(data.getHours())}:${due(data.getMinutes())} del ${due(
-    data.getDate(),
-  )}/${due(data.getMonth() + 1)}`;
 }
 
 const GIORNI_BREVI = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
@@ -359,6 +328,7 @@ const VOCI_STAGLIO_FACILE: readonly { id: Staglio; nome: string }[] = [
 
 const VOCI_MODELLO: readonly { id: Modello; nome: string }[] = [
   { id: 'miniRicette', nome: 'Modello frazionario' },
+  { id: 'termico', nome: 'Termico' },
   { id: 'nuovo', nome: 'Inerziale' },
   { id: 'vecchio', nome: 'Vecchio' },
 ];
@@ -456,7 +426,6 @@ export default function App({
     nome: string;
     url: string;
     blob: Blob;
-    immagine?: string;
   } | null>(null);
   // Come nel vecchio sito: il foglio si può stringere per leggerlo sul telefono.
   // Il foglio «stretto» è pensato per il telefono: lì parte già acceso, sul
@@ -497,9 +466,21 @@ export default function App({
   function aggiungiFarina() {
     setFarine((precedenti) => {
       if (precedenti.length >= MAX_FARINE) return precedenti;
-      const quota = leggiNumeroDecimale(precedenti[precedenti.length - 1].quota) ?? 0;
-      const crescenti = [...precedenti.map((riga) => ({ ...riga })), { quota: '0', w: '' }];
-      crescenti[crescenti.length - 2] = { ...crescenti[crescenti.length - 2], quota: String(quota) };
+      // L'ultima riga è «il resto»: il suo 0 memorizzato vale 40. Prima di
+      // aggiungere una riga va scritta con la quota che si vede a schermo,
+      // altrimenti il mix 60/40 diventa 60/0/40 e cambia anche il W del mix.
+      const scritte = precedenti.slice(0, -1);
+      const somma = scritte.reduce(
+        (totale, riga) => totale + (leggiNumeroDecimale(riga.quota) ?? 0),
+        0,
+      );
+      const resto = Math.max(0, 100 - somma);
+      const crescenti = precedenti.map((riga) => ({ ...riga }));
+      crescenti[crescenti.length - 1] = {
+        ...crescenti[crescenti.length - 1],
+        quota: String(resto),
+      };
+      crescenti.push({ quota: '0', w: '' });
       return crescenti;
     });
   }
@@ -586,7 +567,18 @@ export default function App({
         w: typeof forza === 'number' ? forza : null,
       };
     });
-    const mixW = wEquivalente(farineNum);
+    const erroriMix = {
+      quote: quote.map((quota) => quota === null),
+      forze: forze.map((forza) => forza === 'errore'),
+      totale: sommaQuote > 100.001 ? sommaQuote : null,
+    };
+    const mixNonValido = erroriMix.quote.some(Boolean)
+      || erroriMix.forze.some(Boolean) || erroriMix.totale !== null;
+    const farineUsate = farineNum.filter((farina) => farina.quota > 0);
+    const wMancanti = farineNum.map((farina, indice) =>
+      !mixNonValido && farineUsate.length > 1 && farina.quota > 0 && forze[indice] === null,
+    );
+    const mixW = mixNonValido ? null : wEquivalente(farineNum);
 
     const partenza = new Date(inizio);
     const arrivo = new Date(fine);
@@ -598,17 +590,9 @@ export default function App({
 
     if (oreTotali === null) {
       problemi.push('Controlla la data e l’ora di partenza e di fine.');
-    } else if (oreTotali < LIMITI.oreTotali.min) {
-      problemi.push(
-        'Meno di 4 ore non è una lievitazione: dà almeno 4 ore fra impasto e infornata.',
-      );
-    } else if (oreTotali > LIMITI.oreTotali.max) {
-      problemi.push('Oltre 72 ore (tre giorni) la stima perde senso: accorcia i tempi.');
-    }
-
-    const tcNum = leggiIntervallo(tc, LIMITI.tc);
-    if (tcNum === null) {
-      problemi.push('Frigorifero: inserisci una temperatura fra 1 e 14 °C.');
+    } else {
+      const problemaOre = problemaOreTotali(oreTotali);
+      if (problemaOre) problemi.push(problemaOre);
     }
 
     const taNum = leggiIntervallo(ta, LIMITI.ta);
@@ -629,6 +613,15 @@ export default function App({
         : 0;
     if (frigoNum === null) {
       problemi.push('Ore in frigorifero: inserisci un valore fra 0 e 96.');
+    }
+
+    // La temperatura del frigo si valida solo se il calcolo la usa davvero:
+    // spento, o acceso con zero ore, non entra in nessun conto. In Facile la
+    // cella sta a 4 °C fissi.
+    const frigoUsato = usaFrigo && !facile && (frigoNum ?? 0) > 0;
+    const tcNum = frigoUsato ? leggiIntervallo(tc, LIMITI.tc) : 4;
+    if (frigoUsato && tcNum === null) {
+      problemi.push('Frigorifero: inserisci una temperatura fra 1 e 14 °C.');
     }
 
     const taPrimaNum = facile
@@ -679,7 +672,8 @@ export default function App({
       const latoBVal = forma === 'rettangolare' ? leggiIntervallo(latoB, LIMITI.lato) : latoAVal;
       const diametroVal = forma === 'tonda' ? leggiIntervallo(diametro, LIMITI.diametro) : 0;
 
-      if (latoAVal === null) {
+      // In una teglia tonda il lato non entra nel conto: si chiede il diametro.
+      if (latoAVal === null && forma !== 'tonda') {
         problemi.push('Lato della teglia: inserisci un valore fra 10 e 200 cm.');
       }
       if (forma === 'rettangolare' && latoBVal === null) {
@@ -696,9 +690,9 @@ export default function App({
         problemi.push('Numero di teglie: inserisci un intero fra 1 e 20.');
       }
 
-      const spessoreScelto = SPESSORI.find((voce) => voce.id === spessore);
+      const spessoreScelto = SPESSORI.find((voce) => voce.id === (facile ? 'media' : spessore));
       grammiPerCm2Num =
-        spessore === 'personalizzata'
+        !facile && spessore === 'personalizzata'
           ? leggiIntervallo(grammiCm2, LIMITI.grammiCm2)
           : (spessoreScelto?.grammiPerCm2 ?? 0.55);
 
@@ -723,7 +717,7 @@ export default function App({
     }
 
     if (problemi.length > 0) {
-      return { problemi, risultato: null, oreTotali, taDopo: taDopoNum, mixW };
+      return { problemi, risultato: null, dati: null, oreTotali, taDopo: taDopoNum, mixW, erroriMix, mixNonValido, wMancanti };
     }
 
     const risultato = calcola(
@@ -767,7 +761,10 @@ export default function App({
       partenza,
     );
 
-    return { problemi, risultato, oreTotali, taDopo: taDopoNum, mixW };
+    return {
+      problemi, risultato, oreTotali, taDopo: taDopoNum, mixW, erroriMix, mixNonValido, wMancanti,
+      dati: { tipoLievito, fine, idratazione: idr! },
+    };
   }, [
     config.ramo,
     config.tonda,
@@ -813,6 +810,44 @@ export default function App({
   // momento del tocco: se i dati cambiano resta quella, e lo diciamo.
   const [calcolo, setCalcolo] = useState<typeof esito | null>(null);
   const r = calcolo?.risultato ?? null;
+  const dati = calcolo?.dati;
+  const lievitoRisultato = dati?.tipoLievito ?? tipoLievito;
+  const riepilogoRef = useRef<HTMLDivElement>(null);
+  const nomiModello: Record<Modello, string> = {
+    miniRicette: 'Frazionario', termico: 'Termico', nuovo: 'Inerziale', vecchio: 'Vecchio',
+  };
+  const misureConfronto = r ? [
+    {
+      etichetta: 'Ore equivalenti per il lievito',
+      miniRicette: ore(r.miniRicetta.iFerm),
+      termico: ore(r.confronto.oreEquivalentiTermico),
+      nuovo: ore(r.confronto.oreEquivalentiNuovo),
+      vecchio: ore(r.confronto.oreEquivalentiVecchio),
+    },
+    {
+      etichetta: NOMI_LIEVITO[lievitoRisultato],
+      miniRicette: `${grammiLievito(r.confronto.lievitoMiniG)} g`,
+      termico: `${grammiLievito(r.confronto.lievitoTermicoG)} g`,
+      nuovo: `${grammiLievito(r.confronto.lievitoNuovoG)} g`,
+      vecchio: `${grammiLievito(r.confronto.lievitoVecchioG)} g`,
+    },
+    {
+      etichetta: 'W consigliato',
+      miniRicette: `W ${r.confronto.forzaMini}`,
+      termico: `W ${r.confronto.forzaTermico}`,
+      nuovo: `W ${r.confronto.forzaNuovo}`,
+      vecchio: `W ${r.confronto.forzaVecchio}`,
+    },
+  ] : [];
+  function confermaCalcolo() {
+    setCalcolo(esito);
+    if (esito.risultato) {
+      requestAnimationFrame(() => {
+        riepilogoRef.current?.focus({ preventScroll: true });
+        riepilogoRef.current?.scrollIntoView({ block: 'start' });
+      });
+    }
+  }
   // Anteprima dell'acqua: si legge dai campi, senza aspettare «Calcola», così
   // in «Acqua e temperature» la temperatura è già lì mentre si scelgono i valori.
   const acquaAnteprima = temperaturaAcqua(
@@ -822,7 +857,9 @@ export default function App({
     leggiIntervallo(riscaldamento, LIMITI.riscaldamento) ?? 6,
   );
   const problemi = calcolo?.problemi ?? [];
-  const daRicalcolare = calcolo !== null && calcolo !== esito;
+  // Identità fra il risultato messo da parte e quello ricalcolato: è la
+  // stessa regola che blocca l'export, così scheda e foglio non divergono.
+  const daRicalcolare = bloccoExport(calcolo, esito) !== null;
   // Nella Pro non si passa al risultato con ore impossibili: puntata e frigo
   // stanno nella scheda dei tempi, e lì si sistemano, non al passo 6.
   const oreTempiValide =
@@ -873,7 +910,7 @@ export default function App({
     if (nuovaPuntata !== puntata) setOreTaPrima(scrivi(nuovaPuntata));
   }, [inizio, fine, usaFrigo, oreFrigo, oreTaPrima, facile]);
 
-  const spessoreScelto = SPESSORI.find((voce) => voce.id === spessore);
+  const spessoreScelto = SPESSORI.find((voce) => voce.id === (facile ? 'media' : spessore));
   // Le righe tranne l’ultima hanno la quota scritta a mano: l’ultima è il resto.
   const restoMix =
     100 -
@@ -909,108 +946,27 @@ export default function App({
 
   /** Stessi numeri della scheda a schermo, già impaginati per il disegno. */
   function preparaFoglio(): DatiFoglio | null {
-    if (!r) return null;
-
-    const idrNum = leggiNumeroDecimale(idratazione) ?? config.idratazione;
-    const percentoSuFarina = (valore: number): number =>
-      r.farinaG > 0 ? (valore / r.farinaG) * 100 : 0;
-
-    const dosi: VoceDose[] = [
-      { nome: 'Farina', tipo: 'farina', grammi: r.farinaG, percentuale: 100 },
-      { nome: 'Acqua', tipo: 'acqua', grammi: r.acquaG, percentuale: idrNum },
-      { nome: 'Sale', tipo: 'sale', grammi: r.saleG, percentuale: percentoSuFarina(r.saleG) },
-    ];
-    if (r.olioG > 0) {
-      dosi.push({
-        nome: 'Olio',
-        tipo: 'olio',
-        grammi: r.olioG,
-        percentuale: percentoSuFarina(r.olioG),
-      });
-    }
-    if (r.maltoG > 0) {
-      dosi.push({
-        nome: 'Malto',
-        tipo: 'malto',
-        grammi: r.maltoG,
-        percentuale: percentoSuFarina(r.maltoG),
-      });
-    }
-    dosi.push({
-      nome: NOMI_LIEVITO[tipoLievito],
-      tipo: 'lievito',
-      grammi: r.lievitoG,
-      percentuale: r.percentualeLievito,
+    if (!r || !dati) return null;
+    return foglioDiretto({
+      risultato: r,
+      nome: config.nome,
+      tonda: config.tonda,
+      idratazioneScritta: String(dati.idratazione),
+      idratazioneConfig: config.idratazione,
+      tipoLievito: dati.tipoLievito,
     });
-
-    const formato = config.tonda
-      ? `${r.numeroPezzi} panetti da ${grammi(r.pesoPerPezzoG)} g`
-      : `${r.numeroPezzi} ${r.numeroPezzi === 1 ? 'teglia' : 'teglie'} da ${grammi(
-          r.pesoPerPezzoG,
-        )} g`;
-
-    return {
-      titolo: config.nome,
-      sottotitolo:
-        `${formatta(idrNum, 0)}% di idratazione · ${formato}` +
-        (r.residuoG !== null && r.residuoG > 0 ? ` · avanzano ${grammi(r.residuoG)} g` : ''),
-      tipoLievito: NOMI_LIEVITO[tipoLievito],
-      lievitoG: r.lievitoG,
-      lievitoNota: `${formatta(r.percentualeLievito, 2)}% sulla farina · ${formatta(
-        r.lievitoPerKgFarina,
-        1,
-      )} g per kg`,
-      dosi,
-      totaleG: r.pesoImpastoG,
-      totaleNota: formato,
-      forza: {
-        consigliata: r.forzaConsigliata,
-        efficace: r.wEfficace,
-        finestra: `${r.forzaMinima}–${r.forzaMassima}`,
-        minima: r.forzaMinima,
-        massima: r.forzaMassima,
-        testo:
-          r.wEfficace !== null && r.giudizioForza
-            ? `${ETICHETTE_GIUDIZIO[r.giudizioForza]}. ${testoGiudizio(
-                r.giudizioForza,
-                r.wEfficace,
-                r.forzaConsigliata,
-                r.forzaMinima,
-                r.forzaMassima,
-              )}`
-            : 'Il W non è dichiarato nel mix: le dosi non cambiano, ma non posso dirti se la farina è adatta a queste ore.',
-      },
-      // Tabella di marcia: una riga per fase, con orario, temperatura e
-      // durata, come la si legge sul foglio.
-      passi: r.fasce.map((fascia) => ({
-        quando: '',
-        orario:
-          `dalle ${orarioFase(sommaOre(inizio, fascia.da))} alle ${orarioFase(
-            sommaOre(inizio, fascia.a),
-          )} · ${formatta(
-            Number((fascia.inFrigo ? tc : ta).replace(',', '.')),
-            0,
-          )} °C · ${ore(fascia.a - fascia.da)} h`,
-        titolo: fascia.nome,
-        nota: '',
-      })),
-              // Il grafico viaggia con il foglio: lo usa il PDF vettoriale.
-              curva: r.curva.map((punto) => ({ ora: punto.ora, attivita: punto.attivita })),
-              fasce: r.fasce.map((fascia) => ({
-                da: fascia.da,
-                a: fascia.a,
-                inFrigo: fascia.inFrigo,
-              })),
-              oreTotali: oreTotaliGrafico,
-      acquaConsigliata: `Acqua consigliata ${formatta(r.temperaturaAcqua, 0)} °C`,
-      note: [
-        'Le dosi sono stime: la prima pizza serve a correggere la dose, non il contrario.',
-      ],
-      noteTitolo: 'NOTA',
-    };
   }
 
   async function esporta(formato: 'jpg' | 'pdf', soloIngredienti = false) {
+    // Il foglio prende i grammi dal risultato e il tipo di lievito dal modulo:
+    // con dati modificati e non ricalcolati le due cose non coinciderebbero (il
+    // PDF direbbe «secco» accanto ai grammi del fresco). Meglio fermarsi qui.
+    const blocco = bloccoExport(calcolo, esito);
+    if (blocco) {
+      setErroreExport(blocco);
+      return;
+    }
+
     const completo = preparaFoglio();
     if (!completo) return;
     // «Salva ingredienti» lascia fuori il procedimento: restano dosi e resa.
@@ -1049,16 +1005,6 @@ export default function App({
         blob = await jpgBlob(dati, SCALA_JPG, ottimizzaSmartphone);
       }
 
-      // Su Android il PDF non si vede dentro la pagina: l'anteprima diventa
-      // l'immagine dello stesso foglio, «Salva» conserva il PDF.
-      const immagine =
-        formato === 'pdf' && anteprimaPdfComeImmagine()
-          ? URL.createObjectURL(
-              await jpgBlob(dati, SCALA_JPG, ottimizzaSmartphone),
-            )
-          : undefined;
-
-      // Dentro l'app il file lo apre il lettore nativo, a pagina intera.
       if (anteprimaNellApp()) {
         apriNellApp(blob, nome);
         return;
@@ -1066,14 +1012,12 @@ export default function App({
 
       if (anteprima) {
         URL.revokeObjectURL(anteprima.url);
-        if (anteprima.immagine) URL.revokeObjectURL(anteprima.immagine);
       }
       setAnteprima({
         tipo: formato,
         nome,
         blob,
         url: URL.createObjectURL(blob),
-        immagine,
       });
     } catch (errore) {
       setErroreExport(errore instanceof Error ? errore.message : 'Esportazione non riuscita.');
@@ -1090,23 +1034,88 @@ export default function App({
   function chiudiAnteprima() {
     if (anteprima) {
       URL.revokeObjectURL(anteprima.url);
-      if (anteprima.immagine) URL.revokeObjectURL(anteprima.immagine);
     }
     setAnteprima(null);
   }
 
+  const schedaDosi = r && dati ? (
+    <div ref={riepilogoRef} tabIndex={-1} className="scroll-mt-24 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-terracotta">
+      <Card titolo="Dosi e resa">
+        <div className="grid gap-3 rounded-xl border border-bordo bg-crema-scuro/70 p-3 sm:grid-cols-2 sm:p-4">
+          <div>
+            <p className="text-xs text-inchiostro-tenue">Resa</p>
+            <p className="font-serif text-lg font-bold text-inchiostro">
+              {r.numeroPezzi > 0
+                ? `${r.numeroPezzi} ${config.tonda ? (r.numeroPezzi === 1 ? 'panetto' : 'panetti') : (r.numeroPezzi === 1 ? 'teglia' : 'teglie')} da ${grammi(r.pesoPerPezzoG)} g`
+                : `${grammi(r.pesoImpastoG)} g di impasto`}
+            </p>
+            <p className="text-xs text-inchiostro-tenue">
+              {grammi(r.pesoImpastoG)} g totali{r.residuoG ? ` · avanzano ${grammi(r.residuoG)} g` : ''}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-inchiostro-tenue">Impasto pronto</p>
+            <p className="font-serif text-lg font-bold text-inchiostro">{formattaQuando(new Date(dati.fine))}</p>
+          </div>
+        </div>
+        {daRicalcolare ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-avviso-tenue p-2 text-xs" role="status">
+            <span>Dosi dell’ultimo calcolo. I dati del modulo sono cambiati.</span>
+            <button type="button" onClick={confermaCalcolo} className="rounded-md border border-bordo px-3 py-2 font-semibold">Ricalcola</button>
+          </div>
+        ) : null}
+        <dl className="divide-y divide-bordo/60 text-sm">
+          <Riga etichetta="Farina" valore={`${grammi(r.farinaG)} g`} tipo="farina" />
+          <Riga etichetta="Acqua" valore={`${grammi(r.acquaG)} g`} tipo="acqua" nota={`Temperatura consigliata ${formatta(r.temperaturaAcqua, 0)} °C`} />
+          <Riga etichetta="Sale" valore={`${grammi(r.saleG)} g`} tipo="sale" />
+          {r.olioG > 0 ? <Riga etichetta="Olio" valore={`${grammi(r.olioG)} g`} tipo="olio" /> : null}
+          {r.maltoG > 0 ? <Riga etichetta="Malto" valore={`${grammi(r.maltoG)} g`} tipo="malto" /> : null}
+          <Riga etichetta={NOMI_LIEVITO[lievitoRisultato]} valore={`${grammiLievito(r.lievitoG)} g`} tipo="lievito" />
+        </dl>
+      </Card>
+    </div>
+  ) : null;
+
+  const tabellaMarcia = r ? (
+    <Card titolo="Tabella di marcia">
+      <ol className="divide-y divide-bordo/60">
+        {r.passi.map((passo) => {
+          const { ora, giorno } = orarioFase(passo.quando);
+          return (
+            <li key={passo.titolo} className="grid grid-cols-[5rem_1fr] gap-3 py-3">
+              <time dateTime={passo.quando.toISOString()} className="text-sm font-bold tabular-nums text-oro-chiaro">
+                {ora}
+                <span className="block text-xs font-normal text-inchiostro-tenue">
+                  {giorno}
+                </span>
+              </time>
+              <div>
+                <p className="text-sm font-semibold">{titoloAzione(passo.titolo)}</p>
+                {passo.temperaturaChiusura !== undefined ? (
+                  <p className="text-xs text-inchiostro-tenue">{istruzioneChiusura(passo.temperaturaChiusura)}</p>
+                ) : null}
+                <p className="text-xs text-inchiostro-tenue">{passo.nota}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </Card>
+  ) : null;
+
   // Lo stesso riquadro di esportazione in Modalità Facile e in Pro: scelta
   // «ottimizza per smartphone», anteprima e salvataggio separato.
   const cardEsporta = (
-    <Card
-      titolo="La tua ricetta"
-      nota="Salva la tua ricetta con dosi e procedimento in JPEG o PDF."
-    >
+    <Card titolo="La tua ricetta">
       <BloccoEsporta
         esportando={esportando}
         ottimizza={ottimizzaSmartphone}
         onOttimizza={setOttimizzaSmartphone}
         onEsporta={(formato) => esporta(formato, formato === 'jpg')}
+        bloccato={daRicalcolare}
+        messaggio={
+          daRicalcolare ? { tipo: 'errore' as const, testo: MESSAGGIO_DATI_CAMBIATI } : null
+        }
         errore={erroreExport}
         anteprima={anteprima}
         onSalva={salvaAnteprima}
@@ -1179,6 +1188,10 @@ export default function App({
     }
   }
 
+  const farinaNonValida = config.tonda && modalita === 'farina'
+    && leggiIntervallo(farina, LIMITI.farina) === null;
+  const messaggioFarina = 'Inserisci da 0,1 a 50 kg di farina.';
+
   const passiFacile: Passo[] = [
     {
       nome: 'Scegli le dosi',
@@ -1205,6 +1218,7 @@ export default function App({
                     id="f-farina"
                     label="Farina"
                     unit="kg"
+                    error={farinaNonValida ? messaggioFarina : undefined}
                     value={farina}
                     onChange={setFarina}
                     inputMode="decimal"
@@ -1443,10 +1457,6 @@ export default function App({
                       decimali={1}
                     />
                   </div>
-                  <p className="mt-1 text-xs leading-relaxed text-inchiostro-tenue">
-                    Temperatura fissa a 4 °C. Puntata e appretto sono calcolati: qui cambi solo le
-                    ore in frigo.
-                  </p>
                   {frigoScritto !== null ? (
                     <button
                       type="button"
@@ -1532,67 +1542,7 @@ export default function App({
         <div className="space-y-4">
           {r ? (
             <>
-              <Card titolo="Dosi">
-                <dl className="divide-y divide-bordo/60 text-sm">
-                  <Riga
-                    etichetta="Farina"
-                    valore={`${grammi(r.farinaG)} g`}
-                    tipo="farina"
-                  />
-                  <Riga
-                    etichetta="Acqua"
-                    valore={`${grammi(r.acquaG)} g`}
-                    tipo="acqua"
-                  />
-                  <Riga
-                    etichetta="Sale"
-                    valore={`${grammi(r.saleG)} g`}
-                    tipo="sale"
-                  />
-                  {r.olioG > 0 ? (
-                    <Riga
-                      etichetta="Olio"
-                      valore={`${grammi(r.olioG)} g`}
-                      tipo="olio"
-                    />
-                  ) : null}
-                  {r.maltoG > 0 ? (
-                    <Riga
-                      etichetta="Malto"
-                      valore={`${grammi(r.maltoG)} g`}
-                      tipo="malto"
-                    />
-                  ) : null}
-                  <div className="flex items-baseline justify-between gap-3 py-1.5">
-                    <dt className="flex min-w-0 items-center gap-2 text-inchiostro-tenue">
-                      <IconaIngrediente tipo="lievito" className="text-terracotta" />
-                      <span className="min-w-0">{NOMI_LIEVITO[tipoLievito]}</span>
-                    </dt>
-                    <dd className="text-right">
-                      <span className="font-semibold tabular-nums">{grammi(r.lievitoG)} g</span>
-                      <span className="block text-[11px] leading-tight text-inchiostro-tenue">
-                        {formatta(r.percentualeLievito, 2)}% sulla farina · {formatta(r.lievitoPerKgFarina, 1)} g per kg
-                      </span>
-                      {tipoLievito === 'secco' ? (
-                        <span className="block text-[11px] leading-tight text-inchiostro-tenue">
-                          {formatta(r.lievitoG / 7, 2)} di una bustina da 7 g
-                        </span>
-                      ) : null}
-                    </dd>
-                  </div>
-                </dl>
-                <div className="flex items-baseline justify-between border-t border-bordo/60 pt-2.5 text-sm">
-                  <span className="font-semibold">Impasto totale</span>
-                  <span className="font-serif text-xl text-oro-chiaro tabular-nums">
-                    {grammi(r.pesoImpastoG)} g
-                  </span>
-                </div>
-                <p className="text-xs leading-relaxed text-inchiostro-tenue">
-                  {config.tonda
-                    ? `${r.numeroPezzi} panetti da ${grammi(r.pesoPerPezzoG)} g`
-                    : `${r.numeroPezzi} teglie da ${grammi(r.pesoPerPezzoG)} g`}
-                </p>
-              </Card>
+              {schedaDosi}
 
               <Card titolo="La farina che ti serve">
                 <p className="text-sm leading-relaxed">{consiglioFarina(r.forzaConsigliata)}</p>
@@ -1603,22 +1553,7 @@ export default function App({
                 ) : null}
               </Card>
 
-              <Card titolo="Tabella di marcia">
-                <ol className="space-y-3">
-                  {r.passi.map((passo) => (
-                    <li key={passo.titolo} className="relative pl-5">
-                      <span
-                        aria-hidden="true"
-                        className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full border border-terracotta/70 bg-terracotta/30"
-                      />
-                      <p className="text-sm font-semibold leading-snug">{passo.titolo}</p>
-                      <p className="text-xs leading-relaxed text-inchiostro-tenue">
-                        {formattaQuando(passo.quando)} · {passo.nota}
-                      </p>
-                    </li>
-                  ))}
-                </ol>
-              </Card>
+              {tabellaMarcia}
 
               <Card titolo="Attività e temperatura">
                 <Grafico svgRef={graficoRef} curva={r.curva} fasce={r.fasce} oreTotali={oreTotaliGrafico} />
@@ -1629,13 +1564,10 @@ export default function App({
           ) : (
             <div className="space-y-4">
               <Card titolo="Calcola impasto">
-                <p className="text-sm leading-relaxed text-inchiostro-tenue">
-                  Controlla i dati nei passi qui sopra e premi il pulsante: dosi,
-                  tempi e procedimento compaiono qui sotto.
-                </p>
                 <button
                   type="button"
-                  onClick={() => setCalcolo(esito)}
+                  onClick={confermaCalcolo}
+                  disabled={farinaNonValida || (!facile && esito.mixNonValido)}
                   className="flex min-h-12 w-full items-center justify-center rounded-xl border border-terracotta/40 bg-transparent px-5 py-3.5 text-base font-bold text-oro-chiaro transition-all hover:-translate-y-px hover:border-terracotta/70 hover:bg-terracotta/10 active:translate-y-0"
                 >
                   Calcola impasto
@@ -1777,8 +1709,6 @@ export default function App({
               attivo={vista}
               onChange={(voce) => {
                 setVista(voce);
-                // La Modalità Facile non mostra lo spessore: resta quello medio.
-                if (voce === 'facile') setSpessore('media');
                 setPassoFacile(0);
                 setPassoPro(0);
               }}
@@ -1792,10 +1722,11 @@ export default function App({
               <Wizard
                 passi={passiFacile}
                 attivo={passoFacile}
+                bloccaAvanti={passoFacile === 0 && farinaNonValida}
                 onCambia={(indice) => {
                   // L'ultimo passo sono i risultati: si calcola da sé, senza un
                   // tasto in più da premere.
-                  if (indice === passiFacile.length - 1) setCalcolo(esito);
+                  if (indice === passiFacile.length - 1) confermaCalcolo();
                   cambiaPasso(setPassoFacile, indice);
                 }}
               />
@@ -1943,6 +1874,7 @@ export default function App({
                         id="farina-kg"
                         label="Farina"
                         unit="kg"
+                        error={farinaNonValida ? messaggioFarina : undefined}
                         value={farina}
                         onChange={setFarina}
                         inputMode="decimal"
@@ -2271,8 +2203,7 @@ export default function App({
                 <strong className="text-oro-chiaro">
                   {formatta(r?.temperaturaAcqua ?? acquaAnteprima, 0)} °C
                 </strong>{' '}
-                {r ? '·' : '· anteprima che si aggiorna mentre cambi i valori ·'} dalla
-                formula 3 × obiettivo − ambiente − farina − impastatrice.
+                {r ? '' : '· anteprima'}
               </p>
             </Card>
 
@@ -2284,6 +2215,8 @@ export default function App({
               <MixFarine
                 farine={farine}
                 resto={restoMix}
+                errori={esito.erroriMix}
+                wMancanti={esito.wMancanti}
                 onChange={cambiaFarina}
                 onAggiungi={aggiungiFarina}
                 onRimuovi={rimuoviFarina}
@@ -2300,23 +2233,17 @@ export default function App({
                     : null
                 }
               />
-              {esito.risultato ? (
-                <p className="text-xs leading-relaxed text-inchiostro-tenue">
-                  <span className="font-semibold text-inchiostro">Che farina cercare:</span>{' '}
-                  {consiglioFarina(esito.risultato.forzaConsigliata)}
-                </p>
-              ) : null}
             </Card>
 
             <div className="lg:hidden">
               <Navigazione
                 passi={passiPro}
                 attivo={passoPro}
-                bloccaAvanti={!facile && !oreTempiValide}
-                notaAvanti="Puntata e frigo superano il tempo a disposizione: sistema le ore in «Tempi e temperature»."
+                bloccaAvanti={(passoPro === 1 && farinaNonValida) || (passoPro === 2 && !oreTempiValide) || (passoPro === 4 && esito.mixNonValido)}
+                notaAvanti={passoPro === 2 ? "Sistema le ore in «Tempi e temperature»." : undefined}
                 onCambia={(indice) => {
                   // Arrivando all'ultimo passo il risultato è già calcolato.
-                  if (indice === passiPro.length - 1) setCalcolo(esito);
+                  if (indice === passiPro.length - 1) confermaCalcolo();
                   cambiaPasso(setPassoPro, indice);
                 }}
               />
@@ -2327,7 +2254,7 @@ export default function App({
           <div
             className={`space-y-4 ${guidato && passoPro !== 5 ? 'hidden' : ''}`}
           >
-            {daRicalcolare ? (
+            {daRicalcolare && !r ? (
               <Card titolo="Dati cambiati">
                 <p className="text-sm leading-relaxed text-inchiostro-tenue">
                   Hai modificato qualcosa: le dosi qui sotto sono quelle del
@@ -2335,7 +2262,8 @@ export default function App({
                 </p>
                 <button
                   type="button"
-                  onClick={() => setCalcolo(esito)}
+                  onClick={confermaCalcolo}
+                  disabled={farinaNonValida || (!facile && esito.mixNonValido)}
                   className="flex min-h-12 w-full items-center justify-center rounded-xl border border-terracotta/40 bg-transparent px-5 py-3.5 text-base font-bold text-oro-chiaro transition-all hover:-translate-y-px hover:border-terracotta/70 hover:bg-terracotta/10 active:translate-y-0"
                 >
                   Ricalcola
@@ -2351,7 +2279,8 @@ export default function App({
                 </p>
                 <button
                   type="button"
-                  onClick={() => setCalcolo(esito)}
+                  onClick={confermaCalcolo}
+                  disabled={farinaNonValida || (!facile && esito.mixNonValido)}
                   className="flex min-h-12 w-full items-center justify-center rounded-xl border border-terracotta/40 bg-transparent px-5 py-3.5 text-base font-bold text-oro-chiaro transition-all hover:-translate-y-px hover:border-terracotta/70 hover:bg-terracotta/10 active:translate-y-0"
                 >
                   Calcola impasto
@@ -2370,6 +2299,8 @@ export default function App({
               </Card>
             ) : r ? (
               <>
+                {schedaDosi}
+                {tabellaMarcia}
                 {r.avvisi.length > 0 ? (
                   <Card titolo="Da controllare">
                     <ul className="space-y-1.5 text-xs leading-relaxed text-avviso">
@@ -2383,63 +2314,54 @@ export default function App({
                   </Card>
                 ) : null}
 
-                <Card
-                  titolo="Modello di calcolo"
-                  nota="Tre modelli di calcolo: scegli e utilizza il più adatto alle tue esigenze nella scheda qui sotto."
-                >
-                  <Segmentato voci={VOCI_MODELLO} attivo={modello} onChange={setModello} />
+                <FisarmonicaRisultato titolo="Confronta i modelli">
+                  <Segmentato voci={VOCI_MODELLO} attivo={modello} onChange={setModello} dueRighe />
                   <p className="text-xs leading-relaxed text-inchiostro-tenue">
                     {modello === 'miniRicette'
-                      ? 'Modello a 12 mini-ricette: due indici separati, uno per il lievito e uno per la maturazione, e la mini-ricetta che ne esce. È il motore predefinito; la scheda qui sotto dice da dove arrivano W e dose.'
-                      : modello === 'nuovo'
-                        ? 'Nuovo: l’impasto insegue la temperatura con una costante di tempo che dipende da peso e forma, quindi la curva è smussata sia entrando sia uscendo dal frigo.'
-                      : 'Vecchio: scambi termici rapidi, come nel calcolatore precedente — raffreddamento lento in frigo e riaccesa quasi istantanea all’uscita.'}
+                      ? 'Frazionario: dodici mini-ricette, un indice per il lievito e uno per la maturazione. È il motore predefinito.'
+                      : modello === 'termico'
+                        ? 'Termico: segue la temperatura reale del pezzo (peso e forma) e conta il lievito in frigo con il suo orologio. Il W resta quello dell’inerziale.'
+                        : modello === 'nuovo'
+                          ? 'Inerziale: l’impasto insegue la temperatura con una costante di tempo che dipende da peso e forma.'
+                          : 'Vecchio: scambi termici rapidi, come nel calcolatore precedente.'}
                   </p>
-                  <div className="overflow-hidden rounded-xl border border-bordo/80">
+                  <div className="grid gap-2 sm:hidden">
+                    {VOCI_MODELLO.map(({ id }) => (
+                      <div key={id} className={`rounded-xl border p-3 ${modello === id ? 'border-terracotta/50 bg-crema-scuro' : 'border-bordo/80'}`}>
+                        <p className="mb-2 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold">
+                          {nomiModello[id]}
+                          {modello === id ? <span className="text-xs text-oro-chiaro">In uso</span> : null}
+                        </p>
+                        <dl className="grid gap-1.5">
+                          {misureConfronto.map((misura) => (
+                            <Riga key={misura.etichetta} etichetta={misura.etichetta} valore={misura[id]} />
+                          ))}
+                        </dl>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto rounded-xl border border-bordo/80 sm:block">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-crema-scuro text-[11px] tracking-wide text-inchiostro-tenue uppercase">
                           <th scope="col" className="px-2.5 py-2 text-left font-semibold">
                             <span className="sr-only">Misura</span>
                           </th>
-                          {(['miniRicette', 'nuovo', 'vecchio'] as const).map((id) => (
+                          {(['miniRicette', 'termico', 'nuovo', 'vecchio'] as const).map((id) => (
                             <th
                               key={id}
                               scope="col"
-                              className={`px-1.5 py-2 text-right font-semibold ${
+                              className={`px-1 py-2 text-right font-semibold ${
                                 modello === id ? 'text-oro-chiaro' : ''
                               }`}
                             >
-                              {id === 'miniRicette'
-                                ? 'Frazionario'
-                                : id === 'nuovo'
-                                  ? 'Inerziale'
-                                  : 'Vecchio'}
+                              {nomiModello[id]}
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-bordo/60">
-                        {[
-                          {
-                            etichetta: 'Ore equivalenti',
-                            miniRicette: ore(r.miniRicetta.iMat),
-                            nuovo: ore(r.confronto.oreEquivalentiNuovo),
-                            vecchio: ore(r.confronto.oreEquivalentiVecchio),
-                          },
-                          {
-                            etichetta: NOMI_LIEVITO[tipoLievito],
-                            miniRicette: `${grammi(r.confronto.lievitoMiniG)} g`,
-                            nuovo: `${grammi(r.confronto.lievitoNuovoG)} g`,
-                            vecchio: `${grammi(r.confronto.lievitoVecchioG)} g`,
-                          },
-                          {
-                            etichetta: 'W consigliato',
-                            miniRicette: `W ${r.confronto.forzaMini}`,
-                            nuovo: `W ${r.confronto.forzaNuovo}`,
-                            vecchio: `W ${r.confronto.forzaVecchio}`,
-                          },
-                        ].map((riga) => (
+                        {misureConfronto.map((riga) => (
                           <tr key={riga.etichetta}>
                             <th
                               scope="row"
@@ -2447,11 +2369,11 @@ export default function App({
                             >
                               {riga.etichetta}
                             </th>
-                            {(['miniRicette', 'nuovo', 'vecchio'] as const).map(
+                            {(['miniRicette', 'termico', 'nuovo', 'vecchio'] as const).map(
                               (id) => (
                                 <td
                                   key={id}
-                                  className={`px-1.5 py-2 text-right tabular-nums ${
+                                  className={`px-1 py-2 text-right tabular-nums ${
                                     modello === id
                                       ? 'font-semibold text-inchiostro'
                                       : 'text-inchiostro-tenue'
@@ -2466,74 +2388,7 @@ export default function App({
                       </tbody>
                     </table>
                   </div>
-                </Card>
-
-                  <Card titolo="Dosi">
-                  <dl className="divide-y divide-bordo/60 text-sm">
-                    <Riga
-                      etichetta="Farina"
-                      valore={`${grammi(r.farinaG)} g`}
-                      tipo="farina"
-                    />
-                    <Riga
-                      etichetta="Acqua"
-                      valore={`${grammi(r.acquaG)} g`}
-                      tipo="acqua"
-                    />
-                    <Riga
-                      etichetta="Sale"
-                      valore={`${grammi(r.saleG)} g`}
-                      tipo="sale"
-                    />
-                    {r.olioG > 0 ? (
-                      <Riga
-                        etichetta="Olio"
-                        valore={`${grammi(r.olioG)} g`}
-                        tipo="olio"
-                      />
-                    ) : null}
-                    {r.maltoG > 0 ? (
-                      <Riga
-                        etichetta="Malto"
-                        valore={`${grammi(r.maltoG)} g`}
-                        tipo="malto"
-                      />
-                    ) : null}
-                    <div className="flex items-baseline justify-between gap-3 py-1.5">
-                      <dt className="flex min-w-0 items-center gap-2 text-inchiostro-tenue">
-                        <IconaIngrediente tipo="lievito" className="text-terracotta" />
-                        <span className="min-w-0">{NOMI_LIEVITO[tipoLievito]}</span>
-                      </dt>
-                      <dd className="text-right">
-                        <span className="font-semibold tabular-nums">{grammi(r.lievitoG)} g</span>
-                        <span className="block text-[11px] leading-tight text-inchiostro-tenue">
-                          {formatta(r.percentualeLievito, 2)}% sulla farina · {formatta(r.lievitoPerKgFarina, 1)} g per kg
-                        </span>
-                      </dd>
-                    </div>
-                  </dl>
-                  <div className="flex items-baseline justify-between border-t border-bordo/60 pt-2.5 text-sm">
-                    <span className="font-semibold">Impasto totale</span>
-                    <span className="font-serif text-xl text-oro-chiaro tabular-nums">
-                      {grammi(r.pesoImpastoG)} g
-                    </span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-inchiostro-tenue">
-                    {config.tonda
-                      ? `${r.numeroPezzi} panetti da ${grammi(r.pesoPerPezzoG)} g${
-                          r.residuoG !== null && r.residuoG > 0
-                            ? ` · avanzano ${grammi(r.residuoG)} g`
-                            : ''
-                        }`
-                      : `${r.numeroPezzi} teglie da ${grammi(r.pesoPerPezzoG)} g · ${
-                          forma === 'tonda'
-                            ? `Ø ${grammi(Number(diametro.replace(',', '.')))} cm`
-                            : `${grammi(Number(latoA.replace(',', '.')))} × ${grammi(
-                                Number(latoB.replace(',', '.')),
-                              )} cm`
-                        }`}
-                  </p>
-                </Card>
+                </FisarmonicaRisultato>
 
                 <Card titolo="Forza della farina">
                   <p className="text-sm">
@@ -2592,9 +2447,9 @@ export default function App({
                     </>
                   ) : (
                     <p className="text-xs leading-relaxed text-inchiostro-tenue">
-                      Inserisci il W nel mix di farine per sapere se va bene; se non lo conosci,
-                      cerca in etichetta le proteine: 12-14% corrisponde di solito a una farina
-                      forte.
+                      {r.wIncompleto
+                        ? "Manca il W di una delle farine del mix: finché non li hai tutti il W del mix non è calcolabile, e non posso dire se la farina regge. Aggiungi il W di quella farina, oppure metti la sua quota a zero."
+                        : "Senza il W non posso dire se la farina regge: cerca le proteine in etichetta, 12-14% è di solito una farina forte."}
                     </p>
                   )}
                 </Card>
@@ -2603,10 +2458,12 @@ export default function App({
                   titolo="Attività del lievito"
                   nota={
                     r.modello === 'vecchio'
-                      ? 'Vecchio modello: scambi termici rapidi, la curva segue l’ambiente quasi subito.'
-                      : `La temperatura dell’impasto insegue l’ambiente con una costante di tempo di ${ore(
+                      ? 'La curva segue l’ambiente quasi subito.'
+                      : r.modello === 'termico' || r.modello === 'miniRicette'
+                        ? 'Il grafico mostra il profilo termico di base. Le ore equivalenti dipendono dal modello selezionato.'
+                        : `L’impasto insegue l’ambiente con una costante di tempo di ${ore(
                           r.costanteTempoOre,
-                        )} ore: per questo la curva non fa scalini.`
+                        )} ore: la curva non fa scalini.`
                   }
                 >
                   <Grafico
@@ -2616,14 +2473,11 @@ export default function App({
                     oreTotali={oreTotaliGrafico}
                   />
                   <p className="rounded-xl border border-bordo bg-crema px-3 py-2 text-xs leading-relaxed text-inchiostro-tenue">
-                    Con{' '}
-                    {r.modello === 'vecchio'
-                      ? 'il vecchio modello'
-                      : r.modello === 'miniRicette'
-                        ? 'il modello a 12 mini-ricette'
-                        : 'il nuovo modello a inerzia'}{' '}
-                    sono{' '}
-                    <strong className="text-oro-chiaro">{ore(r.oreEquivalenti)} ore equivalenti</strong>
+                    {nomiModello[r.modello]} ·{' '}
+                    <strong className="text-oro-chiaro">
+                      {ore(r.modello === 'miniRicette' ? r.miniRicetta.iFerm : r.oreEquivalenti)} ore equivalenti per il lievito
+                    </strong>
+                    {r.modello === 'miniRicette' ? ` · ${ore(r.miniRicetta.iMat)} per la maturazione` : ''}
                     {r.temperaturaUscitaFrigo !== null
                       ? `. All’uscita dal frigo l’impasto è ancora a ${formatta(
                           r.temperaturaUscitaFrigo,
@@ -2633,22 +2487,6 @@ export default function App({
                   </p>
                 </Card>
 
-                <Card titolo="Tabella di marcia">
-                  <ol className="space-y-3">
-                    {r.passi.map((passo) => (
-                      <li key={passo.titolo} className="relative pl-5">
-                        <span
-                          aria-hidden="true"
-                          className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full border border-terracotta/70 bg-terracotta/30"
-                        />
-                        <p className="text-sm font-semibold leading-snug">{passo.titolo}</p>
-                        <p className="text-xs leading-relaxed text-inchiostro-tenue">
-                          {formattaQuando(passo.quando)} · {passo.nota}
-                        </p>
-                      </li>
-                    ))}
-                  </ol>
-                </Card>
 
                 {cardEsporta}
               </>

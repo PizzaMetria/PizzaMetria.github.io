@@ -236,6 +236,17 @@ export function costanteTempo(massaG: number): number {
  * massimo due fasce concorrono.
  */
 export function pesiFusione(x: number): number[] {
+  // Fuori dalla prima e dall'ultima soglia una sola fascia resta accesa.
+  // Prima qui tutti i pesi andavano a zero: la dose diventava 0 e finiva sul
+  // pavimento di 0,1 g/kg, cioe' meno lievito a chi ha meno tempo. La legge
+  // della fascia breve vale anche sotto le 4 ore equivalenti, e la curva
+  // resta monotona.
+  if (x <= SOGLIE[0]) return FASCE.map((_, b) => (b === 0 ? 1 : 0));
+  if (x >= SOGLIE[SOGLIE.length - 1]) {
+    const ultima = FASCE.length - 1;
+    return FASCE.map((_, b) => (b === ultima ? 1 : 0));
+  }
+
   const pesi = FASCE.map((_, b) => {
     const lo = SOGLIE[b];
     const hi = SOGLIE[b + 1];

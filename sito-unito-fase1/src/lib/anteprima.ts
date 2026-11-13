@@ -22,20 +22,6 @@ export function anteprimaNellApp(): boolean {
   return ponte() !== null;
 }
 
-/**
- * Vero quando il PDF va mostrato come immagine.
- *
- * Chrome su Android non ha un lettore di PDF dentro la pagina: un PDF aperto
- * in un riquadro o in una scheda nuova mostra solo la schermata di scaricamento
- * (icona PDF, codice del file, tasto «Apri» che resta bianco). Lì conviene
- * disegnare l'immagine dello stesso foglio e lasciare il PDF al tasto «Salva».
- */
-export function anteprimaPdfComeImmagine(): boolean {
-  if (anteprimaNellApp()) return false;
-  if (typeof navigator === 'undefined') return false;
-  return /Android/i.test(navigator.userAgent);
-}
-
 /** Passa il file al lettore nativo: si guarda, e si salva solo da lì. */
 export function apriNellApp(blob: Blob, nome: string): void {
   const android = ponte();

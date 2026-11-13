@@ -144,25 +144,74 @@ const SALE = { base: 1.172, pendenza: -0.0655, riferimento: 2.5 } as const;
 const OLIO = { pendenza: 0.05 } as const;
 
 /**
- * Forza consigliata: due orologi.
+ * Forza consigliata: una legge logaritmica, due orologi, nessun tetto basso.
  *
- *   W = 162,657 + 5,8044 · oreEq + 2 · oreFrigo      (tetto 365)
+ *   W = 119 + 64 · ln(oreEq + 0,155 · oreFrigo)
+ *       + 2,4 · (idro − 62) + 2 · (sale − 2,5) − 1 · (olio − 2)
  *
- * La retta sulle sole ore equivalenti funzionava fino alle maturazioni a
- * temperatura ambiente, ma sottostimava le lunghe in frigorifero: 48 ore a
- * 4 °C valgono 12 ore equivalenti, e la retta chiedeva W 230 mentre le ricette
- * per quella durata chiedono 320–350. Il motivo è che il tempo in cella non
- * lievita ma consuma: proteolisi e amilasi non si fermano a 4 °C, e la maglia
- * si indebolisce comunque. Le ore di frigo entrano quindi con un loro
- * coefficiente, tarato su 24/48/72 ore (vedi documentazione).
+ * **Perché logaritmica.** La retta precedente (162,657 + 5,8044 · oreEq + 2 ·
+ * oreFrigo) veniva da una regressione sulle ore *equivalenti*, ma la scala del
+ * W non è lineare nel tempo: raddoppiare la maturazione non raddoppia la forza
+ * che serve. Il confronto con le schede dei molini lo mostra bene — W 260–280
+ * per 8–12 ore, 300–320 per 24, 360–380 per 48, 400 per 72 (Caputo Pizzeria,
+ * Saccorosso, Manitoba; AVPN 2022; Rachello; Grassi). Una retta non passa per
+ * quei quattro punti: o sottostima le corte o sovrastima le lunghe, e infatti
+ * la vecchia legge dava 208 a 8 ore (contro 260–270 dichiarati) e finiva sul
+ * tetto di 365 già a 36 ore, dove le fonti chiedono ancora 380 a 48 e 400 a 72.
+ *
+ * **La calibrazione.** 31 vincoli: i 20 punti della scala PizzaBlab (10 a
+ * temperatura ambiente, 10 in frigo), AVPN 2022 (8 h → W 265, 24 h → W 300),
+ * Caputo Pizzeria/Saccorosso/Manitoba, Molino Rachello, il disciplinare
+ * dell'Associazione Pizza Romana, la teglia professionale di Molini Pivetti e,
+ * come outliers dichiarati, la 00 Slow H24 di Molino Grassi. Minimi quadrati
+ * pesati sulla sola incognita non lineare (il peso del frigo), poi lineari:
+ * errore quadratico medio 15,7 W su tutto l'intervallo 2–288 ore. Il residuo
+ * più grande è Grassi (−57 W), che è una farina W 380 venduta per 24 ore: non
+ * è il minimo che serve, è il massimo che il mulino offre.
+ *
+ * **Perché due orologi.** Il frigo conta 0,115 per il lievito (è dentro le ore
+ * equivalenti) e 0,27 per la struttura: la differenza, 0,155 per ora, è quella
+ * che il W aggiunge qui. A 4 °C il lievito è quasi fermo, proteasi e amilasi no:
+ * la maglia si degrada comunque, e la farina deve essere più forte.
+ *
+ * **Perché gli ingredienti adesso contano.** Prima il W non si muoveva con
+ * acqua, sale e olio: era una scelta, non una misura, e contraddiceva le schede
+ * dei molini, che per le alte idratazioni chiedono 300–350 dove per la stessa
+ * durata al 62% ne chiedono 260–320 (Rachello) e il disciplinare romano dà
+ * 260–350 per impasti al 70–80%. L'acqua non cambia la velocità del lievito
+ * (Le-Bail 2010: 56–60% di idratazione non sposta la cinetica), ma cambia
+ * quanta struttura serve per tenerla. Il sale rinforza leggermente la maglia,
+ * l'olio la distende: i due coefficienti sono quelli già usati dalle 12
+ * mini-ricette, così i due motori non si contraddicono sullo stesso impasto.
  */
 const FORZA = {
-  base: 162.657,
-  pendenza: 5.8044,
-  /** Peso di un'ora di frigorifero nel W richiesto. */
-  frigo: 2,
-  tetto: 365,
+  /** W a un'ora equivalente: il piede della curva. */
+  base: 119,
+  /** Gradi di W per unità di logaritmo naturale delle ore. */
+  pendenza: 64,
+  /**
+   * Ore di cella che contano per la struttura in più rispetto alle ore
+   * equivalenti: 0,115 + 0,155 = 0,27 per ora, contro 0,115 per il lievito.
+   */
+  frigoStruttura: 0.155,
+  idratazione: { riferimento: 62, pendenza: 2.4 },
+  sale: { riferimento: 2.5, pendenza: 2 },
+  olio: { riferimento: 2, pendenza: -1 },
+  /** Oltre le 72 ore equivalenti il modello non ha più vincoli: si ferma qui. */
+  tetto: 420,
+  /** Sotto le 2 ore la legge scenderebbe sotto la farina più debole in commercio. */
+  minimo: 150,
 } as const;
+
+/** Ingredienti che spostano la forza richiesta (non la dose di lievito). */
+export interface IngredientiForza {
+  /** Idratazione in punti percentuali. */
+  idratazione: number;
+  /** Sale in percentuale sulla farina. */
+  sale: number;
+  /** Olio in percentuale sulla farina. */
+  olio: number;
+}
 
 /** Resa dei due lieviti, rispetto al fresco (fresco = 1). */
 export const FATTORI_LIEVITO: Record<TipoLievito, number> = {
@@ -206,6 +255,8 @@ export interface ParametriLievito {
   /** Olio in percentuale sulla farina. */
   olio: number;
   tipo: TipoLievito;
+  /** Legge da usare, quando il motore attivo non è quella storica. */
+  rami?: Record<Ramo, RamoDose>;
 }
 
 /**
@@ -223,12 +274,44 @@ export function limiteDose(
 }
 
 /**
+ * La legge del modello **Termico**, tarata sui 193 impasti diretti raccolti da
+ * ricette italiane.
+ *
+ * Un solo esponente per i tre stili, 1,4: è quello che le fonti implicano fra
+ * le 8 e le 24 ore, dove le ancore sono solide. Con un esponente libero per
+ * ramo il corpus andava a inseguire il rumore dei tempi lunghi (1,2 g/kg a 48
+ * ore, cioè un impasto morto). Lo stile sposta il livello della curva, non la
+ * sua forma.
+ *
+ * Il livello viene dal risultato reale del motore sulle 193 ricette: con
+ * questi tre numeri la mediana dello scarto è 1,00 su tutti e tre gli stili e
+ * il 33% delle ricette cade entro il ±30% (era il 25% con la legge storica).
+ */
+export const RAMI_TERMICO: Record<Ramo, RamoDose> = {
+  verace: {
+    coefficiente: 5.87,
+    esponente: 1.4,
+    idratazione: { riferimento: 62, esponente: -1.2 },
+  },
+  contemporanea: {
+    coefficiente: 9.69,
+    esponente: 1.4,
+    idratazione: { riferimento: 62, esponente: -0.3 },
+  },
+  teglia: {
+    coefficiente: 18.17,
+    esponente: 1.4,
+    idratazione: { riferimento: 62, esponente: -1.2 },
+  },
+};
+
+/**
  * Percentuale di lievito sulla farina, già convertita nel tipo scelto.
  * Il minimo di 0,5 ore evita che tempi quasi nulli mandino la dose a infinito:
  * sotto mezz'ora il conto non ha comunque senso.
  */
 export function percentualeLievito(parametri: ParametriLievito): number {
-  const ramo = RAMI[parametri.ramo];
+  const ramo = (parametri.rami ?? RAMI)[parametri.ramo];
   const ore = Math.max(parametri.oreEquivalenti, 0.5);
 
   const idratazione = Math.min(
@@ -259,14 +342,52 @@ export function percentualeLievitoFresco(parametri: Omit<ParametriLievito, 'tipo
   return percentualeLievito({ ...parametri, tipo: 'fresco' });
 }
 
+/**
+ * W richiesto dall'impasto di riferimento (62% di idratazione, 2,5% di sale,
+ * nessun olio), senza arrotondamenti né tagli: è il mattone su cui si
+ * costruiscono `forzaConsigliata`, `forzaImpasto` e la loro inversa.
+ */
+function forzaGrezza(oreEquivalenti: number, oreFrigo: number): number {
+  // Mezz'ora è il limite inferiore: sotto, il logaritmo non descrive più nulla
+  // e il W scenderebbe sotto qualunque farina in commercio.
+  const ore = Math.max(oreEquivalenti, 0.5);
+  const struttura = ore + FORZA.frigoStruttura * Math.max(oreFrigo, 0);
+  return FORZA.base + FORZA.pendenza * Math.log(struttura);
+}
+
+function entroDominio(valore: number): number {
+  return Math.min(FORZA.tetto, Math.max(FORZA.minimo, Math.round(valore)));
+}
+
 /** Forza della farina che serve per questa maturazione, in gradi W. */
 export function forzaConsigliata(oreEquivalenti: number, oreFrigo = 0): number {
-  const valore =
-    FORZA.base +
-    FORZA.pendenza * Math.max(oreEquivalenti, 0) +
-    FORZA.frigo * Math.max(oreFrigo, 0);
+  return entroDominio(forzaGrezza(oreEquivalenti, oreFrigo));
+}
 
-  return Math.min(FORZA.tetto, Math.round(valore));
+/**
+ * Correzione degli ingredienti sulla forza richiesta, in gradi W. Additiva e
+ * non moltiplicativa: l'acqua non cambia di una percentuale fissa la forza che
+ * serve, cambia quanti gradi di tenuta servono per sostenerla.
+ */
+export function correzioneIngredienti(ingredienti: IngredientiForza): number {
+  const idro = Math.min(
+    LIMITI_INGREDIENTI.idratazione.max,
+    Math.max(LIMITI_INGREDIENTI.idratazione.min, ingredienti.idratazione),
+  );
+  const sale = Math.min(
+    LIMITI_INGREDIENTI.sale.max,
+    Math.max(LIMITI_INGREDIENTI.sale.min, ingredienti.sale),
+  );
+  const olio = Math.min(
+    LIMITI_INGREDIENTI.olio.max,
+    Math.max(LIMITI_INGREDIENTI.olio.min, ingredienti.olio),
+  );
+
+  return (
+    FORZA.idratazione.pendenza * (idro - FORZA.idratazione.riferimento) +
+    FORZA.sale.pendenza * (sale - FORZA.sale.riferimento) +
+    FORZA.olio.pendenza * (olio - FORZA.olio.riferimento)
+  );
 }
 
 /**
@@ -279,9 +400,17 @@ export function forzaConsigliata(oreEquivalenti: number, oreFrigo = 0): number {
  * dove vivono gli ingredienti. Il tetto si applica alla fine, perché chiedere
  * una farina più forte del massimo che il modello ammette non aiuta.
  */
-export function forzaImpasto(oreEquivalenti: number, oreFrigo = 0, correzione = 1): number {
-  const valore = forzaConsigliata(oreEquivalenti, oreFrigo) * correzione;
-  return Math.min(FORZA.tetto, Math.max(0, Math.round(valore)));
+export function forzaImpasto(
+  oreEquivalenti: number,
+  oreFrigo = 0,
+  correzione = 1,
+  ingredienti?: IngredientiForza,
+): number {
+  const base =
+    forzaGrezza(oreEquivalenti, oreFrigo) +
+    (ingredienti ? correzioneIngredienti(ingredienti) : 0);
+
+  return Math.min(FORZA.tetto, Math.max(0, Math.round(base * correzione)));
 }
 
 /**
@@ -293,5 +422,6 @@ export function forzaImpasto(oreEquivalenti: number, oreFrigo = 0, correzione = 
  * margine). Restituisce un numero di ore equivalenti, non totali.
  */
 export function oreMassimePerForza(w: number): number {
-  return (w - FORZA.base) / FORZA.pendenza;
+  // Inversa a zero ore di frigo: h = e^((W − base) / pendenza).
+  return Math.max(0, Math.exp((w - FORZA.base) / FORZA.pendenza));
 }

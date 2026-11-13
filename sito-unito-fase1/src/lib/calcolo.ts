@@ -1,6 +1,7 @@
 import {
   FATTORI_LIEVITO,
   LIMITI_LIEVITO,
+  RAMI_TERMICO,
   fattoreTemperatura,
   forzaImpasto,
   limiteDose,
@@ -85,16 +86,23 @@ export function forzaEfficace(farine: readonly Farina[]): number | null {
 }
 
 /*
- * IL W CONSIGLIATO NON GUARDA GLI INGREDIENTI
- * -------------------------------------------
- * La retta della forza vale per l'impasto di riferimento e basta. Misurato su
- * riferimento, il W non si muove né con l'acqua né con il sale né con l'olio:
- * a parità di orari dà 258 al 62% come al 75%, 258 con olio a 0, 2 e 4%, e
- * 258 con 20, 40 o 60 g/l di sale.
+ * IL W CONSIGLIATO GUARDA GLI INGREDIENTI, MA NON COME PRIMA
+ * ---------------------------------------------------------
+ * Per un periodo il W consigliato è stato indipendente da acqua, sale e olio:
+ * su un solo riferimento non si vedeva alcun effetto, e la vecchia correzione
+ * moltiplicativa (idratazione^0,6, olio +3% per punto, malto +5%, sale −4%)
+ * sembrava arbitraria. Era arbitraria davvero, ma la conclusione era sbagliata:
+ * le schede dei molini associano alle alte idratazioni farine più forti
+ * (Rachello: 300–350 oltre il 75%, contro 260–320 al 62%; il disciplinare
+ * romano dà 260–350 per impasti al 70–80%), e non perché l'acqua acceleri il
+ * lievito — Le-Bail 2010 mostra che fra 56 e 60% la cinetica non si muove — ma
+ * perché più acqua chiede più tenuta.
  *
- * Qui prima c'era una correzione (idratazione^0,6, olio +3% per punto, malto
- * +5%, sale −4%): era una scelta di modellazione, non una misura, e teneva il
- * W del 12% più alto sulla contemporanea e del 21% sulla teglia. Tolta.
+ * Ora la correzione è additiva e in gradi W: +2,4 per punto di idratazione
+ * sopra il 62%, +2 per punto di sale sopra il 2,5%, −1 per punto di olio sopra
+ * il 2%. Sono gli stessi coefficienti che le 12 mini-ricette usano per
+ * l'affinamento, così i due motori non possono più dire cose opposte sullo
+ * stesso impasto.
  */
 
 /**
@@ -448,6 +456,7 @@ export function passiTempo(
   tempi: ParametriTempo,
   staglio: InputCalcolo['staglio'] = 'prima',
   tonda = true,
+  temperaturaChiusura?: number,
 ): PassoTempo[] {
   const aggiungiOre = (data: Date, quante: number) =>
     new Date(data.getTime() + quante * 3_600_000);
@@ -458,10 +467,13 @@ export function passiTempo(
   passi.push({
     quando: new Date(corrente),
     titolo: 'Impasto',
+    temperaturaChiusura,
     nota:
       tempi.oreTaPrima > 0
         ? `Puntata a ${tempi.ta} °C per ${formattaOre(tempi.oreTaPrima)}.`
-        : `Subito in frigorifero a ${tempi.tc} °C.`,
+        : tempi.oreFrigo > 0
+          ? `Subito in frigorifero a ${tempi.tc} °C.`
+          : `Lievitazione a ${tempi.ta} °C per ${formattaOre(tempi.oreTaDopo)}.`,
   });
 
   // La puntata passa comunque, con o senza frigo: è lì che finisce la prima
@@ -519,10 +531,6 @@ function arrotonda2(valore: number): number {
   return Math.round(valore * 100) / 100;
 }
 
-function arrotondaG(valore: number): number {
-  return Math.round(valore);
-}
-
 /** Calcolo completo: dosi, lievito, forza del mix, acqua e orari. */
 export function calcola(
   input: InputCalcolo,
@@ -549,11 +557,12 @@ export function calcola(
     pesoObiettivoG = numeroPezzi * (input.pesoPanettoG ?? 0);
   }
 
-  const farinaG = arrotondaG(pesoObiettivoG / denominatore);
-  const acquaG = arrotondaG((farinaG * input.idratazione) / 100);
-  const saleG = arrotondaG((farinaG * input.sale) / 100);
-  const olioG = arrotondaG((farinaG * input.olio) / 100);
-  const maltoG = arrotondaG((farinaG * input.malto) / 100);
+  // La farina si ricava dal peso obiettivo quando la dose di lievito è nota
+  // (il lievito fa parte dell'impasto e va nel denominatore, vedi sotto); qui
+  // si prepara solo la stima che serve ai motori, che non dipendono dal peso.
+  const farinaFissata =
+    input.tipo !== 'teglia' && input.modalita === 'farina' ? (input.farinaG ?? 0) : null;
+  const farinaStima = farinaFissata ?? pesoObiettivoG / denominatore;
 
   // Inerzia termica: l'impasto insegue la temperatura dell'ambiente invece di
   // saltarci sopra, quindi le ore equivalenti sono l'integrale del ritmo di
@@ -598,16 +607,29 @@ export function calcola(
     sale: input.sale,
     olio: input.olio,
     massa: pesoObiettivoG,
-    farina: farinaG,
+    farina: farinaStima,
     formato: input.tipo === 'teglia' ? 'teglia' : 'tonda',
   });
 
   const oreEqNuovo = profilo.oreEquivalenti;
   const oreEqVecchio = profiloPrecedente.oreEquivalenti;
+  // Il modello Termico: la struttura resta quella dell'inerziale (stesso
+  // profilo, stesso W), ma il lievito conta il frigorifero con il suo orologio.
+  // Il profilo conta un'ora di cella come 0,115 ore a 20 °C, mentre nelle
+  // mini-ricette il lievito lavora 0,23: contarlo a metà faceva sovradosare
+  // tutti i programmi freddi (sui 193 era +34% fra le 20 e le 40 ore di cella).
+  const termico = input.modello === 'termico';
+  const oreEqTermico = oreEqNuovo + Math.max(0, tempi.oreFrigo) * fattoreTemperatura(tempi.tc);
   // Con il modello a 12 mini-ricette le ore equivalenti sono quelle del suo
   // indice di maturazione: è lo stesso asse (ore a 20 °C), contato con il peso
   // del frigo che quel modello ha scelto.
-  const oreEq = mini ? miniRicetta.iMat : vecchio ? oreEqVecchio : oreEqNuovo;
+  const oreEq = mini
+    ? miniRicetta.iMat
+    : vecchio
+      ? oreEqVecchio
+      : termico
+        ? oreEqTermico
+        : oreEqNuovo;
 
   const percentualeFrescoNuovo = percentualeLievitoFresco({
     oreEquivalenti: oreEqNuovo,
@@ -623,39 +645,76 @@ export function calcola(
     sale: input.sale,
     olio: input.olio,
   });
+  const percentualeFrescoTermico = percentualeLievitoFresco({
+    oreEquivalenti: oreEqTermico,
+    ramo: input.ramo,
+    idratazione: input.idratazione,
+    sale: input.sale,
+    olio: input.olio,
+    rami: RAMI_TERMICO,
+  });
+  const percentualeFrescoMini = miniRicetta.doseGkg / 10;
   const percentualeFrescoBase = mini
-    ? miniRicetta.doseGkg / 10
+    ? percentualeFrescoMini
     : vecchio
       ? percentualeFrescoVecchio
-      : percentualeFrescoNuovo;
+      : termico
+        ? percentualeFrescoTermico
+        : percentualeFrescoNuovo;
   const percentualeFresco = percentualeFrescoBase * (1 + input.correzioneLievito / 100);
   const percentuale = percentualeFresco * FATTORI_LIEVITO[input.tipoLievito];
 
-  const lievitoFrescoG = arrotonda2((farinaG * percentualeFresco) / 100);
-  const lievitoG = arrotonda2((farinaG * percentuale) / 100);
+  // Bilancio di massa. Il lievito è parte dell'impasto, quindi entra nel
+  // denominatore: prima ne stava fuori e ogni ingrediente veniva arrotondato al
+  // grammo, così una teglia da 660 g ne mostrava 663. Il conto ora è esatto e
+  // l'arrotondamento resta solo nella formattazione.
+  // Nel denominatore va la dose **scelta**: col secco è un terzo di quella del
+  // fresco, e contare il fresco faceva chiudere la teglia a 658 g invece di 660.
+  const farinaG = farinaFissata ?? pesoObiettivoG / (denominatore + percentuale / 100);
+  const acquaG = (farinaG * input.idratazione) / 100;
+  const saleG = (farinaG * input.sale) / 100;
+  const olioG = (farinaG * input.olio) / 100;
+  const maltoG = (farinaG * input.malto) / 100;
 
-  const pesoFinaleG = arrotondaG(farinaG + acquaG + saleG + olioG + maltoG + lievitoG);
+  // La dose resta esatta fino alla formattazione: arrotondarla qui faceva
+  // sembrare 0,01 g una dose vera di 0,005, e la soglia «< 0,01» non scattava.
+  const lievitoFrescoG = (farinaG * percentualeFresco) / 100;
+  const lievitoG = (farinaG * percentuale) / 100;
+
+  const pesoFinaleG = farinaG + acquaG + saleG + olioG + maltoG + (farinaG * percentuale) / 100;
 
   let residuoG: number | null = null;
   if (input.tipo !== 'teglia' && input.modalita === 'farina') {
     const pesoPanetto = input.pesoPanettoG ?? 0;
     numeroPezzi = pesoPanetto > 0 ? Math.floor(pesoFinaleG / pesoPanetto) : 0;
-    residuoG = arrotondaG(pesoFinaleG - numeroPezzi * pesoPanetto);
+    residuoG = pesoFinaleG - numeroPezzi * pesoPanetto;
   }
 
   // Due orologi: il W cresce con le ore equivalenti e anche con le ore reali
   // passate in frigo, perché la maturazione a 4 °C consuma struttura senza
   // consumare zuccheri.
-  const forzaNuovo = forzaImpasto(oreEqNuovo, tempi.oreFrigo);
+  const ingredientiForza = {
+    idratazione: input.idratazione,
+    sale: input.sale,
+    olio: input.olio,
+  };
+  const forzaNuovo = forzaImpasto(oreEqNuovo, tempi.oreFrigo, 1, ingredientiForza);
   // Anche il motore predefinito legge il W con i due orologi: le ore
   // equivalenti sono le sue, la legge è una sola. Quello che resta diverso fra
   // i due motori è il modo di contare le ore, non il modo di chiedere la
   // farina. L'emulazione storica del W (`forzaVecchio`) resta in vecchio.ts
   // come documentazione e come test, ma non è più quella mostrata.
-  const forzaPrecedente = forzaImpasto(oreEqVecchio, tempi.oreFrigo);
+  const forzaPrecedente = forzaImpasto(oreEqVecchio, tempi.oreFrigo, 1, ingredientiForza);
   const wConsigliato = mini ? miniRicetta.w : vecchio ? forzaPrecedente : forzaNuovo;
-  const weq = wEquivalente(input.farine);
-  const weff = forzaEfficace(input.farine);
+  // Il W del mix si calcola solo se **tutte** le farine usate hanno il W. Se una
+  // riga ha la quota ma non il W, la media si farebbe sulla parte nota e la si
+  // presenterebbe come se fosse il mix: 1% a W 300 con il 99% ignoto darebbe
+  // «W 300, in linea». Meglio dire che non è calcolabile, come a campi vuoti.
+  const coperturaW = input.farine.every((farina) => farina.quota <= 0 || farina.w !== null);
+  const qualcheW = input.farine.some((farina) => farina.quota > 0 && farina.w !== null);
+  const wIncompleto = !coperturaW && qualcheW;
+  const weq = coperturaW ? wEquivalente(input.farine) : null;
+  const weff = coperturaW ? forzaEfficace(input.farine) : null;
   // Le forbici del W: con il modello a 12 mini-ricette sono la fascia della
   // mini-ricetta del caso (già traslata dall'affinamento) più 10 W di
   // tolleranza; con gli altri due motori resta la finestra percentuale.
@@ -675,7 +734,12 @@ export function calcola(
     input.riscaldamento,
   );
 
-  const lievitoPerKgFarina = arrotonda1(percentualeFresco * 10);
+  // Grammi per kg di farina del lievito **scelto**: con il secco il numero deve
+  // essere un terzo di quello del fresco, altrimenti la riga contraddice la
+  // percentuale e i grammi che le stanno accanto.
+  const lievitoPerKgFarina = arrotonda1(percentuale * 10);
+  /** Lo stesso dato in equivalente fresco: serve agli avvisi tecnici. */
+  const lievitoPerKgFarinaFresco = arrotonda1(percentualeFresco * 10);
 
   const avvisi: string[] = [];
   // Il confronto è sul valore esatto: l'arrotondamento serve solo a mostrarlo.
@@ -720,10 +784,11 @@ export function calcola(
   }
 
   // L'altro orologio: le ore reali in frigo. Le ore equivalenti le contano
-  // poco, ma la maglia si degrada comunque.
-  if (Math.max(0, tempi.oreFrigo) > 48) {
+  // poco, ma la maglia si degrada comunque. Oltre le 40 ore il modello esce
+  // dalla zona in cui è stato tarato: meglio dirlo che far finta di sapere.
+  if (Math.max(0, tempi.oreFrigo) > 40) {
     avvisi.push(
-      'Oltre 48 ore in frigorifero: il lievito è quasi fermo, gli enzimi no. La maglia continua a indebolirsi, per questo il W richiesto sale oltre quello delle sole ore equivalenti.',
+      'Oltre 40 ore in frigorifero: il lievito è quasi fermo, gli enzimi no, e la stima è meno affidabile perché il modello è tarato fino a qui. La maglia continua a indebolirsi, per questo il W richiesto sale oltre quello delle sole ore equivalenti.',
     );
   }
   if (oreEq < 3) {
@@ -765,10 +830,14 @@ export function calcola(
     lievitoFrescoG,
     pesoImpastoG: pesoFinaleG,
     numeroPezzi,
-    pesoPerPezzoG: numeroPezzi > 0 ? pesoFinaleG / numeroPezzi : 0,
+    // Il pezzo è quello che si forma, non la media: con la farina che avanza,
+    // dividere il totale per il numero di panetti gonfia ogni panetto del
+    // residuo diviso a metà.
+    pesoPerPezzoG: input.pesoPanettoG ?? (numeroPezzi > 0 ? pesoFinaleG / numeroPezzi : 0),
     residuoG,
     percentualeLievito: percentuale,
-    modello: mini ? 'miniRicette' : vecchio ? 'vecchio' : 'nuovo',
+    modello: termico ? 'termico' : mini ? 'miniRicette' : vecchio ? 'vecchio' : 'nuovo',
+    ramo: input.ramo,
     confronto: {
       oreEquivalentiNuovo: oreEqNuovo,
       oreEquivalentiVecchio: oreEqVecchio,
@@ -784,6 +853,13 @@ export function calcola(
       ),
       forzaNuovo,
       forzaVecchio: forzaPrecedente,
+      forzaTermico: forzaNuovo,
+      oreEquivalentiTermico: oreEqTermico,
+      lievitoTermicoG: arrotonda2(
+        (farinaG * percentualeFrescoTermico * (1 + input.correzioneLievito / 100) *
+          FATTORI_LIEVITO[input.tipoLievito]) /
+          100,
+      ),
       forzaMini: miniRicetta.w,
       lievitoMiniG: arrotonda2(miniRicetta.lievitoG * FATTORI_LIEVITO[input.tipoLievito]),
     },
@@ -800,6 +876,7 @@ export function calcola(
     areaTegliaCm2: area,
     forzaConsigliata: wConsigliato,
     wEquivalente: weq,
+    wIncompleto,
     giudizioForza: weff === null ? null : giudizioForza(weff, wConsigliato, fasce),
     wEfficace: weff,
     forzaMinima: finestra.minima,
@@ -809,12 +886,17 @@ export function calcola(
     oreMassime,
     limiteLievito: limite,
     suggerimentoForza,
-    passi: passiTempo(inizio, tempi, input.staglio, input.tipo !== 'teglia'),
+    passi: passiTempo(inizio, tempi, input.staglio, input.tipo !== 'teglia', input.temperaturaImpasto),
     temperaturaAcqua: acquaConsigliata,
     lievitoPerKgFarina,
+    lievitoPerKgFarinaFresco,
     curva: vecchio ? profiloPrecedente.curva : profilo.curva,
     fasce: vecchio ? profiloPrecedente.fasce : profilo.fasce,
-    miniRicetta,
+    miniRicetta: {
+      ...miniRicetta,
+      farinaG,
+      lievitoG: (farinaG * percentualeFrescoMini) / 100,
+    },
     avvisi,
   };
 }

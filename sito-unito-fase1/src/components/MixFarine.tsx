@@ -13,6 +13,8 @@ interface Props {
   farine: readonly RigaFarina[];
   /** Quota dell'ultima farina: è il resto, non si scrive. */
   resto: number;
+  errori: { quote: readonly boolean[]; forze: readonly boolean[]; totale: number | null };
+  wMancanti: readonly boolean[];
   onChange: (indice: number, campo: keyof RigaFarina, valore: string) => void;
   onAggiungi: () => void;
   onRimuovi: (indice: number) => void;
@@ -50,6 +52,8 @@ const CAMPO =
 export function MixFarine({
   farine,
   resto,
+  errori,
+  wMancanti,
   onChange,
   onAggiungi,
   onRimuovi,
@@ -70,6 +74,12 @@ export function MixFarine({
       {farine.map((farina, indice) => {
         const ultima = indice === farine.length - 1;
         const rimovibile = farine.length > 1 && indice > 0;
+
+        const quotaErrata = errori.quote[indice] === true;
+        const forzaErrata = errori.forze[indice] === true;
+        const forzaMancante = wMancanti[indice] === true;
+        const idQuota = `mix-quota-errore-${indice}`;
+        const idForza = `mix-w-avviso-${indice}`;
 
         return (
           <div key={indice} className="mt-1.5 grid grid-cols-[1fr_4.5rem_4.5rem] items-center gap-2">
@@ -101,12 +111,14 @@ export function MixFarine({
                 <input
                   id={`farina-${indice}`}
                   type="text"
-                  inputMode="numeric"
+                  inputMode="decimal"
+                  aria-invalid={quotaErrata || undefined}
+                  aria-describedby={quotaErrata ? idQuota : undefined}
                   autoComplete="off"
                   aria-label={`Quota della farina ${indice + 1} in percentuale`}
                   value={farina.quota}
                   onChange={(evento) => onChange(indice, 'quota', evento.target.value)}
-                  className={`${CAMPO} pr-6 text-center font-semibold`}
+                  className={`${CAMPO} pr-6 text-center font-semibold aria-[invalid=true]:border-errore`}
                 />
                 <span
                   aria-hidden="true"
@@ -123,13 +135,33 @@ export function MixFarine({
               autoComplete="off"
               aria-label={`Forza W della farina ${indice + 1}`}
               placeholder="—"
+              aria-invalid={forzaErrata || undefined}
+              aria-describedby={forzaErrata || forzaMancante ? idForza : undefined}
               value={farina.w}
               onChange={(evento) => onChange(indice, 'w', evento.target.value)}
-              className={`${CAMPO} text-center`}
+              className={`${CAMPO} text-center aria-[invalid=true]:border-errore ${forzaMancante ? "border-avviso" : ""}`}
             />
+            {quotaErrata ? (
+              <p id={idQuota} role="status" className="col-span-3 text-xs text-errore">
+                Farina {indice + 1}. Inserisci una quota da 0% a 100%.
+              </p>
+            ) : null}
+            {forzaErrata || forzaMancante ? (
+              <p id={idForza} role="status" className={`col-span-3 text-xs ${forzaErrata ? 'text-errore' : 'text-avviso'}`}>
+                {forzaErrata
+                  ? `Farina ${indice + 1}. Inserisci un W da 100 a 500 o lascia il campo vuoto.`
+                  : `Manca il W della farina ${indice + 1}. Puoi calcolare le dosi, ma il W del mix resta sconosciuto.`}
+              </p>
+            ) : null}
           </div>
         );
       })}
+
+      {errori.totale !== null ? (
+        <p role="status" className="mt-2 text-xs text-errore">
+          Le quote inserite sommano a {formatta(errori.totale, Number.isInteger(errori.totale) ? 0 : 2)}%. Il totale non può superare il 100%.
+        </p>
+      ) : null}
 
       <button
         type="button"
@@ -184,15 +216,12 @@ export function MixFarine({
               ? 'W troppo alto per queste ore.'
               : 'W troppo basso per queste ore.'}
           </strong>{' '}
-          {efficace > finestra.massima
-            ? `Il mix è a W ${Math.round(efficace)}, sopra la fascia tollerata ${finestra.minima}–${finestra.massima}: il modello indica un impasto più tenace del necessario. Puoi valutare una maturazione più lunga o un’idratazione più alta.`
-            : `Il mix è a W ${Math.round(efficace)}, sotto la fascia tollerata ${finestra.minima}–${finestra.massima}: il modello indica una maglia al limite per queste ore. Accorcia i tempi o aggiungi una farina più forte.`}
         </div>
       ) : null}
 
       <p className="mt-1.5 text-xs leading-relaxed text-inchiostro-tenue">
         {consigliato === null
-          ? 'L’ultima quota è il resto: si calcola da sé. Il W del mix serve a capire se la farina è adatta a queste ore.'
+          ? 'L’ultima quota è il resto: si calcola da sé.'
           : `Per queste ore il modello consiglia W ${consigliato}. Lascia il W vuoto se non lo conosci: le dosi non cambiano.`}
       </p>
     </div>

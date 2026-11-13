@@ -565,6 +565,12 @@ export function FormCalcolo({
 
           {righeProdotti.map(({ prodotto, riga, subtotale }) => {
             const dimensione = prodotto.dimensione;
+            const quantita = riga ? Number.parseInt(riga.quantita, 10) || 0 : 0;
+            const dimensioneScelta = dimensione
+              ? dimensione.tipo === 'stampo'
+                ? `${riga?.dimA ?? dimensione.baseA} × ${riga?.dimB ?? dimensione.baseB ?? 1} ${dimensione.unita}`
+                : `Ø ${riga?.dimA ?? dimensione.baseA} ${dimensione.unita}`
+              : prodotto.nota;
             const riferimentoDimensione = dimensione
               ? dimensione.tipo === 'stampo'
                 ? `${dimensione.baseA} × ${dimensione.baseB ?? 1} cm corrispondono a ${formattatoreGrammi.format(dimensione.pesoBaseG)} g`
@@ -592,13 +598,13 @@ export function FormCalcolo({
                       {prodotto.nome}
                     </span>
                     <span className="mt-0.5 block text-[11px] text-inchiostro-tenue">
-                      {prodotto.nota}
+                      {dimensioneScelta}
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="text-right text-[11px] leading-tight text-inchiostro-tenue tabular-nums">
                       <span className="block font-semibold text-inchiostro">
-                        {riga ? Number.parseInt(riga.quantita, 10) || 0 : 0} pezzi
+                        {quantita} {quantita === 1 ? "pezzo" : "pezzi"}
                       </span>
                       {formattatoreGrammi.format(subtotale)} g
                     </span>

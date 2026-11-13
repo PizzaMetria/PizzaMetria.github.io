@@ -5,6 +5,7 @@ import { parametriScheda, sottotitoloRicetta, tipoImpasto } from '../lib/vista';
 
 interface Props {
   ricetta: RicettaConfig;
+  incorporata?: boolean;
 }
 
 function notaRicetta(ricetta: RicettaConfig): string {
@@ -20,24 +21,15 @@ function notaRicetta(ricetta: RicettaConfig): string {
   )} nel rinfresco. L’autolisi è facoltativa: se la attivi, il calcolatore ripartisce l’acqua restante tra autolisi e rinfresco.`;
 }
 
-export function SchedaRicetta({ ricetta }: Props) {
+export function SchedaRicetta({ ricetta, incorporata = false }: Props) {
   const parametri = parametriScheda(ricetta);
 
   return (
     <Pannello
       id="ricetta-attiva"
-      titolo={ricetta.nome}
-      nota={sottotitoloRicetta(ricetta)}
+      titolo={incorporata ? "Caratteristiche dell’impasto" : ricetta.nome}
+      nota={incorporata ? undefined : sottotitoloRicetta(ricetta)}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-terracotta/30 bg-oro-velo px-2.5 py-1 text-[10px] font-bold tracking-widest text-oro-chiaro uppercase">
-          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-terracotta" />
-          Ricetta selezionata
-        </span>
-      </div>
-
-      {/* Il titolo resta l'elemento principale; a destra, sulla stessa riga,
-          il badge discreto con il tipo di impasto della ricetta. */}
       <div className="mt-3 flex items-start justify-between gap-x-2 gap-y-1">
         <span className="inline-flex shrink-0 items-center rounded-full border border-bordo bg-crema-scuro/70 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-inchiostro-tenue uppercase">
           {tipoImpasto(ricetta)}

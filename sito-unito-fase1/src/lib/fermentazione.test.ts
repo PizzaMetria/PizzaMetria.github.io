@@ -99,9 +99,18 @@ describe('legge del lievito', () => {
         ramo: misura.ramo,
         ...INGRESSI,
       });
+      // Questa tabella è la taratura precedente, tenuta come memoria: non è
+      // una fonte e il modello non deve più riprodurla. Si controlla la forma
+      // della curva, che è quello che gli errori di adesso non devono rompere.
       const rapporto = nostro / atteso;
-      expect(rapporto, `${misura.ramo} ${misura.ore} h`).toBeGreaterThan(0.92);
-      expect(rapporto, `${misura.ramo} ${misura.ore} h`).toBeLessThan(1.08);
+      expect(rapporto, `${misura.ramo} ${misura.ore} h`).toBeGreaterThan(0.4);
+      expect(rapporto, `${misura.ramo} ${misura.ore} h`).toBeLessThan(1.4);
+      if (misura.ramo === 'verace' && misura.ore >= 24) {
+        // Sui programmi lunghi la dose resta quella di prima: lì la tabella
+        // non era sbagliata e la taratura non la sposta.
+        expect(rapporto, `verace ${misura.ore} h`).toBeGreaterThan(0.8);
+        expect(rapporto, `verace ${misura.ore} h`).toBeLessThan(1.2);
+      }
     }
   });
 
@@ -148,18 +157,19 @@ describe('legge del lievito', () => {
 });
 
 describe('forza consigliata', () => {
-  it('riproduce la scala misurata entro un grado', () => {
-    // La retta è arrotondata all'intero: il residuo del fit è al massimo un
-    // grado, quindi la tolleranza è 1.
+  it('riproduce la scala delle farine entro un grado', () => {
+    // Punti presi dalle schede dei molini e dalla scala PizzaBlab: 260–280 per
+    // 8–12 ore, 300–320 per 24, 360–380 per 48, 400 per 72. La legge è
+    // arrotondata all'intero, quindi la tolleranza è 1.
     const attesi: readonly (readonly [number, number])[] = [
-      [6, 197],
-      [8, 208],
-      [10, 221],
-      [12, 233],
-      [16, 256],
-      [18, 268],
-      [24, 302],
-      [30, 336],
+      [6, 234],
+      [8, 252],
+      [10, 266],
+      [12, 278],
+      [16, 296],
+      [18, 304],
+      [24, 322],
+      [30, 337],
     ];
 
     for (const [ore, w] of attesi) {
@@ -167,10 +177,13 @@ describe('forza consigliata', () => {
     }
   });
 
-  it('si ferma a 365 oltre le 35 ore equivalenti', () => {
-    expect(forzaConsigliata(36)).toBe(365);
-    expect(forzaConsigliata(48)).toBe(365);
-    expect(forzaConsigliata(120)).toBe(365);
+  it('non satura più: ogni durata chiede la sua farina, fino al tetto di 420', () => {
+    expect(forzaConsigliata(36)).toBe(348);
+    expect(forzaConsigliata(48)).toBe(367);
+    expect(forzaConsigliata(72)).toBe(393);
+    // Il tetto esiste ancora, ma è fuori dal dominio utile: prima si mangiava
+    // già le 36 ore, e 36 e 72 ore chiedevano la stessa farina.
+    expect(forzaConsigliata(120)).toBe(420);
   });
 
   it('la correzione degli ingredienti moltiplica la retta, poi si ferma al tetto', () => {
@@ -183,7 +196,7 @@ describe('forza consigliata', () => {
 
     // Il tetto si applica alla correzione già applicata: non si chiede una
     // farina più forte del massimo che il modello ammette.
-    expect(forzaImpasto(60, 0, 2)).toBe(365);
+    expect(forzaImpasto(60, 0, 2)).toBe(420);
   });
 });
 

@@ -10,7 +10,6 @@ import { SCALA_JPG, jpgBlob } from '../../export/foglio';
 import { datiFoglioRicetta } from '../export/foglio-ricetta';
 import {
   anteprimaNellApp,
-  anteprimaPdfComeImmagine,
   apriNellApp,
 } from '../../lib/anteprima';
 import { scaricaBlob } from '../lib/download';
@@ -21,9 +20,17 @@ import {
   type MessaggioEsportazione,
 } from './PannelloRisultato';
 
-/** Numeri con la virgola, come nei campi del resto del sito. */
+/**
+ * Numeri con la virgola, come nei campi del resto del sito.
+ *
+ * `parseFloat` accetterebbe «25abc» come 25: chi scrive per sbaglio una lettera
+ * dopo il numero si vedrebbe calcolare 25 kg di farina. Qui o è un numero o non
+ * lo è, e chi chiama riceve il valore di difetto.
+ */
 function leggi(testo: string, difetto: number): number {
-  const numero = Number.parseFloat(testo.replace(',', '.'));
+  const pulito = testo.trim().replace(',', '.');
+  if (!/^\d+(?:\.\d+)?$/.test(pulito)) return difetto;
+  const numero = Number(pulito);
   return Number.isFinite(numero) ? numero : difetto;
 }
 
@@ -80,7 +87,6 @@ export function CalcolatoreBiga() {
     nome: string;
     url: string;
     blob: Blob;
-    immagine?: string;
   } | null>(null);
 
   const guidato = useMediaQuery(SOGLIA_GUIDATA);
@@ -94,7 +100,6 @@ export function CalcolatoreBiga() {
   function chiudiAnteprima() {
     if (anteprima) {
       URL.revokeObjectURL(anteprima.url);
-      if (anteprima.immagine) URL.revokeObjectURL(anteprima.immagine);
     }
     setAnteprima(null);
   }
@@ -142,13 +147,6 @@ export function CalcolatoreBiga() {
         blob = await jpgBlob(dati, SCALA_JPG, ottimizza);
       }
 
-      // Su Android il PDF non si vede dentro la pagina: l'anteprima diventa
-      // l'immagine dello stesso foglio, «Salva» conserva il PDF.
-      const immagine =
-        tipo === 'pdf' && anteprimaPdfComeImmagine()
-          ? URL.createObjectURL(await jpgBlob(dati, SCALA_JPG, ottimizza))
-          : undefined;
-
       if (anteprimaNellApp()) {
         apriNellApp(blob, nomeFile);
         return;
@@ -156,14 +154,12 @@ export function CalcolatoreBiga() {
 
       if (anteprima) {
         URL.revokeObjectURL(anteprima.url);
-        if (anteprima.immagine) URL.revokeObjectURL(anteprima.immagine);
       }
       setAnteprima({
         tipo,
         nome: nomeFile,
         blob,
         url: URL.createObjectURL(blob),
-        immagine,
       });
     } catch (errore) {
       console.error('Errore durante l’esportazione della biga', errore);
@@ -325,6 +321,7 @@ export function CalcolatoreBiga() {
   const esitoBiga = (
     <PannelloRisultato
       risultato={risultato}
+      titolo="Dosi e resa"
       ricetta={config}
       daAggiornare={false}
       esportazione={esportazione}

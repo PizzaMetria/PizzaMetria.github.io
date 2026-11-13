@@ -26,6 +26,16 @@ export function grammi(valore: number): string {
   return formatta(valore, 1);
 }
 
+/**
+ * Dose di lievito: due decimali sempre, perché 0,67 e 0,70 sono cose diverse.
+ * Sotto il centesimo si scrive "< 0,01": una dose più piccola non è zero, e
+ * mostrarla come zero farebbe credere che il modello si sia fermato.
+ */
+export function grammiLievito(valore: number): string {
+  if (valore > 0 && valore < 0.01) return '< 0,01';
+  return formatta(valore, 2);
+}
+
 /** Ore leggibili: 1,5 h oppure 24 h. */
 export function ore(valore: number): string {
   return Number.isInteger(valore) ? formatta(valore, 0) : formatta(valore, 1);

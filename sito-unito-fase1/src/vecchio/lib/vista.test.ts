@@ -59,7 +59,7 @@ describe('vista Pizza in teglia con biga', () => {
       expect.arrayContaining([
         { etichetta: 'Farina nella biga', valore: '85% della farina totale' },
         { etichetta: 'Idratazione della biga', valore: '55%' },
-        { etichetta: 'Farina', valore: '00 forte, W 300–320' },
+        { etichetta: 'Farina', valore: 'Biga W 402 · rinfresco W 250' },
         { etichetta: 'Malto', valore: '2% della farina della biga' },
         { etichetta: 'Autolisi', valore: 'Non attiva' },
         {

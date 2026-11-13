@@ -115,19 +115,25 @@ describe('confronto con il riferimento', () => {
     }
   });
 
-  // Calibrazione «C»: verace e teglia restano allineate a riferimento, che è l'unica
-  // misura esterna disponibile con gli stessi ingressi. La contemporanea no, e
-  // non per errore: il suo ramo è tarato sulle ricette (18–24 h con frigo a
-  // 2,5–3 g/kg), che per lo stesso programma chiedono circa il doppio del riferimento
-  // (0,150% = 1,5 g/kg). Lo scarto è quindi voluto.
-  it('modello nuovo: verace e teglia stanno entro il 5%', () => {
+  // Il «riferimento» è un altro calcolatore: non è una fonte ammessa, quindi il
+  // modello nuovo non lo insegue più. Ci si allinea, con una forchetta larga,
+  // perché due strumenti che sbagliano in direzioni opposte non devono
+  // sembrare d'accordo. I valori veri li dà il corpus delle 193 ricette
+  // (verace 8 h 0,28%, teglia 6 h 0,79%).
+  it('modello nuovo: resta vicino al riferimento, senza inseguirlo', () => {
+    const forchette: Record<string, readonly [number, number]> = {
+      verace: [0.9, 1.35],
+      teglia: [0.6, 1.1],
+    };
     for (const ricetta of RICETTE.filter((voce) => voce.tipo !== 'contemporanea')) {
       const risultato = calcola(input(ricetta, 'nuovo'));
-      const scarto = risultato.percentualeLievito / ricetta.percentualeRiferimento - 1;
+      const rapporto = risultato.percentualeLievito / ricetta.percentualeRiferimento;
+      const [minimo, massimo] = forchette[ricetta.tipo] ?? [0.5, 1.5];
       expect(
-        Math.abs(scarto),
-        `nuovo · ${ricetta.nome}: ${(scarto * 100).toFixed(1)}% contro il riferimento`,
-      ).toBeLessThan(0.05);
+        rapporto,
+        `nuovo · ${ricetta.nome}: ${rapporto.toFixed(2)}× il riferimento`,
+      ).toBeGreaterThan(minimo);
+      expect(rapporto).toBeLessThan(massimo);
     }
   });
 
@@ -167,10 +173,16 @@ describe('confronto con il riferimento', () => {
       for (const modello of ['vecchio', 'nuovo'] as const) {
         const dati = input(ricetta, modello);
         const risultato = calcola(dati);
+        // La legge, riscritta qui per esteso: se cambia nel modulo, questo test
+        // se ne accorge invece di ripeterla per fede.
         const atteso = Math.min(
-          365,
+          420,
           Math.round(
-            162.657 + 5.8044 * risultato.oreEquivalenti + 2 * dati.tempi.oreFrigo,
+            119 +
+              64 * Math.log(risultato.oreEquivalenti + 0.155 * dati.tempi.oreFrigo) +
+              2.4 * (dati.idratazione - 62) +
+              2 * (dati.sale - 2.5) -
+              1 * (dati.olio - 2),
           ),
         );
 

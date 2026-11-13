@@ -53,7 +53,7 @@ export function Testata({
                 aria-hidden="true"
                 className="h-1.5 w-1.5 rounded-full bg-terracotta"
               />
-              Calcolo locale
+              Anteprima privata
             </span>
             <button
               type="button"

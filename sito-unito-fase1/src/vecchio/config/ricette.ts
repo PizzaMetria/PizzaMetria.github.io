@@ -67,7 +67,7 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
   fattoreLievitoSecco: 0.6,
   autolisiOpzionale: true,
   farinaEtichetta: 'Farina',
-  farinaDescrizione: '00 forte, W 300–320',
+  farinaDescrizione: '00 forte per biga e rinfresco',
   oreBiga: 24,
   /**
    * Le 24 ore di casa, con la cucina a 27 °C: a questa temperatura l'attesa è
@@ -190,14 +190,14 @@ export const RICETTA_TEGLIA_BIGA: RicettaConfig = {
     },
   ],
   note: [
-    'Farina di riferimento: 00 forte, indicativamente W 300–320, adatta alle lunghe fermentazioni e all’alta idratazione.',
+    'Farina di riferimento: 00 forte, adatta alle lunghe fermentazioni e all’alta idratazione. Il W lo calcola il sito: è più alto per la biga che per il rinfresco.',
     'Il malto diastasico è il 2% della farina della biga ed è già compreso nelle dosi.',
     'L’acqua del rinfresco è compresa nell’acqua totale: non è un’aggiunta separata.',
   ],
   noteEssenziali: [],
   senzaChiarimenti: true,
   tips: [
-    'Utilizza una farina forte, indicativamente W 300–320, adatta a sostenere la maturazione della biga e l’elevata idratazione dell’impasto. Per la biga scegline una di tipo 0 oppure 00: deve reggere la lunga fermentazione senza collassare.',
+    'La farina della biga deve essere più forte di quella del rinfresco: la biga matura a lungo, il rinfresco poche ore. La scheda indica i due W: per la biga scegline una di tipo 0 oppure 00, con il W che serve a reggere la lunga fermentazione senza collassare.',
     'Usando un prefermento freddo nei periodi più freddi, l’impasto potrebbe chiudersi a una temperatura inferiore a 20 °C, rallentando la lievitazione: in questo caso, utilizza acqua tiepida o calda nel rinfresco per riportare la temperatura finale del mix in target (22–23 °C).',
     TIP_AUTOLISI,
     'Cottura nel forno F1 P134H — La camera bassa e la vicinanza della resistenza superiore possono far bruciare la superficie prima che la cottura sia completata. Gli accorgimenti indicati per entrambe le cotture servono a limitare il calore dall’alto e ottenere una cottura più equilibrata. Per la seconda cottura nel F1, sfrutta il forno in caduta e limita le accensioni della resistenza superiore: la base è già precotta e deve soprattutto completarsi la cottura dei condimenti.',
@@ -339,7 +339,7 @@ export const RICETTA_CANOTTO: RicettaConfig = {
   /** L'autolisi è consigliata ma si può disattivare. */
   autolisiOpzionale: true,
   farinaEtichetta: 'Farina',
-  farinaDescrizione: '00 forte, W 300–320',
+  farinaDescrizione: '00 forte per biga e rinfresco',
   oreBiga: 24,
   motoreBiga: {
     temperatura: 27,
@@ -450,7 +450,7 @@ export const RICETTA_CANOTTO: RicettaConfig = {
     'La permanenza dei panetti in frigorifero va coordinata con l’orario di cottura e lo sviluppo dei panetti.',
   ],
   tips: [
-    'Utilizza una farina forte, indicativamente W 300–320, adatta a sostenere la maturazione della biga e l’elevata idratazione dell’impasto. Per la biga scegline una di tipo 0 oppure 00: deve reggere la lunga fermentazione senza collassare.',
+    'La farina della biga deve essere più forte di quella del rinfresco: la biga matura a lungo, il rinfresco poche ore. La scheda indica i due W: per la biga scegline una di tipo 0 oppure 00, con il W che serve a reggere la lunga fermentazione senza collassare.',
     'Usando un prefermento freddo nei periodi più freddi, l’impasto potrebbe chiudersi a una temperatura inferiore a 20 °C, rallentando la lievitazione: in questo caso, utilizza acqua tiepida o calda nel rinfresco per riportare la temperatura finale del mix in target (22–23 °C).',
     'Basi da farcire: per le basi imposta circa 350 °C sia di cielo sia di platea. Sistema al centro del disco di pizza lo stampo in alluminio capovolto, lasciando libero il bordo. Utilizza sempre uno stampo adatto alla temperatura di cottura. Cuoci per circa 2 minuti e 30 secondi e completa con circa 30 secondi a bocca di forno, controllando la colorazione.',
     TIP_AUTOLISI,

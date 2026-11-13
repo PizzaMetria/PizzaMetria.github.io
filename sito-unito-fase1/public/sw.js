@@ -14,7 +14,15 @@
  * far funzionare il sito.
  */
 
-const CACHE = 'pizzametria-v5';
+// Il build sostituisce questa riga con la versione e gli asset effettivi.
+const BUILD = null;
+const CACHE = `pizzametria-${BUILD?.versione ?? 'dev'}`;
+const CACHE_PDF = `${CACHE}-pdf`;
+const ASSET_PDF = new Set((BUILD?.pdf ?? []).map(
+  (nome) => new URL(nome, self.registration.scope).href,
+));
+/** Tutte le cache del progetto cominciano così: le altre non si toccano. */
+const PREFISSO = 'pizzametria-';
 
 const GUSCIO = [
   './',
@@ -30,7 +38,17 @@ self.addEventListener('install', (evento) => {
   evento.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(GUSCIO))
+      .then((cache) => cache.addAll([...GUSCIO, ...(BUILD?.sito ?? [])]))
+      .then(async () => {
+        if (!BUILD?.pdf.length) return;
+        // La mancata disponibilità del PDF non impedisce l'installazione del sito.
+        try {
+          const cachePdf = await caches.open(CACHE_PDF);
+          await cachePdf.addAll(BUILD.pdf);
+        } catch {
+          // Gli asset restano recuperabili alla prima apertura online.
+        }
+      })
       .then(() => self.skipWaiting()),
   );
 });
@@ -41,7 +59,11 @@ self.addEventListener('activate', (evento) => {
       .keys()
       .then((chiavi) =>
         Promise.all(
-          chiavi.filter((chiave) => chiave !== CACHE).map((chiave) => caches.delete(chiave)),
+          chiavi
+            // Solo le versioni vecchie di questo progetto: un'altra app sulla
+            // stessa origine ha diritto alla sua cache.
+            .filter((chiave) => chiave.startsWith(PREFISSO) && chiave !== CACHE && chiave !== CACHE_PDF)
+            .map((chiave) => caches.delete(chiave)),
         ),
       )
       .then(() => self.clients.claim()),
@@ -62,8 +84,17 @@ self.addEventListener('fetch', (evento) => {
     evento.respondWith(
       fetch(richiesta)
         .then((risposta) => {
-          const copia = risposta.clone();
-          caches.open(CACHE).then((cache) => cache.put('./index.html', copia));
+          // Solo una pagina vera va in cache. Un 503 di manutenzione o un errore
+          // del server, salvato sotto index.html, resterebbe servito per sempre
+          // ogni volta che l'utente apre l'app senza rete: da fuori sembrerebbe
+          // un sito rotto, e nessuno saprebbe che basta aspettare.
+          const html = (risposta.headers.get('content-type') ?? '').includes('text/html');
+          if (risposta.ok && risposta.type === 'basic' && html) {
+            const copia = risposta.clone();
+            evento.waitUntil(
+              caches.open(CACHE).then((cache) => cache.put('./index.html', copia)),
+            );
+          }
           return risposta;
         })
         .catch(() => caches.match('./index.html')),
@@ -79,7 +110,8 @@ self.addEventListener('fetch', (evento) => {
         fetch(richiesta).then((risposta) => {
           if (risposta.ok && risposta.type === 'basic') {
             const copia = risposta.clone();
-            caches.open(CACHE).then((cache) => cache.put(richiesta, copia));
+            const nomeCache = ASSET_PDF.has(url.href) ? CACHE_PDF : CACHE;
+            evento.waitUntil(caches.open(nomeCache).then((cache) => cache.put(richiesta, copia)));
           }
           return risposta;
         }),

@@ -126,3 +126,21 @@ export const LIMITI = {
   riscaldamento: { min: 0, max: 20 },
   correzioneLievito: { min: -50, max: 50 },
 } as const;
+
+/**
+ * Regola unica sulle ore totali, uguale per i tre impasti diretti: una pizza
+ * che lievita meno di quattro ore non è una pizza a lievitazione, e oltre i
+ * tre giorni la stima perde senso anche con una farina fortissima. Vive qui,
+ * accanto ai limiti, perché non dipende dallo stile né dal motore: se un
+ * giorno qualcuno volesse un minimo diverso per la teglia, dovrebbe cambiare
+ * questa funzione e il suo test.
+ */
+export function problemaOreTotali(ore: number): string | null {
+  if (ore < LIMITI.oreTotali.min) {
+    return 'Meno di 4 ore non è una lievitazione: dà almeno 4 ore fra impasto e infornata.';
+  }
+  if (ore > LIMITI.oreTotali.max) {
+    return 'Oltre 72 ore (tre giorni) la stima perde senso: accorcia i tempi.';
+  }
+  return null;
+}

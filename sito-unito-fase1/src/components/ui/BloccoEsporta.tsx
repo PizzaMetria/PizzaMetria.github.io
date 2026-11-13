@@ -17,8 +17,6 @@ export interface AnteprimaFile {
   tipo: FormatoEsportazione;
   nome: string;
   url: string;
-  /** Immagine dello stesso foglio: al posto del PDF dove non si vede (Android). */
-  immagine?: string;
 }
 
 export interface MessaggioEsporta {
@@ -131,7 +129,6 @@ export function BloccoEsporta({
           tipo={anteprima.tipo}
           nome={anteprima.nome}
           url={anteprima.url}
-          immagine={anteprima.immagine ?? null}
           onSalva={onSalva}
           onChiudi={onChiudi}
         />

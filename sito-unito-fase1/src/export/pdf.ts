@@ -1,3 +1,4 @@
+import { grammiLievito } from '../lib/numeri';
 import { FIRMA_FOGLIO, TITOLI_GRAFICI } from './foglio';
 import type { DatiFoglio, VoceDose } from './foglio';
 import type { TipoIngrediente } from '../vecchio/types';
@@ -525,7 +526,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       ? dividiInRighe(percentuale, 'F1', 7.4, 112)
       : [];
     const righe = Math.max(righeNome.length, righePercentuale.length, 1);
-    const altezza = righe * 11 + 5;
+    const altezza = righe * 11 + 5 + (dose.nota ? 10 : 0);
 
     assicuraSpazio(altezza + 4);
 
@@ -538,6 +539,9 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     righeNome.forEach((riga, indice) => {
       testo(xNome, base + indice * 11, riga, { dimensione: 10 });
     });
+    if (dose.nota) {
+      testo(xNome, base + righeNome.length * 11, dose.nota, { dimensione: 7.8, colore: TENUE });
+    }
     righePercentuale.forEach((riga, indice) => {
       testo(xPercentuale, base + indice * 8, riga, {
         dimensione: 7.4,
@@ -545,7 +549,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
         allineamento: 'destra',
       });
     });
-    testo(destra, base, `${numero(dose.grammi)} g`, {
+    testo(destra, base, `${dose.tipo === 'lievito' ? grammiLievito(dose.grammi) : numero(dose.grammi)} g`, {
       font: 'F4',
       dimensione: 10.4,
       allineamento: 'destra',
@@ -686,11 +690,123 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   });
   y += 20;
 
-  // Acqua consigliata: riga discreta sotto il totale, non una nota in fondo.
-  if (dati.acquaConsigliata) {
-    assicuraSpazio(14);
-    testo(sinistra, y + 5, dati.acquaConsigliata, { dimensione: 9, colore: TENUE });
-    y += 14;
+  const larghezzaOrario = 66;
+  const larghezzaAzione = LARGHEZZA_UTILE - larghezzaOrario;
+  const righeMarcia = dati.passi.map((passo) => {
+    if (!passo.orario) return null;
+    const titolo = dividiInRighe(passo.titolo, 'F2', 9.2, larghezzaAzione);
+    const nota = [passo.istruzione, passo.nota].flatMap((testo) =>
+      testo ? dividiInRighe(testo, 'F1', 7.8, larghezzaAzione) : [],
+    );
+    return { titolo, nota, altezza: Math.max(29, 10 + titolo.length * 11 + nota.length * 9.5) };
+  });
+  const tabellaDiMarcia = righeMarcia.some(Boolean);
+
+  function disegnaPassi() {
+    if (dati.passi.length === 0) return;
+    assicuraSpazio(18 + (righeMarcia[0]?.altezza ?? 16));
+    testo(
+      sinistra,
+      y + 6,
+      tabellaDiMarcia ? 'TABELLA DI MARCIA' : 'PROCEDIMENTO',
+      { font: 'F4', dimensione: 10.4, colore: ORO_SCURO },
+    );
+    y += 18;
+
+    dati.passi.forEach((passo, indice) => {
+      const riga = righeMarcia[indice];
+      if (passo.orario && riga) {
+        assicuraSpazio(riga.altezza);
+        const azione = sinistra + larghezzaOrario;
+        testo(sinistra, y + 9, passo.orario.ora, { font: 'F2', dimensione: 9.2, colore: ORO_SCURO });
+        testo(sinistra, y + 20, passo.orario.giorno, { dimensione: 7.8, colore: TENUE });
+        riga.titolo.forEach((testoRiga, i) => {
+          testo(azione, y + 9 + i * 11, testoRiga, { font: 'F2', dimensione: 9.2 });
+        });
+        riga.nota.forEach((testoRiga, i) => {
+          testo(azione, y + 9 + riga.titolo.length * 11 + i * 9.5, testoRiga, {
+            dimensione: 7.8,
+            colore: TENUE,
+          });
+        });
+        y += riga.altezza;
+        if (righeMarcia[indice + 1]) {
+          linea({ x: sinistra, y: y - 4 }, { x: sinistra + LARGHEZZA_UTILE, y: y - 4 });
+        }
+        return;
+      }
+
+      const riepilogo = [passo.quando, passo.nota].filter(Boolean).join(' · ');
+      const righeTitolo = dividiInRighe(passo.titolo, 'F2', 9.2, LARGHEZZA_UTILE - 12);
+
+      assicuraSpazio(righeTitolo.length * 11 + 14);
+
+      rettangolo(sinistra, y + 3, 3.4, 3.4, { riempimento: ORO });
+      righeTitolo.forEach((riga, indice) => {
+        testo(sinistra + 10, y + 7 + indice * 11, riga, { font: 'F2', dimensione: 9.2 });
+      });
+      y += righeTitolo.length * 11 + 4;
+
+      if (riepilogo) {
+        dividiInRighe(riepilogo, 'F1', 7.8, LARGHEZZA_UTILE - 12).forEach((riga) => {
+          assicuraSpazio(11);
+          testo(sinistra + 10, y + 7, riga, { dimensione: 7.8, colore: TENUE });
+          y += 9;
+        });
+        y += 2;
+      }
+
+      for (const paragrafo of passo.paragrafi ?? []) {
+        dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 12).forEach((riga) => {
+          assicuraSpazio(11);
+          testo(sinistra + 10, y + 7, riga, { dimensione: 8 });
+          y += 9.6;
+        });
+        y += 2;
+      }
+
+      for (const voce of passo.elenco ?? []) {
+        dividiInRighe(voce, 'F1', 8, LARGHEZZA_UTILE - 22).forEach((riga, indice) => {
+          assicuraSpazio(11);
+          if (indice === 0) {
+            testo(sinistra + 10, y + 7, '•', { dimensione: 8, colore: ORO_SCURO });
+          }
+          testo(sinistra + 20, y + 7, riga, { dimensione: 8, colore: TENUE });
+          y += 9.6;
+        });
+      }
+
+      for (const voce of passo.voci ?? []) {
+        const righeVoce = dividiInRighe(voce.titolo, 'F2', 8.6, LARGHEZZA_UTILE - 22);
+        assicuraSpazio(righeVoce.length * 10 + 12);
+        y += 2;
+        righeVoce.forEach((riga, indice) => {
+          if (indice === 0) {
+            testo(sinistra + 10, y + 7, '•', { dimensione: 8, colore: ORO_SCURO });
+          }
+          testo(sinistra + 20, y + 7 + indice * 10, riga, {
+            font: 'F2',
+            dimensione: 8.6,
+          });
+        });
+        y += righeVoce.length * 10 + 3;
+
+        for (const paragrafo of voce.paragrafi) {
+          dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 22).forEach((riga) => {
+            assicuraSpazio(11);
+            testo(sinistra + 20, y + 7, riga, { dimensione: 8, colore: TENUE });
+            y += 9.6;
+          });
+        }
+      }
+
+      y += 8;
+    });
+  }
+
+  if (tabellaDiMarcia) {
+    disegnaPassi();
+    y += 10;
   }
 
   // Forza della farina: la dichiara il calcolatore libero, non le ricette.
@@ -739,8 +855,8 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
    * ogni voce porta il suo campione di colore, così sulla carta si capisce
    * cosa si sta guardando.
    */
-  const altezzaTabellaStima =
-    16 +
+  const altezzaProcedimento = tabellaDiMarcia ? 0 :
+    18 +
     dati.passi.reduce((somma, passo) => {
       const righe = dividiInRighe(
         `${passo.quando} · ${passo.nota}`,
@@ -766,7 +882,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   const altezzaBlocco = immagini.length * (7 + altezzaImmagine + 10);
   const conImmagini =
     immagini.length > 0 &&
-    y + 14 + altezzaBlocco + 14 + altezzaTabellaStima + altezzaNoteStima + 10 <= FONDO_PAGINA;
+    y + 14 + altezzaBlocco + 14 + altezzaProcedimento + altezzaNoteStima + 10 <= FONDO_PAGINA;
 
   if (conImmagini) {
     testo(sinistra, y + 6, 'GRAFICI', { font: 'F4', dimensione: 10.4, colore: ORO_SCURO });
@@ -830,17 +946,6 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   const oreTotali = dati.oreTotali ?? curva[curva.length - 1]?.ora ?? 0;
 
   // Le sezioni finali si misurano prima, per lasciare al grafico lo spazio che resta.
-  const altezzaTabella =
-    16 +
-    dati.passi.reduce((somma, passo) => {
-      const righe = dividiInRighe(
-        `${passo.quando} · ${passo.nota}`,
-        'F1',
-        7.8,
-        LARGHEZZA_UTILE - 12,
-      );
-      return somma + 12 + righe.length * 9 + 6;
-    }, 0);
   const altezzaNote =
     16 +
     dati.note.reduce(
@@ -851,7 +956,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       0,
     ) + 2;
 
-  const spazioGrafico = FONDO_PAGINA - y - altezzaTabella - altezzaNote - 12;
+  const spazioGrafico = FONDO_PAGINA - y - altezzaProcedimento - altezzaNote - 12;
   const altezzaGrafico = Math.max(46, Math.min(78, spazioGrafico));
 
   if (curva.length > 1) {
@@ -919,95 +1024,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   y += altezzaGrafico + 16;
   }
 
-  // Tabella di marcia: nel calcolatore libero sono gli orari, nelle ricette i
-  // passi del procedimento, con i loro paragrafi e i loro elenchi.
-  if (dati.passi.length > 0) {
-    assicuraSpazio(34);
-    testo(
-      sinistra,
-      y + 6,
-      dati.passi.some((passo) => passo.orario) ? 'TABELLA DI MARCIA' : 'PROCEDIMENTO',
-      { font: 'F4', dimensione: 10.4, colore: ORO_SCURO },
-    );
-    y += 18;
-
-    dati.passi.forEach((passo) => {
-      const riepilogo = [passo.quando, passo.nota].filter(Boolean).join(' · ');
-      const righeTitolo = dividiInRighe(passo.titolo, 'F2', 9.2, LARGHEZZA_UTILE - 12);
-
-      assicuraSpazio(righeTitolo.length * 11 + 14);
-
-      rettangolo(sinistra, y + 3, 3.4, 3.4, { riempimento: ORO });
-      righeTitolo.forEach((riga, indice) => {
-        testo(sinistra + 10, y + 7 + indice * 11, riga, { font: 'F2', dimensione: 9.2 });
-      });
-      y += righeTitolo.length * 11 + 4;
-
-      if (passo.orario) {
-        dividiInRighe(passo.orario, 'F1', 7.8, LARGHEZZA_UTILE - 12).forEach((riga) => {
-          assicuraSpazio(11);
-          testo(sinistra + 10, y + 7, riga, { dimensione: 7.8, colore: TENUE });
-          y += 9.2;
-        });
-        y += 2;
-      }
-
-      if (!passo.orario && riepilogo) {
-        dividiInRighe(riepilogo, 'F1', 7.8, LARGHEZZA_UTILE - 12).forEach((riga) => {
-          assicuraSpazio(11);
-          testo(sinistra + 10, y + 7, riga, { dimensione: 7.8, colore: TENUE });
-          y += 9;
-        });
-        y += 2;
-      }
-
-      for (const paragrafo of passo.paragrafi ?? []) {
-        dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 12).forEach((riga) => {
-          assicuraSpazio(11);
-          testo(sinistra + 10, y + 7, riga, { dimensione: 8 });
-          y += 9.6;
-        });
-        y += 2;
-      }
-
-      for (const voce of passo.elenco ?? []) {
-        dividiInRighe(voce, 'F1', 8, LARGHEZZA_UTILE - 22).forEach((riga, indice) => {
-          assicuraSpazio(11);
-          if (indice === 0) {
-            testo(sinistra + 10, y + 7, '•', { dimensione: 8, colore: ORO_SCURO });
-          }
-          testo(sinistra + 20, y + 7, riga, { dimensione: 8, colore: TENUE });
-          y += 9.6;
-        });
-      }
-
-      for (const voce of passo.voci ?? []) {
-        const righeVoce = dividiInRighe(voce.titolo, 'F2', 8.6, LARGHEZZA_UTILE - 22);
-        assicuraSpazio(righeVoce.length * 10 + 12);
-        y += 2;
-        righeVoce.forEach((riga, indice) => {
-          if (indice === 0) {
-            testo(sinistra + 10, y + 7, '•', { dimensione: 8, colore: ORO_SCURO });
-          }
-          testo(sinistra + 20, y + 7 + indice * 10, riga, {
-            font: 'F2',
-            dimensione: 8.6,
-          });
-        });
-        y += righeVoce.length * 10 + 3;
-
-        for (const paragrafo of voce.paragrafi) {
-          dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 22).forEach((riga) => {
-            assicuraSpazio(11);
-            testo(sinistra + 20, y + 7, riga, { dimensione: 8, colore: TENUE });
-            y += 9.6;
-          });
-        }
-      }
-
-      y += 8;
-    });
-  }
+  if (!tabellaDiMarcia) disegnaPassi();
 
   // Note: come è stato calcolato il foglio libero, i consigli nelle ricette.
   // Si leggono come un elenco: un pallino, righe più alte e un po' d'aria fra
