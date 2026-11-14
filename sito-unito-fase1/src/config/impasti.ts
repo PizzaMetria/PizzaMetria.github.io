@@ -54,7 +54,7 @@ export const IMPASTI: readonly ConfigImpasto[] = [
       'Base croccante, mollica soffice e ben sviluppata. Quantità d’impasto calcolata sulle dimensioni e lo spessore della tua teglia.',
     idratazione: 75,
     sale: 2.5,
-    olio: 2,
+    olio: 3,
     malto: 1,
     ramo: 'teglia',
     tonda: false,

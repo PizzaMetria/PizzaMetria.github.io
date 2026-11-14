@@ -434,6 +434,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   const sinistra = PAGINA.margine;
   const destra = PAGINA.larghezza - PAGINA.margine;
   let y = PAGINA.margine;
+  const inizioContinuazione = PAGINA.margine + 25;
 
   /** Apre una facciata nuova, con l'intestazione di continuazione. */
   const nuovaPagina = (): void => {
@@ -454,6 +455,14 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   /** Salta alla facciata seguente quando il blocco non ci sta. */
   const assicuraSpazio = (altezza: number): void => {
     if (y + altezza > FONDO_PAGINA) nuovaPagina();
+  };
+
+  // Se un paragrafo eccede anche una pagina intera, lascia al flusso
+  // per riga il compito di dividerlo. Con un titolo, riserva almeno la prima riga.
+  const tieniInsieme = (altezza: number, minimo = 0): void => {
+    const spazioPagina = FONDO_PAGINA - inizioContinuazione;
+    const spazio = altezza <= spazioPagina ? altezza : minimo;
+    if (spazio > 0) assicuraSpazio(spazio);
   };
 
   // Intestazione
@@ -682,7 +691,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     assicuraSpazio(30);
     linea({ x: sinistra, y }, { x: destra, y });
     y += 15;
-    testo(sinistra, y, 'Impasto totale', { font: 'F2', dimensione: 10.5 });
+    testo(sinistra, y, 'Peso impasto', { font: 'F2', dimensione: 10.5 });
     testo(destra, y, `${numero(dati.totaleG)} g`, {
       font: 'F4',
       dimensione: 14,
@@ -742,7 +751,14 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       const riepilogo = [passo.quando, passo.nota].filter(Boolean).join(' · ');
       const righeTitolo = dividiInRighe(passo.titolo, 'F2', 9.2, LARGHEZZA_UTILE - 12);
 
-      assicuraSpazio(righeTitolo.length * 11 + 14);
+      const altezzaTitolo = righeTitolo.length * 11 + 4;
+      const primoParagrafo = passo.paragrafi?.[0];
+      const altezzaPrimo = riepilogo
+        ? dividiInRighe(riepilogo, 'F1', 7.8, LARGHEZZA_UTILE - 12).length * 9 + 2
+        : primoParagrafo
+          ? dividiInRighe(primoParagrafo, 'F1', 8, LARGHEZZA_UTILE - 12).length * 9.6 + 2
+          : 0;
+      tieniInsieme(altezzaTitolo + Math.max(11, altezzaPrimo), altezzaTitolo + 11);
 
       rettangolo(sinistra, y + 3, 3.4, 3.4, { riempimento: ORO });
       righeTitolo.forEach((riga, indice) => {
@@ -751,7 +767,9 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       y += righeTitolo.length * 11 + 4;
 
       if (riepilogo) {
-        dividiInRighe(riepilogo, 'F1', 7.8, LARGHEZZA_UTILE - 12).forEach((riga) => {
+        const righe = dividiInRighe(riepilogo, 'F1', 7.8, LARGHEZZA_UTILE - 12);
+        tieniInsieme(righe.length * 9 + 2);
+        righe.forEach((riga) => {
           assicuraSpazio(11);
           testo(sinistra + 10, y + 7, riga, { dimensione: 7.8, colore: TENUE });
           y += 9;
@@ -760,7 +778,9 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       }
 
       for (const paragrafo of passo.paragrafi ?? []) {
-        dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 12).forEach((riga) => {
+        const righe = dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 12);
+        tieniInsieme(righe.length * 9.6 + 2);
+        righe.forEach((riga) => {
           assicuraSpazio(11);
           testo(sinistra + 10, y + 7, riga, { dimensione: 8 });
           y += 9.6;
@@ -769,7 +789,9 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
       }
 
       for (const voce of passo.elenco ?? []) {
-        dividiInRighe(voce, 'F1', 8, LARGHEZZA_UTILE - 22).forEach((riga, indice) => {
+        const righe = dividiInRighe(voce, 'F1', 8, LARGHEZZA_UTILE - 22);
+        tieniInsieme(righe.length * 9.6 + 2);
+        righe.forEach((riga, indice) => {
           assicuraSpazio(11);
           if (indice === 0) {
             testo(sinistra + 10, y + 7, '•', { dimensione: 8, colore: ORO_SCURO });
@@ -781,7 +803,9 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
 
       for (const voce of passo.voci ?? []) {
         const righeVoce = dividiInRighe(voce.titolo, 'F2', 8.6, LARGHEZZA_UTILE - 22);
-        assicuraSpazio(righeVoce.length * 10 + 12);
+        const altezzaVoce = righeVoce.length * 10 + 5;
+        const primo = dividiInRighe(voce.paragrafi[0] ?? '', 'F1', 8, LARGHEZZA_UTILE - 22);
+        tieniInsieme(altezzaVoce + Math.max(11, primo.length * 9.6 + 2), altezzaVoce + 11);
         y += 2;
         righeVoce.forEach((riga, indice) => {
           if (indice === 0) {
@@ -795,7 +819,9 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
         y += righeVoce.length * 10 + 3;
 
         for (const paragrafo of voce.paragrafi) {
-          dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 22).forEach((riga) => {
+          const righe = dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 22);
+          tieniInsieme(righe.length * 9.6 + 2);
+          righe.forEach((riga) => {
             assicuraSpazio(11);
             testo(sinistra + 20, y + 7, riga, { dimensione: 8, colore: TENUE });
             y += 9.6;
@@ -1061,6 +1087,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     dati.note.forEach((nota, indice) => {
       if (indice > 0) y += 6;
       const righe = dividiInRighe(nota, 'F1', 8.2, LARGHEZZA_UTILE - 10);
+      tieniInsieme(righe.length * 10.6 + 2);
       righe.forEach((riga, posizione) => {
         assicuraSpazio(12);
         if (posizione === 0) {

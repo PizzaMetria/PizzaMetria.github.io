@@ -261,7 +261,7 @@ function creaStatistiche(risultato: RisultatoCalcolo): VoceVista[] {
       valore: formattaGrammiIngrediente(risultato.farinaTotaleG, 'farina'),
     },
     {
-      etichetta: 'Peso teorico totale',
+      etichetta: 'Peso impasto',
       valore: formattaGrammi(risultato.pesoImpastoG),
     },
     {
@@ -718,7 +718,7 @@ function creaQuantitaEsportazione(risultato: RisultatoCalcolo): VoceVista[] {
     const prodotti = risultato.prodotti ?? [];
     for (const prodotto of prodotti) {
       voci.push({
-        etichetta: prodotto.nome,
+        etichetta: prodotto.misura ? `${prodotto.nome} (${prodotto.misura})` : prodotto.nome,
         valore: `${formattaIntero(prodotto.quantita)} × ${formattaGrammi(
           prodotto.pesoG,
         )} = ${formattaGrammi(prodotto.subtotaleG)}`,
@@ -736,7 +736,7 @@ function creaQuantitaEsportazione(risultato: RisultatoCalcolo): VoceVista[] {
         valore: formattaGrammiIngrediente(risultato.farinaTotaleG, 'farina'),
       },
       {
-        etichetta: 'Peso teorico totale',
+        etichetta: 'Peso impasto',
         valore: formattaGrammi(risultato.pesoImpastoG),
       },
     );
@@ -826,7 +826,7 @@ function creaQuantitaEsportazione(risultato: RisultatoCalcolo): VoceVista[] {
       valore: formattaGrammiIngrediente(risultato.farinaTotaleG, 'farina'),
     },
     {
-      etichetta: 'Peso teorico totale',
+      etichetta: 'Peso impasto',
       valore: formattaGrammi(risultato.pesoImpastoG),
     },
   );

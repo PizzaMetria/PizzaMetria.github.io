@@ -176,6 +176,7 @@ export interface ProdottoConfig {
 
 /** Formato effettivamente calcolato, con quantità e subtotale. */
 export interface ProdottoScelto {
+  misura?: string;
   id: string;
   nome: string;
   quantita: number;

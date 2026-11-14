@@ -749,6 +749,7 @@ export function calcolaPerTeglie(
 
 /** Riga del calcolatore misto: prodotto scelto, quantità e peso del pezzo. */
 export interface RigaProdottoCalcolo {
+  misura?: string;
   id: string;
   quantita: number;
   pesoG: number;
@@ -787,6 +788,7 @@ export function calcolaPerProdotti(
     return {
       id: prodotto.id,
       nome: prodotto.nome,
+      ...(riga.misura ? { misura: riga.misura } : {}),
       quantita: riga.quantita,
       pesoG: riga.pesoG,
       subtotaleG: riga.quantita * riga.pesoG,

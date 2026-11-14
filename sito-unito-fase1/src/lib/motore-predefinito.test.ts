@@ -146,13 +146,13 @@ describe('le forbici del W sono la fascia del caso, non una percentuale', () => 
 describe('valori di partenza della teglia', () => {
   const teglia = IMPASTI.find((impasto) => impasto.id === 'teglia');
 
-  it('parte al 75% con olio 2% e malto 1%', () => {
+  it('parte al 75% con olio 3% e malto 1%', () => {
     expect(teglia?.idratazione).toBe(75);
-    expect(teglia?.olio).toBe(2);
+    expect(teglia?.olio).toBe(3);
     expect(teglia?.malto).toBe(1);
   });
 
-  it('con quei valori il programma di partenza dà 300 in 280–320', () => {
+  it('con quei valori il programma di partenza dà 301 in 281–321', () => {
     const r = calcola(
       caso('miniRicette', {
         idratazione: teglia!.idratazione,
@@ -162,8 +162,8 @@ describe('valori di partenza della teglia', () => {
       }),
     );
 
-    expect(r.forzaConsigliata).toBe(300);
-    expect(r.miniRicetta.fasciaEffettiva).toEqual([280, 320]);
+    expect(r.forzaConsigliata).toBe(301);
+    expect(r.miniRicetta.fasciaEffettiva).toEqual([281, 321]);
   });
 
   it('al 70% lo stesso programma chiedeva 288: è il motivo del 75%', () => {

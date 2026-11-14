@@ -552,7 +552,7 @@ export function disegnaFoglio(dati: DatiFoglio, scala = 1, stretto = false): HTM
   // Totale dell'impasto: chiude la tabella in entrambi i casi.
   linea(ctx, MARGINE, y, larghezza - MARGINE, COLORI.bordo);
   y += 14;
-  scrivi(ctx, 'Impasto totale', MARGINE, y + 32, font(700, 26), COLORI.testo);
+  scrivi(ctx, 'Peso impasto', MARGINE, y + 32, font(700, 26), COLORI.testo);
   scrivi(
     ctx,
     `${numero(dati.totaleG)} g`,

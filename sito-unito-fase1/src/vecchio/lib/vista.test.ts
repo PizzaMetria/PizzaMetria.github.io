@@ -132,7 +132,7 @@ describe('vista Trancio Milanese', () => {
     );
     expect(vista.statistiche).toEqual([
       { etichetta: 'Farina totale', valore: '750 g' },
-      { etichetta: 'Peso teorico totale', valore: '1.300 g' },
+      { etichetta: 'Peso impasto', valore: '1.300 g' },
       { etichetta: 'Idratazione', valore: '60%' },
     ]);
     expect(vista.dettagli).toEqual([]);
@@ -319,7 +319,7 @@ describe('riepilogo tecnico delle esportazioni', () => {
       { etichetta: 'Dimensioni della teglia', valore: '30 × 40 cm' },
       { etichetta: 'Impasto per teglia', valore: '650 g' },
       { etichetta: 'Farina totale', valore: '750 g' },
-      { etichetta: 'Peso teorico totale', valore: '1.300 g' },
+      { etichetta: 'Peso impasto', valore: '1.300 g' },
     ]);
   });
 
@@ -439,7 +439,7 @@ describe('riepilogo tecnico delle esportazioni', () => {
     ]);
     expect(panetti.slice(-2).map((voce) => voce.etichetta)).toEqual([
       'Farina totale',
-      'Peso teorico totale',
+      'Peso impasto',
     ]);
 
     const daFarina = creaVistaRicetta(

@@ -96,7 +96,7 @@ describe('PDF vettoriale del foglio', () => {
     expect(testo).not.toContain('/Subtype /Image');
     expect(testo).toContain('(Pizza tonda verace) Tj');
     expect(testo).toContain('(912 g) Tj');
-    expect(testo).toContain('(Impasto totale) Tj');
+    expect(testo).toContain('(Peso impasto) Tj');
     expect(testo).toContain('(Lievito fresco) Tj');
   });
 
@@ -224,6 +224,24 @@ describe('PDF vettoriale del foglio', () => {
 });
 
 describe('PDF di una ricetta lunga', () => {
+  it('mantiene il sottotitolo e tutte le righe del primo paragrafo nella stessa pagina', () => {
+    const paragrafo = `InizioPanini ${'lascia spazio sulla teglia per lo sviluppo dei panini. '.repeat(8)} FinePanini`;
+    const base = { ...dati(), curva: undefined, forza: undefined, note: [] };
+    for (let righe = 26; righe <= 40; righe++) {
+      const documento = new TextDecoder('latin1').decode(creaPdf({
+        ...base,
+        passi: [{
+          quando: '', nota: '', titolo: 'Prodotti lievitati',
+          paragrafi: Array.from({ length: righe }, () => 'Lascia riposare.'),
+          voci: [{ titolo: 'Panini', paragrafi: [paragrafo] }],
+        }],
+      }, true));
+      const pagina = documento.split('endstream').find((stream) => stream.includes('(Panini) Tj'));
+      expect(pagina).toContain('InizioPanini');
+      expect(pagina).toContain('FinePanini');
+    }
+  });
+
   it('impagina il procedimento su più facciate senza perdere i passi', () => {
     const paragrafo =
       'Impasta con calma e lascia riposare l’impasto coperto, finché non diventa liscio ed elastico.';
@@ -344,7 +362,7 @@ describe('foglio aggiornato', () => {
     const pdf = testoPdf(creaPdf(datiNota()));
 
     expect(pdf).toContain('(TABELLA DI MARCIA) Tj');
-    expect(pdf.indexOf('(TABELLA DI MARCIA) Tj')).toBeGreaterThan(pdf.indexOf('(Impasto totale) Tj'));
+    expect(pdf.indexOf('(TABELLA DI MARCIA) Tj')).toBeGreaterThan(pdf.indexOf('(Peso impasto) Tj'));
     expect(pdf.indexOf('(TABELLA DI MARCIA) Tj')).toBeLessThan(pdf.indexOf('(NOTA) Tj'));
     expect(pdf).toContain('(19:55) Tj');
     expect(pdf).toContain('(lun 9 nov) Tj');
@@ -368,7 +386,7 @@ describe('foglio aggiornato', () => {
     const nota = '(18 °C consigliati) Tj';
     expect(pdf).toContain(nota);
     expect(pdf.indexOf(nota)).toBeGreaterThan(pdf.indexOf('(Acqua) Tj'));
-    expect(pdf.indexOf(nota)).toBeLessThan(pdf.indexOf('(Impasto totale) Tj'));
+    expect(pdf.indexOf(nota)).toBeLessThan(pdf.indexOf('(Peso impasto) Tj'));
   });
 
   it('sotto il titolo NOTA lascia solo la riga sulle dosi stimate', () => {

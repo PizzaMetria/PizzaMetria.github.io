@@ -59,6 +59,7 @@ function foglioDi(risultato: RisultatoCalcolo, tipoLievito: TipoLievito = 'fresc
     risultato,
     nome: 'Teglia 30 × 40',
     tonda: false,
+    misuraTeglia: '30 × 40 cm',
     idratazioneScritta: '75',
     idratazioneConfig: 75,
     tipoLievito,
@@ -74,6 +75,7 @@ describe('export del calcolatore diretto', () => {
     expect(bloccoExport(risultato, risultato)).toBeNull();
 
     const foglio = foglioDi(risultato);
+    expect(foglio.sottotitolo).toContain('1 teglia 30 × 40 cm');
     const lievito = foglio.dosi!.find((dose) => dose.tipo === 'lievito');
 
     expect(lievito).toBeDefined();

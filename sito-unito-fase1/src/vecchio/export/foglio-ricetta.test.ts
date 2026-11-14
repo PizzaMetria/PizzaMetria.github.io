@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA, opzioniIniziali, tipsRicetta } from '../config/ricette';
-import { calcolaPerPanetti } from '../lib/calcolo';
+import { RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA, RICETTA_TUTTOFARE, opzioniIniziali, tipsRicetta } from '../config/ricette';
+import { calcolaPerPanetti, calcolaPerProdotti } from '../lib/calcolo';
 import { componiProcedimento } from '../lib/procedimento';
 import { creaVistaRicetta } from '../lib/vista';
 import { creaPdf } from '../../export/pdf';
@@ -90,7 +90,7 @@ describe('foglio della ricetta', () => {
     expect(pdf).toContain('(PARAMETRI DELLA RICETTA) Tj');
     expect(pdf).toContain('(PROCEDIMENTO) Tj');
     expect(pdf).toContain('(CONSIGLI) Tj');
-    expect(pdf).toContain('(Impasto totale) Tj');
+    expect(pdf).toContain('(Peso impasto) Tj');
     // Il procedimento completo non sta in una facciata sola.
     expect(pdf).toMatch(/\/Count [2-9]/);
     expect(pdf).toContain('(Pagina 1 di ');
@@ -114,11 +114,23 @@ it.each([RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA])('integra il piano misto nel PDF 
   expect(pdf).toContain('(PROCEDIMENTO) Tj');
   const marcia = '(TABELLA DI MARCIA DELLA BIGA) Tj';
   expect(pdf).toContain(marcia);
-  expect(pdf.indexOf(marcia)).toBeGreaterThan(pdf.indexOf('(Impasto totale) Tj'));
+  expect(pdf.indexOf(marcia)).toBeGreaterThan(pdf.indexOf('(Peso impasto) Tj'));
   expect(pdf.indexOf(marcia)).toBeLessThan(pdf.indexOf('(PROCEDIMENTO) Tj'));
   expect(pdf).not.toContain('poi 24 ore in frigorifero');
   if (ricetta === RICETTA_TEGLIA_BIGA) {
     const mobile = new TextDecoder('latin1').decode(creaPdf(foglio, true));
     expect(mobile).toContain('(W 300–330) Tj');
   }
+});
+
+it('mantiene le misure accanto alle rispettive focacce nel PDF del Tuttofare', () => {
+  const ricetta = RICETTA_TUTTOFARE;
+  const risultato = calcolaPerProdotti(ricetta, [
+    { id: 'pizzette', quantita: 4, pesoG: 50 },
+    { id: 'focacce', quantita: 1, pesoG: 200, misura: 'diametro 24 cm' },
+    { id: 'focacce-teglia', quantita: 1, pesoG: 665, misura: '30 × 50 cm' },
+  ]);
+  const pdf = new TextDecoder('latin1').decode(creaPdf(datiFoglioRicetta(risultato, ricetta)));
+  expect(pdf).toContain('diametro 24 cm');
+  expect(pdf).toContain('30 × 50 cm');
 });

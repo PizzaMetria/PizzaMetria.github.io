@@ -1,3 +1,4 @@
+import { RiquadriDosi } from '../../components/ui/RiquadriDosi';
 import { useMemo } from 'react';
 import type { RicettaConfig, RisultatoCalcolo, TipoEsportazione } from '../types';
 import { creaVistaRicetta } from '../lib/vista';
@@ -85,29 +86,7 @@ export function PannelloRisultato({
         </p>
       ) : null}
 
-      <dl className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        {vista.statistiche.map((statistica, indice) => (
-          <div
-            key={statistica.etichetta}
-            className={`flex min-w-0 flex-col justify-between gap-1 rounded-xl px-3.5 py-3 ${
-              indice === 0
-                ? 'border border-terracotta/30 bg-oro-velo'
-                : 'border border-bordo/70 bg-carta/50'
-            }`}
-          >
-            <dt className="text-[10px] leading-tight font-semibold tracking-wider text-inchiostro-tenue uppercase">
-              {statistica.etichetta}
-            </dt>
-            <dd
-              className={`font-serif text-lg leading-tight font-bold tabular-nums ${
-                indice === 0 ? 'text-oro-chiaro' : 'text-inchiostro'
-              }`}
-            >
-              {statistica.valore}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <RiquadriDosi voci={vista.statistiche} />
 
       <div
         className={`mt-4 grid gap-3 ${

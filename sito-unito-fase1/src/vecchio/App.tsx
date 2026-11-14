@@ -431,7 +431,20 @@ export default function App({
           return;
         }
 
-        nuovo = calcolaPerProdotti(config, esito.valori, opzioni);
+        const prodotti = esito.valori.map((riga) => {
+          const dimensione = ricetta.prodotti?.find((prodotto) => prodotto.id === riga.id)?.dimensione;
+          if (!dimensione) return riga;
+          const scelta = valori.prodotti?.[riga.id];
+          const latoA = leggiNumeroDecimale(scelta?.dimA ?? '') ?? dimensione.baseA;
+          const latoB = leggiNumeroDecimale(scelta?.dimB ?? '') ?? dimensione.baseB;
+          if (latoA <= 0 || (dimensione.tipo === 'stampo' && (latoB === undefined || latoB <= 0))) return riga;
+          const numero = (valore: number) => valore.toLocaleString('it-IT', { maximumFractionDigits: 2 });
+          const misura = dimensione.tipo === 'stampo'
+            ? `${numero(latoA)} × ${numero(latoB!)} ${dimensione.unita}`
+            : `diametro ${numero(latoA)} ${dimensione.unita}`;
+          return { ...riga, misura };
+        });
+        nuovo = calcolaPerProdotti(config, prodotti, opzioni);
       } else if (modalita === 'panetti') {
         const esito = validaModalitaPanetti(
           valori.panetti.numeroPanetti,

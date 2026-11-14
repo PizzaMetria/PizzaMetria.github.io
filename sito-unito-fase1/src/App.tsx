@@ -1,3 +1,4 @@
+import { RiquadriDosi } from './components/ui/RiquadriDosi';
 import { FisarmonicaRisultato } from './components/FisarmonicaRisultato';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Modello } from './types';
@@ -762,7 +763,12 @@ export default function App({
 
     return {
       problemi, risultato, oreTotali, taDopo: taDopoNum, mixW, erroriMix, mixNonValido, wMancanti,
-      dati: { tipoLievito, fine, idratazione: idr! },
+      dati: {
+        tipoLievito, fine, idratazione: idr!,
+        misuraTeglia: config.tonda ? undefined : forma === 'tonda'
+          ? `diametro ${formatta(lati.d, Number.isInteger(lati.d) ? 0 : 1)} cm`
+          : `${formatta(lati.a, Number.isInteger(lati.a) ? 0 : 1)} × ${formatta(lati.b, Number.isInteger(lati.b) ? 0 : 1)} cm`,
+      },
     };
   }, [
     config.ramo,
@@ -950,6 +956,7 @@ export default function App({
       risultato: r,
       nome: config.nome,
       tonda: config.tonda,
+      misuraTeglia: dati.misuraTeglia,
       idratazioneScritta: String(dati.idratazione),
       idratazioneConfig: config.idratazione,
       tipoLievito: dati.tipoLievito,
@@ -1033,23 +1040,20 @@ export default function App({
   const schedaDosi = r && dati ? (
     <div ref={riepilogoRef} tabIndex={-1} className="scroll-mt-24 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-terracotta">
       <Card titolo="Dosi e resa">
-        <div className="grid gap-3 rounded-xl border border-bordo bg-crema-scuro/70 p-3 sm:grid-cols-2 sm:p-4">
-          <div>
-            <p className="text-xs text-inchiostro-tenue">Resa</p>
-            <p className="font-serif text-lg font-bold text-inchiostro">
-              {r.numeroPezzi > 0
-                ? `${r.numeroPezzi} ${config.tonda ? (r.numeroPezzi === 1 ? 'panetto' : 'panetti') : (r.numeroPezzi === 1 ? 'teglia' : 'teglie')} da ${grammi(r.pesoPerPezzoG)} g`
-                : `${grammi(r.pesoImpastoG)} g di impasto`}
-            </p>
-            <p className="text-xs text-inchiostro-tenue">
-              {grammi(r.pesoImpastoG)} g totali{r.residuoG ? ` · avanzano ${grammi(r.residuoG)} g` : ''}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-inchiostro-tenue">Impasto pronto</p>
-            <p className="font-serif text-lg font-bold text-inchiostro">{formattaQuando(new Date(dati.fine))}</p>
-          </div>
+        <div className="text-sm text-inchiostro-tenue">
+          {r.numeroPezzi > 0 || r.residuoG ? <p>
+            {r.numeroPezzi > 0 && (config.tonda
+              ? `${r.numeroPezzi} ${r.numeroPezzi === 1 ? 'panetto' : 'panetti'} da ${grammi(r.pesoPerPezzoG)} g`
+              : `${r.numeroPezzi} ${r.numeroPezzi === 1 ? 'teglia' : 'teglie'} da ${dati.misuraTeglia ? `${dati.misuraTeglia} · ` : ''}${grammi(r.pesoPerPezzoG)} g${r.numeroPezzi > 1 ? ' per teglia' : ''}`)}
+            {r.residuoG ? `${r.numeroPezzi > 0 ? ' · ' : ''}Avanzo ${grammi(r.residuoG)} g` : ''}
+          </p> : null}
+          <p>Impasto pronto {formattaQuando(new Date(dati.fine))}</p>
         </div>
+        <RiquadriDosi voci={[
+          { etichetta: 'Farina totale', valore: `${grammi(r.farinaG)} g` },
+          { etichetta: 'Peso impasto', valore: `${grammi(r.pesoImpastoG)} g` },
+          { etichetta: 'Idratazione', valore: `${dati.idratazione.toLocaleString('it-IT', { maximumFractionDigits: 2 })}%` },
+        ]} />
         {daRicalcolare ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-avviso-tenue p-2 text-xs" role="status">
             <span>Dosi dell’ultimo calcolo. I dati del modulo sono cambiati.</span>

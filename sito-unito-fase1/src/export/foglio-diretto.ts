@@ -53,6 +53,7 @@ export interface IngressiFoglioDiretto {
   nome: string;
   /** Panetti oppure teglie. */
   tonda: boolean;
+  misuraTeglia?: string;
   /** Idratazione scritta nel campo (può essere vuota o con la virgola). */
   idratazioneScritta: string;
   /** Idratazione di ripiego, quella dello stile. */
@@ -100,9 +101,10 @@ export function foglioDiretto(ingressi: IngressiFoglioDiretto): DatiFoglio {
 
   const formato = ingressi.tonda
     ? `${r.numeroPezzi} panetti da ${grammi(r.pesoPerPezzoG)} g`
-    : `${r.numeroPezzi} ${r.numeroPezzi === 1 ? 'teglia' : 'teglie'} da ${grammi(
-        r.pesoPerPezzoG,
-      )} g`;
+    : `${r.numeroPezzi} ${r.numeroPezzi === 1 ? 'teglia' : 'teglie'}` +
+      (ingressi.misuraTeglia
+        ? ` ${ingressi.misuraTeglia} · ${grammi(r.pesoPerPezzoG)} g di impasto${r.numeroPezzi === 1 ? '' : ' per teglia'}`
+        : ` da ${grammi(r.pesoPerPezzoG)} g`);
 
   return {
     titolo: ingressi.nome,
