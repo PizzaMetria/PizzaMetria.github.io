@@ -1,38 +1,115 @@
 import { grammiLievito } from '../lib/numeri';
+import { MARCHIO_CERCHI, MARCHIO_PIENI, MARCHIO_SPESSORE, MARCHIO_TRATTI, MARCHIO_VIEWBOX } from './marchio';
 import { FIRMA_FOGLIO, TITOLI_GRAFICI } from './foglio';
-import type { DatiFoglio, VoceDose } from './foglio';
+import type { DatiFoglio, FaseFoglio, PassoFoglio, VoceDose } from './foglio';
 import type { TipoIngrediente } from '../vecchio/types';
 import { LATO_ICONA, disegnaIcona } from '../vecchio/lib/icone';
+
+export type ComandoMarchio = { tipo: 'm' | 'l' | 'c' | 'z'; valori: number[] };
+
+/**
+ * Legge il `d` di un tracciato SVG e lo porta in comandi assoluti, quelli che
+ * il PDF sa riscrivere (`m`, `l`, `c`, `h`). Il marchio della home è fatto così.
+ */
+export function leggiPercorso(d: string): ComandoMarchio[] {
+  const gettoni = d.match(/[a-zA-Z]|-?(?:\d+\.?\d*|\.\d+)/g) ?? [];
+  const comandi: ComandoMarchio[] = [];
+  let comando = 'm';
+  let relativo = true;
+  // Solo il primo gruppo dopo una `m` apre un sottotracciato: gli altri sono
+  // lineto (come dopo una `l`), altrimenti il disegno si spezza in pezzi chiusi.
+  let apre = true;
+  let x = 0;
+  let y = 0;
+  let partenzaX = 0;
+  let partenzaY = 0;
+  let i = 0;
+
+  while (i < gettoni.length) {
+    if (/^[a-zA-Z]$/.test(gettoni[i])) {
+      comando = gettoni[i].toLowerCase();
+      relativo = gettoni[i] === comando;
+      apre = true;
+      i += 1;
+      if (comando === 'z') {
+        comandi.push({ tipo: 'z', valori: [] });
+        x = partenzaX;
+        y = partenzaY;
+        continue;
+      }
+      continue;
+    }
+
+    if (comando === 'c') {
+      const punti = gettoni
+        .slice(i, i + 6)
+        .map(Number)
+        .map((valore, indice) =>
+          relativo ? (indice % 2 === 0 ? x + valore : y + valore) : valore,
+        );
+      i += 6;
+      comandi.push({ tipo: 'c', valori: punti });
+      x = punti[4];
+      y = punti[5];
+      apre = false;
+      continue;
+    }
+
+    const puntoX = relativo ? x + Number(gettoni[i]) : Number(gettoni[i]);
+    const puntoY = relativo ? y + Number(gettoni[i + 1]) : Number(gettoni[i + 1]);
+    i += 2;
+    const inizio = comando === 'm' && apre;
+    comandi.push({ tipo: inizio ? 'm' : 'l', valori: [puntoX, puntoY] });
+    if (inizio) {
+      partenzaX = puntoX;
+      partenzaY = puntoY;
+    }
+    apre = false;
+    x = puntoX;
+    y = puntoY;
+  }
+
+  return comandi;
+}
+
+/** I tracciati del marchio già convertiti: si legge il SVG una volta sola. */
+const PERCORSI_MARCHIO = {
+  pieni: MARCHIO_PIENI.map(leggiPercorso),
+  tratti: MARCHIO_TRATTI.map(leggiPercorso),
+};
 
 /*
  * PDF VETTORIALE DEL FOGLIO
  * -------------------------
  * Il documento è scritto a mano, senza librerie, con i font standard PDF
- * (Helvetica e Times): così il testo resta selezionabile, cercabile e leggibile
- * dagli screen reader, e il file pesa pochi kilobyte.
+ * (Helvetica e Helvetica-Bold): così il testo resta selezionabile, cercabile e
+ * leggibile dagli screen reader, e il file pesa pochi kilobyte.
+ *
+ * Il disegno è quello del sito: fondo crema, schede bianche arrotondate con
+ * un'ombra calda, titoli in grassetto, pastiglie e fili color latte tostato.
+ * Non è una fotografia della pagina — è la stessa grammatica visiva, ridotta a
+ * ciò che una stampa A4 deve dire: dosi, tempi, procedimento.
  *
  * Le larghezze dei caratteri sono quelle dei font AFM: servono per allineare a
- * destra i numeri e per andare a capo senza sbordare. Sono dati, non stime, e
- * i test controllano che ogni tabella abbia i 95 caratteri stampabili.
+ * destra i numeri e per andare a capo senza sbordare. Sono dati, non stime.
  */
 
 /** A4 per il foglio da stampare, formato telefono per leggerlo a schermo. */
-const A4 = { larghezza: 595.28, altezza: 841.89, margine: 44 };
-const TELEFONO = { larghezza: 360, altezza: 780, margine: 26 };
+const A4 = { larghezza: 595.28, altezza: 841.89, margine: 40 };
+const TELEFONO = { larghezza: 360, altezza: 780, margine: 22 };
 
 let PAGINA = A4;
-let LARGHEZZA_UTILE = PAGINA.larghezza - PAGINA.margine * 2;
-let FONDO_PAGINA = PAGINA.altezza - 30;
+
+/** Spazio che il piede si tiene in fondo a ogni facciata. */
+const PEDE = 54;
 
 /**
  * «Ottimizza per smartphone»: pagina stretta e alta, come un foglio da
-telefono, così il testo resta grande senza zoom. Il disegno è lo stesso: si
-adattano solo larghezza utile, margini e interruzioni di pagina.
+ * telefono, così il testo resta grande senza zoom. Il disegno è lo stesso: si
+ * adattano solo larghezza utile, margini e interruzioni di pagina.
  */
 function impostaFormato(stretto: boolean): void {
   PAGINA = stretto ? TELEFONO : A4;
-  LARGHEZZA_UTILE = PAGINA.larghezza - PAGINA.margine * 2;
-  FONDO_PAGINA = PAGINA.altezza - 30;
 }
 
 type NomeFont = 'F1' | 'F2' | 'F3' | 'F4';
@@ -173,17 +250,30 @@ function colore(esadecimale: string): Colore {
   ];
 }
 
-const TESTO = colore('#23262a');
-const TENUE = colore('#6b6257');
-const ORO = colore('#b89428');
-const ORO_SCURO = colore('#7a5c10');
-const BORDO = colore('#d8d0c2');
-const SUPERFICIE = colore('#fffdf8');
-const PANNA = colore('#efe4c8');
-const FRIGO = colore('#efeae0');
+/* La tavolozza è quella dei token del sito (`src/index.css`): crema, carta,
+ * inchiostro charcoal, latte tostato. */
+const CREMA = colore('#f5f1ea');
+const CARTA = colore('#ffffff');
+const CARTA_CREMA = colore('#faf6ef');
+const INCHIOSTRO = colore('#3a342c');
+const TENUE = colore('#7a7064');
+const INCHIOSTRO_TENUE = colore('#57504a');
+const BORDO = colore('#e4dcce');
+const ACCENTO = colore('#b99b77');
+const ACCENTO_SCURO = colore('#8a6d4e');
+const VELO = colore('#f2e8da');
+const OMBRA = colore('#eae0cf');
+const PANNA = colore('#f2e8da');
+const PANNA_CHIARA = colore('#f8f3ea');
+const FRIGO = colore('#efe9de');
 
 /** Larghezza di un testo in punti PDF. */
-export function misura(testo: string, font: NomeFont, dimensione: number): number {
+export function misura(
+  testo: string,
+  font: NomeFont,
+  dimensione: number,
+  spaziatura = 0,
+): number {
   const tabella = LARGHEZZE[font];
   let totale = 0;
 
@@ -200,7 +290,10 @@ export function misura(testo: string, font: NomeFont, dimensione: number): numbe
     totale += tabella[indice] ?? 500;
   }
 
-  return (totale * dimensione) / 1000;
+  const caratteri = [...testo].length;
+  const spazio = caratteri > 1 ? spaziatura * (caratteri - 1) : 0;
+
+  return (totale * dimensione) / 1000 + spazio;
 }
 
 /** Spezza il testo in righe che stanno nella larghezza data. */
@@ -244,8 +337,16 @@ function codifica(testo: string): Uint8Array {
   return Uint8Array.from(byte);
 }
 
+/**
+ * Numeri all'italiana, con il punto delle migliaia scritto qui: `toLocaleString`
+ * non raggruppa su tutte le piattaforme e il foglio finiva con «2850 g» accanto
+ * a «2.850 g» arrivato dai dati.
+ */
 function numero(valore: number): string {
-  return valore.toLocaleString('it-IT', { maximumFractionDigits: 1 });
+  const arrotondato = Math.round(valore * 10) / 10;
+  const [intero, decimale] = arrotondato.toFixed(1).replace(/\.0$/, '').split('.');
+  const raggruppato = intero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return decimale ? `${raggruppato},${decimale}` : raggruppato;
 }
 
 interface OpzioniTesto {
@@ -253,16 +354,25 @@ interface OpzioniTesto {
   dimensione?: number;
   colore?: Colore;
   allineamento?: 'sinistra' | 'destra' | 'centro';
+  /** Spazio fra le lettere, per le etichette piccole in maiuscolo. */
+  spaziatura?: number;
 }
 
 interface OpzioniRettangolo {
   riempimento?: Colore;
   bordo?: Colore;
+  spessore?: number;
 }
 
 interface Punto {
   x: number;
   y: number;
+}
+
+/** Un pezzo di scheda: altezza nota e disegno a una coordinata data. */
+interface Blocco {
+  altezza: number;
+  disegna: (ySuperiore: number) => void;
 }
 
 function unisci(parti: readonly Uint8Array[], lunghezza: number): Uint8Array {
@@ -302,6 +412,14 @@ interface ImmaginePronta {
   byte: Uint8Array;
   larghezza: number;
   altezza: number;
+}
+
+/** Si scrive con la maiuscola iniziale: i titoli delle schede non sono urli. */
+function frase(testo: string): string {
+  const maiuscolo = testo === testo.toUpperCase();
+  if (!maiuscolo) return testo;
+  const minuscolo = testo.toLocaleLowerCase('it-IT');
+  return minuscolo.charAt(0).toLocaleUpperCase('it-IT') + minuscolo.slice(1);
 }
 
 /** Costruisce il PDF completo del foglio, in vettoriale. */
@@ -348,15 +466,17 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   ): number => {
     const font = opzioni.font ?? 'F1';
     const dimensione = opzioni.dimensione ?? 10;
-    const inchiostro = opzioni.colore ?? TESTO;
-    const larghezza = misura(contenuto, font, dimensione);
+    const inchiostro = opzioni.colore ?? INCHIOSTRO;
+    const spaziatura = opzioni.spaziatura ?? 0;
+    const larghezza = misura(contenuto, font, dimensione, spaziatura);
 
     let partenza = x;
     if (opzioni.allineamento === 'destra') partenza = x - larghezza;
     else if (opzioni.allineamento === 'centro') partenza = x - larghezza / 2;
 
     aggiungi(
-      `BT /${font} ${dimensione} Tf ${inchiostro.join(' ')} rg ` +
+      `BT /${font} ${dimensione} Tf ${spaziatura.toFixed(2)} Tc ` +
+        `${inchiostro.join(' ')} rg ` +
         `${partenza.toFixed(2)} ${alto(ySuperiore).toFixed(2)} Td (`,
     );
     aggiungi(codifica(contenuto));
@@ -381,8 +501,85 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     }
     if (opzioni.bordo) {
       aggiungi(
-        `${opzioni.bordo.join(' ')} RG 0.7 w ${x.toFixed(2)} ${y.toFixed(2)} ` +
+        `${opzioni.bordo.join(' ')} RG ${(opzioni.spessore ?? 0.7).toFixed(2)} w ` +
+          `${x.toFixed(2)} ${y.toFixed(2)} ` +
           `${larghezza.toFixed(2)} ${altezza.toFixed(2)} re S\n`,
+      );
+    }
+  };
+
+  /** Percorso di un rettangolo con gli angoli morbidi, come le schede del sito. */
+  const percorsoArrotondato = (
+    x: number,
+    ySuperiore: number,
+    larghezza: number,
+    altezza: number,
+    raggio: number,
+  ): string => {
+    const x1 = x + larghezza;
+    const basso = alto(ySuperiore + altezza);
+    const sommo = alto(ySuperiore);
+    const r = Math.max(0, Math.min(raggio, larghezza / 2, altezza / 2));
+    const k = 0.5523 * r;
+    const n = (valore: number) => valore.toFixed(2);
+
+    return (
+      `${n(x + r)} ${n(basso)} m ` +
+      `${n(x1 - r)} ${n(basso)} l ` +
+      `${n(x1 - r + k)} ${n(basso)} ${n(x1)} ${n(basso + r - k)} ${n(x1)} ${n(basso + r)} c ` +
+      `${n(x1)} ${n(sommo - r)} l ` +
+      `${n(x1)} ${n(sommo - r + k)} ${n(x1 - r + k)} ${n(sommo)} ${n(x1 - r)} ${n(sommo)} c ` +
+      `${n(x + r)} ${n(sommo)} l ` +
+      `${n(x + r - k)} ${n(sommo)} ${n(x)} ${n(sommo - r + k)} ${n(x)} ${n(sommo - r)} c ` +
+      `${n(x)} ${n(basso + r)} l ` +
+      `${n(x)} ${n(basso + r - k)} ${n(x + r - k)} ${n(basso)} ${n(x + r)} ${n(basso)} c h`
+    );
+  };
+
+  const arrotondato = (
+    x: number,
+    ySuperiore: number,
+    larghezza: number,
+    altezza: number,
+    raggio: number,
+    opzioni: OpzioniRettangolo = {},
+  ): void => {
+    const percorso = percorsoArrotondato(x, ySuperiore, larghezza, altezza, raggio);
+    if (opzioni.riempimento && opzioni.bordo) {
+      // `B` riempie e contorna: prima si impostano entrambi i colori.
+      aggiungi(
+        `${opzioni.riempimento.join(' ')} rg ${opzioni.bordo.join(' ')} RG ` +
+          `${(opzioni.spessore ?? 0.8).toFixed(2)} w ${percorso} B\n`,
+      );
+    } else if (opzioni.riempimento) {
+      aggiungi(`${opzioni.riempimento.join(' ')} rg ${percorso} f\n`);
+    } else if (opzioni.bordo) {
+      aggiungi(
+        `${opzioni.bordo.join(' ')} RG ${(opzioni.spessore ?? 0.8).toFixed(2)} w ${percorso} S\n`,
+      );
+    }
+  };
+
+  /** Cerchio pieno o in filo, usato dal marchio e dai numeri dei passi. */
+  const cerchio = (
+    cx: number,
+    cy: number,
+    raggio: number,
+    opzioni: OpzioniRettangolo = {},
+  ): void => {
+    const k = 0.5523 * raggio;
+    const n = (valore: number) => valore.toFixed(2);
+    const percorso =
+      `${n(cx + raggio)} ${n(cy)} m ` +
+      `${n(cx + raggio)} ${n(cy + k)} ${n(cx + k)} ${n(cy + raggio)} ${n(cx)} ${n(cy + raggio)} c ` +
+      `${n(cx - k)} ${n(cy + raggio)} ${n(cx - raggio)} ${n(cy + k)} ${n(cx - raggio)} ${n(cy)} c ` +
+      `${n(cx - raggio)} ${n(cy - k)} ${n(cx - k)} ${n(cy - raggio)} ${n(cx)} ${n(cy - raggio)} c ` +
+      `${n(cx + k)} ${n(cy - raggio)} ${n(cx + raggio)} ${n(cy - k)} ${n(cx + raggio)} ${n(cy)} c h`;
+
+    if (opzioni.riempimento) aggiungi(`${opzioni.riempimento.join(' ')} rg ${percorso} f\n`);
+    if (opzioni.bordo) {
+      aggiungi(
+        `${opzioni.bordo.join(' ')} RG ${(opzioni.spessore ?? 0.8).toFixed(2)} w ${percorso} S\n`,
       );
     }
   };
@@ -403,7 +600,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     lato: number,
   ): void => {
     const scala = lato / LATO_ICONA;
-    const inchiostro = ORO_SCURO.join(' ');
+    const inchiostro = ACCENTO_SCURO.join(' ');
     const k = 0.5523;
 
     disegnaIcona(tipo, {
@@ -414,14 +611,14 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
           const py = alto(ySuperiore + punto.y * scala);
           percorso += `${px.toFixed(2)} ${py.toFixed(2)} ${indice === 0 ? 'm' : 'l'} `;
         });
-        aggiungi(`${inchiostro} RG 0.8 w ${percorso}${chiusa ? 'h ' : ''}S\n`);
+        aggiungi(`${inchiostro} RG 0.85 w ${percorso}${chiusa ? 'h ' : ''}S\n`);
       },
-      cerchio: (cerchio) => {
-        const cx = x + cerchio.cx * scala;
-        const cy = alto(ySuperiore + cerchio.cy * scala);
-        const r = cerchio.r * scala;
+      cerchio: (cerchioIcona) => {
+        const cx = x + cerchioIcona.cx * scala;
+        const cy = alto(ySuperiore + cerchioIcona.cy * scala);
+        const r = cerchioIcona.r * scala;
         aggiungi(
-          `${inchiostro} RG 0.8 w ${(cx + r).toFixed(2)} ${cy.toFixed(2)} m ` +
+          `${inchiostro} RG 0.85 w ${(cx + r).toFixed(2)} ${cy.toFixed(2)} m ` +
             `${(cx + r).toFixed(2)} ${(cy + k * r).toFixed(2)} ${(cx + k * r).toFixed(2)} ${(cy + r).toFixed(2)} ${cx.toFixed(2)} ${(cy + r).toFixed(2)} c ` +
             `${(cx - k * r).toFixed(2)} ${(cy + r).toFixed(2)} ${(cx - r).toFixed(2)} ${(cy + k * r).toFixed(2)} ${(cx - r).toFixed(2)} ${cy.toFixed(2)} c ` +
             `${(cx - r).toFixed(2)} ${(cy - k * r).toFixed(2)} ${(cx - k * r).toFixed(2)} ${(cy - r).toFixed(2)} ${cx.toFixed(2)} ${(cy - r).toFixed(2)} c ` +
@@ -431,673 +628,1202 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     });
   };
 
+  /**
+   * Marchio: il trancio graduato della home (`src/components/Marchio.tsx`),
+   * dentro il tondo di carta della testata. I tracciati sono gli stessi del
+   * componente, quindi il foglio non ha un logo suo.
+   */
+  const marchio = (x: number, ySuperiore: number, lato: number): void => {
+    const cx = x + lato / 2;
+    const cyPagina = ySuperiore + lato / 2;
+    const cy = alto(cyPagina);
+    const raggio = lato / 2 - 0.5;
+
+    cerchio(cx, cy, raggio, { riempimento: CARTA, bordo: BORDO, spessore: 0.8 });
+
+    const vista = MARCHIO_VIEWBOX;
+    const scala = (lato * 0.66) / Math.max(vista.larghezza, vista.altezza);
+    const sinistra = x + (lato - vista.larghezza * scala) / 2;
+    const sopra = ySuperiore + (lato - vista.altezza * scala) / 2;
+    const puntoX = (valore: number) => sinistra + (valore - vista.x) * scala;
+    const puntoY = (valore: number) => sopra + (valore - vista.y) * scala;
+    const X = (valore: number) => puntoX(valore).toFixed(2);
+    const Y = (valore: number) => alto(puntoY(valore)).toFixed(2);
+
+    const traccia = (comandi: readonly ComandoMarchio[]): string =>
+      comandi
+        .map(({ tipo, valori }) => {
+          if (tipo === 'z') return 'h';
+          if (tipo === 'c') {
+            return `${X(valori[0])} ${Y(valori[1])} ${X(valori[2])} ${Y(valori[3])} ${X(valori[4])} ${Y(valori[5])} c`;
+          }
+          return `${X(valori[0])} ${Y(valori[1])} ${tipo}`;
+        })
+        .join(' ');
+
+    for (const percorso of PERCORSI_MARCHIO.pieni) {
+      aggiungi(`${ACCENTO.join(' ')} rg ${traccia(percorso)} f\n`);
+    }
+    for (const segno of MARCHIO_CERCHI) {
+      cerchio(puntoX(segno.cx), alto(puntoY(segno.cy)), segno.r * scala, {
+        ...(segno.tratto
+          ? { bordo: ACCENTO, spessore: MARCHIO_SPESSORE * scala }
+          : { riempimento: ACCENTO }),
+      });
+    }
+    for (const percorso of PERCORSI_MARCHIO.tratti) {
+      aggiungi(
+        `${ACCENTO.join(' ')} RG ${(MARCHIO_SPESSORE * scala).toFixed(2)} w 1 j 1 J ${traccia(percorso)} S\n`,
+      );
+    }
+  };
+
+  /** Pastiglia con testo in maiuscolo: gruppo, tipo di impasto, totali. */
+  const pastiglia = (
+    x: number,
+    ySuperiore: number,
+    larghezza: number,
+    altezza: number,
+    contenuto: string,
+    opzioni: { pieno?: boolean; dimensione?: number } = {},
+  ): void => {
+    arrotondato(x, ySuperiore, larghezza, altezza, altezza / 2, {
+      riempimento: opzioni.pieno ? VELO : CARTA_CREMA,
+      bordo: opzioni.pieno ? undefined : BORDO,
+      spessore: 0.6,
+    });
+    const dimensione = opzioni.dimensione ?? 6.4;
+    testo(x + larghezza / 2, ySuperiore + altezza / 2 + dimensione * 0.36, contenuto, {
+      font: 'F2',
+      dimensione,
+      colore: ACCENTO_SCURO,
+      allineamento: 'centro',
+      spaziatura: 0.7,
+    });
+  };
+
   const sinistra = PAGINA.margine;
   const destra = PAGINA.larghezza - PAGINA.margine;
-  let y = PAGINA.margine;
-  const inizioContinuazione = PAGINA.margine + 25;
+  const larghezzaUtile = destra - sinistra;
+  const FONDO = PAGINA.altezza - PEDE;
 
-  /** Apre una facciata nuova, con l'intestazione di continuazione. */
+  /* Misure delle schede: valgono per A4 e per il formato telefono. */
+  const PAD = stretto ? 12 : 15;
+  const PAD_VERT = stretto ? 9 : 11;
+  const RAGGIO = stretto ? 9 : 11;
+  const TITOLO_SCHEDA = 22;
+  const DISTANZA = 9;
+
+  const interno = sinistra + PAD;
+  const largoInterno = larghezzaUtile - PAD * 2;
+  const fineInterno = destra - PAD;
+
+  let y = PAGINA.margine;
+
+  const sfondoPagina = (): void => {
+    aggiungi(
+      `${CREMA.join(' ')} rg 0 0 ${PAGINA.larghezza.toFixed(2)} ` +
+        `${PAGINA.altezza.toFixed(2)} re f\n`,
+    );
+  };
+
+  /** Apre una facciata nuova, con la testata ridotta di continuazione. */
   const nuovaPagina = (): void => {
     pagine.push(pezzi);
     pezzi = [];
-    y = PAGINA.margine + 6;
-    testo(sinistra, y, 'PizzaMetria', { font: 'F2', dimensione: 6.6, colore: ORO });
-    testo(destra, y, dati.titolo, {
-      dimensione: 6.6,
+    sfondoPagina();
+    y = PAGINA.margine;
+    marchio(sinistra, y + 1, stretto ? 15 : 17);
+    testo(sinistra + (stretto ? 20 : 23), y + 9, 'PizzaMetria', {
+      font: 'F2',
+      dimensione: 8.6,
+      colore: INCHIOSTRO,
+    });
+    testo(destra, y + 9, dati.titolo, {
+      dimensione: 7.4,
       colore: TENUE,
       allineamento: 'destra',
     });
-    y += 5;
-    linea({ x: sinistra, y }, { x: destra, y });
-    y += 14;
+    linea({ x: sinistra, y: y + 23 }, { x: destra, y: y + 23 }, BORDO, 0.6);
+    y += 33;
   };
 
-  /** Salta alla facciata seguente quando il blocco non ci sta. */
-  const assicuraSpazio = (altezza: number): void => {
-    if (y + altezza > FONDO_PAGINA) nuovaPagina();
-  };
-
-  // Se un paragrafo eccede anche una pagina intera, lascia al flusso
-  // per riga il compito di dividerlo. Con un titolo, riserva almeno la prima riga.
-  const tieniInsieme = (altezza: number, minimo = 0): void => {
-    const spazioPagina = FONDO_PAGINA - inizioContinuazione;
-    const spazio = altezza <= spazioPagina ? altezza : minimo;
-    if (spazio > 0) assicuraSpazio(spazio);
-  };
-
-  // Intestazione
-  testo(sinistra, y + 7, 'PizzaMetria', { font: 'F2', dimensione: 7.6, colore: ORO });
-  testo(destra, y + 7, dati.occhiello ?? 'CALCOLATORE LIBERO', {
+  // Prima facciata: fondo crema e testata completa con il marchio.
+  sfondoPagina();
+  marchio(sinistra, y, stretto ? 27 : 30);
+  testo(sinistra + (stretto ? 34 : 39), y + 12.5, 'PizzaMetria', {
     font: 'F2',
-    dimensione: 7.6,
-    colore: TENUE,
-    allineamento: 'destra',
+    dimensione: stretto ? 13.5 : 15,
+    colore: INCHIOSTRO,
   });
-  // Filo d'oro sotto il marchio, come nel foglio JPG.
-  rettangolo(sinistra, y + 10, 18, 1.6, { riempimento: ORO });
-  y += 24;
-
-  const larghezzaTitolo = testo(sinistra, y + 16, dati.titolo, {
-    font: 'F4',
-    dimensione: 21,
+  testo(sinistra + (stretto ? 34.5 : 39.5), y + 23.5, 'IL CALCOLATORE DI IMPASTI', {
+    font: 'F2',
+    dimensione: 5.9,
+    colore: ACCENTO_SCURO,
+    spaziatura: 0.9,
   });
 
-  // Pillola del lievito accanto al titolo: è la firma del foglio JPG.
-  const etichettaTipo = dati.tipoLievito.replace(/^Lievito\s+/i, '').toUpperCase();
-  const larghezzaBadge = misura(etichettaTipo, 'F2', 6.6) + 10;
-  if (!dati.soloProgramma && larghezzaTitolo + 12 + larghezzaBadge <= LARGHEZZA_UTILE) {
-    const xBadge = destra - larghezzaBadge;
-    rettangolo(xBadge, y + 3, larghezzaBadge, 11.5, {
-      riempimento: [0.96, 0.93, 0.87] as const,
-      bordo: ORO,
-    });
-    testo(xBadge + larghezzaBadge / 2, y + 10.6, etichettaTipo, {
+  // Gruppo della ricetta: la pastiglia che sul sito sta nella testata.
+  const occhiello = dati.occhiello ?? 'CALCOLATORE LIBERO';
+  const larghezzaOcchiello = misura(occhiello, 'F2', 5.8, 0.7) + 17;
+  pastiglia(destra - larghezzaOcchiello, y + 7.5, larghezzaOcchiello, 16, occhiello, {
+    dimensione: 6.2,
+  });
+
+  // Il filo passa sotto al marchio, non attraverso: come nella testata del sito.
+  y += stretto ? 33 : 37;
+  linea({ x: sinistra, y }, { x: destra, y }, BORDO, 0.6);
+  y += stretto ? 9 : 16;
+
+  // Apertura: filo d'oro, titolo grande, sottotitolo, pastiglia del tipo.
+  rettangolo(sinistra, y, 24, 2.6, { riempimento: ACCENTO });
+  y += stretto ? 8 : 11;
+
+  const dimensioneTitolo = stretto ? 21.5 : 24;
+  const interlineaTitolo = dimensioneTitolo * 1.16;
+  const righeTitolo = dividiInRighe(dati.titolo, 'F2', dimensioneTitolo, larghezzaUtile);
+  righeTitolo.forEach((riga, indice) => {
+    testo(sinistra, y + dimensioneTitolo * 0.8 + indice * interlineaTitolo, riga, {
       font: 'F2',
-      dimensione: 6.6,
-      colore: ORO_SCURO,
-      allineamento: 'centro',
+      dimensione: dimensioneTitolo,
+      colore: INCHIOSTRO,
+      spaziatura: -0.3,
+    });
+  });
+  y += righeTitolo.length * interlineaTitolo - dimensioneTitolo * 0.2 + 6;
+
+  const dimensioneSotto = stretto ? 9.2 : 9.8;
+  const interlineaSotto = dimensioneSotto * 1.42;
+  const righeSotto = dividiInRighe(dati.sottotitolo, 'F1', dimensioneSotto, larghezzaUtile);
+  righeSotto.forEach((riga, indice) => {
+    testo(sinistra, y + dimensioneSotto * 0.8 + indice * interlineaSotto, riga, {
+      dimensione: dimensioneSotto,
+      colore: TENUE,
+    });
+  });
+  y += righeSotto.length * interlineaSotto + 8;
+
+  const etichettaTipo = dati.tipoLievito;
+  const larghezzaTipo = misura(etichettaTipo.toUpperCase(), 'F2', 6.7, 0.7) + 18;
+  pastiglia(sinistra, y, larghezzaTipo, 16, etichettaTipo.toUpperCase(), {
+    dimensione: 6.7,
+  });
+  if (dati.generatoIl) {
+    testo(sinistra + larghezzaTipo + 10, y + 11, dati.generatoIl, {
+      dimensione: 7.4,
+      colore: TENUE,
     });
   }
-  y += 22;
+  y += 16 + (stretto ? 14 : 17);
 
-  const righeSottotitolo = dividiInRighe(dati.sottotitolo, 'F1', 9.4, LARGHEZZA_UTILE);
-  righeSottotitolo.forEach((riga, indice) => {
-    testo(sinistra, y + 10 + indice * 11.5, riga, { dimensione: 9.4, colore: TENUE });
+  /* ---------------------------------------------------------------- *
+   * BLOCCHI: ogni pezzo conosce la sua altezza, così l'impaginazione
+   * sa dove spezzare la scheda senza lasciare buchi in fondo pagina.
+   * ---------------------------------------------------------------- */
+
+  /** Righe di un paragrafo, una per blocco: si spezzano fra le facciate. */
+  const paragrafo = (
+    contenuto: string,
+    opzioni: {
+      x?: number;
+      larghezza?: number;
+      dimensione: number;
+      colore?: Colore;
+      interlinea?: number;
+      font?: NomeFont;
+    },
+  ): Blocco[] => {
+    const x = opzioni.x ?? interno;
+    const larghezza = opzioni.larghezza ?? largoInterno;
+    const dimensione = opzioni.dimensione;
+    const interlinea = opzioni.interlinea ?? dimensione * 1.38;
+    const righe = dividiInRighe(contenuto, opzioni.font ?? 'F1', dimensione, larghezza);
+
+    // Il paragrafo è un blocco unico: va a capo fra una facciata e l'altra
+    // solo intero, così non si legge una frase tagliata.
+    return [
+      {
+        altezza: righe.length * interlinea,
+        disegna: (top: number) => {
+          righe.forEach((riga, indice) => {
+            testo(x, top + dimensione * 0.8 + indice * interlinea, riga, {
+              font: opzioni.font ?? 'F1',
+              dimensione,
+              colore: opzioni.colore ?? INCHIOSTRO,
+            });
+          });
+        },
+      },
+    ];
+  };
+
+  /** Più blocchi che restano insieme: il titolo non si separa dal suo testo. */
+  const uniti = (blocchi: Blocco[]): Blocco => ({
+    altezza: blocchi.reduce((somma, blocco) => somma + blocco.altezza, 0),
+    disegna: (top: number) => {
+      let cursore = top;
+      blocchi.forEach((blocco) => {
+        blocco.disegna(cursore);
+        cursore += blocco.altezza;
+      });
+    },
   });
-  y += righeSottotitolo.length * 11.5 + 6;
 
-  if (dati.generatoIl) {
-    testo(sinistra, y + 6, dati.generatoIl, { dimensione: 7.2, colore: TENUE });
-    y += 12;
-  }
+  const spazio = (altezza: number): Blocco => ({ altezza, disegna: () => {} });
 
-  linea({ x: sinistra, y }, { x: destra, y });
-  y += 14;
+  /** Percentuale della dose, con la sua base: «75% sulla farina totale». */
+  const percentualeDose = (dose: VoceDose): string | null => {
+    if (typeof dose.percentuale !== 'number') return null;
+    const decimili = dose.percentuale >= 10 ? 1 : 2;
+    const valore = dose.percentuale.toLocaleString('it-IT', {
+      maximumFractionDigits: decimili,
+    });
+    return `${valore}%${dose.base ? ` sulla ${dose.base}` : ''}`;
+  };
 
-  /** «% 62,3 sulla farina totale», come nella tabella del foglio JPG. */
-  const percentualeDose = (dose: VoceDose): string | null =>
-    typeof dose.percentuale === 'number'
-      ? `% ${numero(dose.percentuale)}${dose.base ? ` sulla ${dose.base}` : ''}`
-      : null;
+  const grammi = (dose: VoceDose): string =>
+    dose.tipo === 'lievito' ? grammiLievito(dose.grammi) : numero(dose.grammi);
 
-  /** Una riga ingrediente: nome, percentuale e grammi, con paginazione. */
-  const rigaDose = (dose: VoceDose, separatore: boolean): void => {
+  /** Una riga ingrediente: icona, nome, percentuale, grammi. */
+  const bloccoDose = (dose: VoceDose, separatore: boolean): Blocco => {
+    const colonnaGrammi = 62;
+    const xNome = interno + (dose.tipo ? 16 : 0);
     const percentuale = percentualeDose(dose);
-    const larghezzaGrammi = 70;
-    const xPercentuale = destra - larghezzaGrammi - 6;
+    const dimensioneNome = stretto ? 10 : 10.5;
+
+    /*
+     * Sul telefono la percentuale scende sotto il nome, come nelle schede del
+     * sito: a 360 punti una colonna in mezzo al nome lo spezzerebbe.
+     */
+    if (stretto) {
+      const righeNome = dividiInRighe(
+        dose.nome,
+        'F1',
+        dimensioneNome,
+        Math.max(60, largoInterno - colonnaGrammi - 10 - (dose.tipo ? 16 : 0)),
+      );
+      const righeSecondarie = (percentuale ? 1 : 0) + (dose.nota ? 1 : 0);
+      const altezza = righeNome.length * 11 + righeSecondarie * 9.8 + 8;
+
+      return {
+        altezza,
+        disegna: (top: number) => {
+          if (dose.tipo) iconaPdf(dose.tipo, interno, top + 3.5, 10.5);
+          righeNome.forEach((riga, indice) => {
+            testo(xNome, top + 9.4 + indice * 11, riga, {
+              dimensione: dimensioneNome,
+              colore: INCHIOSTRO,
+            });
+          });
+          testo(fineInterno, top + 9.8, `${grammi(dose)} g`, {
+            font: 'F2',
+            dimensione: 11,
+            colore: INCHIOSTRO,
+            allineamento: 'destra',
+          });
+          let base = top + 9.2 + righeNome.length * 10.6;
+          if (percentuale) {
+            testo(xNome, base, percentuale, { dimensione: 7.6, colore: TENUE });
+            base += 9.6;
+          }
+          if (dose.nota) {
+            testo(xNome, base, dose.nota, { dimensione: 7.6, colore: TENUE });
+          }
+          if (separatore) {
+            linea(
+              { x: interno, y: top + altezza - 4 },
+              { x: fineInterno, y: top + altezza - 4 },
+              BORDO,
+              0.5,
+            );
+          }
+        },
+      };
+    }
+
     const righeNome = dividiInRighe(
       dose.nome,
       'F1',
-      10,
-      Math.max(70, LARGHEZZA_UTILE - larghezzaGrammi - 118),
+      dimensioneNome,
+      Math.max(60, largoInterno - colonnaGrammi - 96 - (dose.tipo ? 16 : 0)),
     );
     const righePercentuale = percentuale
-      ? dividiInRighe(percentuale, 'F1', 7.4, 112)
+      ? dividiInRighe(percentuale, 'F1', 7.6, 97)
       : [];
     const righe = Math.max(righeNome.length, righePercentuale.length, 1);
-    const altezza = righe * 11 + 5 + (dose.nota ? 10 : 0);
+    const altezza = righe * 11 + (dose.nota ? 9.8 : 0) + 8;
 
-    assicuraSpazio(altezza + 4);
-
-    const base = y + 9;
-    let xNome = sinistra;
-    if (dose.tipo) {
-      iconaPdf(dose.tipo, sinistra, y + 1, 9);
-      xNome = sinistra + 14;
-    }
-    righeNome.forEach((riga, indice) => {
-      testo(xNome, base + indice * 11, riga, { dimensione: 10 });
-    });
-    if (dose.nota) {
-      testo(xNome, base + righeNome.length * 11, dose.nota, { dimensione: 7.8, colore: TENUE });
-    }
-    righePercentuale.forEach((riga, indice) => {
-      testo(xPercentuale, base + indice * 8, riga, {
-        dimensione: 7.4,
-        colore: TENUE,
-        allineamento: 'destra',
-      });
-    });
-    testo(destra, base, `${dose.tipo === 'lievito' ? grammiLievito(dose.grammi) : numero(dose.grammi)} g`, {
-      font: 'F4',
-      dimensione: 10.4,
-      allineamento: 'destra',
-    });
-
-    y += altezza;
-    if (separatore) linea({ x: sinistra, y: y - 3 }, { x: destra, y: y - 3 });
-  };
-
-  // Riepilogo tecnico delle ricette: etichetta a sinistra, valore a destra.
-  for (const gruppo of dati.riepilogo ?? []) {
-    assicuraSpazio(34);
-    testo(sinistra, y + 8, gruppo.titolo.toUpperCase(), {
-      font: 'F4',
-      dimensione: 8.6,
-      colore: ORO_SCURO,
-    });
-    y += 12;
-    linea({ x: sinistra, y }, { x: destra, y });
-    y += 8;
-
-    gruppo.voci.forEach((voce, indice) => {
-      const larghezzaValore = LARGHEZZA_UTILE * 0.52;
-      const larghezzaEtichetta = LARGHEZZA_UTILE - larghezzaValore - 10;
-      const righeEtichetta = dividiInRighe(voce.etichetta, 'F1', 8, larghezzaEtichetta);
-      const righeValore = dividiInRighe(voce.valorePdf ?? voce.valore, 'F3', 9.2, larghezzaValore);
-      const righe = Math.max(righeEtichetta.length, righeValore.length, 1);
-      const altezza = righe * 10 + 7;
-
-      assicuraSpazio(altezza + 4);
-
-      const base = y + 9;
-      righeEtichetta.forEach((riga, posizione) => {
-        testo(sinistra, base + posizione * 10, riga, { dimensione: 8, colore: TENUE });
-      });
-      righeValore.forEach((riga, posizione) => {
-        testo(destra, base + posizione * 10, riga, {
-          font: 'F3',
-          dimensione: 9.2,
-          allineamento: 'destra',
-        });
-      });
-
-      y += altezza;
-      if (indice < gruppo.voci.length - 1) {
-        linea({ x: sinistra, y: y - 3 }, { x: destra, y: y - 3 });
-      }
-    });
-
-    y += 12;
-  }
-
-  if (!dati.soloProgramma) {
-    // Dosi: le fasi delle ricette oppure l'elenco piatto del calcolatore libero.
-    const fasi = dati.fasi ?? [];
-    assicuraSpazio(24);
-    // Titolo unico per tutte le dosi: le fasi delle ricette restano come
-    // etichette più piccole dentro la stessa sezione.
-    testo(sinistra, y + 8, 'INGREDIENTI', {
-      font: 'F4',
-      dimensione: 10.4,
-      colore: ORO_SCURO,
-    });
-    y += 15;
-
-    if (fasi.length > 0) {
-      for (const fase of fasi) {
-        assicuraSpazio(24);
-        testo(sinistra, y + 8, fase.titolo.toUpperCase(), {
-          font: 'F4',
-          dimensione: 8.6,
-          colore: ORO_SCURO,
-        });
-        y += 12;
-        linea({ x: sinistra, y }, { x: destra, y });
-        y += 6;
-
-        if (fase.nota) {
-          dividiInRighe(fase.nota, 'F1', 7.6, LARGHEZZA_UTILE).forEach((riga) => {
-            assicuraSpazio(10);
-            testo(sinistra, y + 6, riga, { dimensione: 7.6, colore: TENUE });
-            y += 9;
+    return {
+      altezza,
+      disegna: (top: number) => {
+        if (dose.tipo) iconaPdf(dose.tipo, interno, top + 3.5, 10.5);
+        righeNome.forEach((riga, indice) => {
+          testo(xNome, top + 9.4 + indice * 11, riga, {
+            dimensione: dimensioneNome,
+            colore: INCHIOSTRO,
           });
-          y += 2;
+        });
+        if (dose.nota) {
+          testo(xNome, top + 9.4 + righeNome.length * 11, dose.nota, {
+            dimensione: 7.6,
+            colore: TENUE,
+          });
         }
-
-        if (fase.avviso) {
-          const righeAvviso = dividiInRighe(fase.avviso, 'F2', 7.6, LARGHEZZA_UTILE - 14);
-          const altezza = righeAvviso.length * 9 + 8;
-          assicuraSpazio(altezza + 6);
-          rettangolo(sinistra, y, LARGHEZZA_UTILE, altezza, {
-            riempimento: [0.96, 0.93, 0.87] as const,
-          });
-          righeAvviso.forEach((riga, indice) => {
-            testo(sinistra + 7, y + 12 + indice * 9, riga, {
-              font: 'F2',
-              dimensione: 7.6,
-              colore: ORO_SCURO,
-            });
-          });
-          y += altezza + 8;
-        }
-
-        fase.voci.forEach((dose, indice) => {
-          rigaDose(dose, indice < fase.voci.length - 1);
-        });
-
-        linea({ x: sinistra, y }, { x: destra, y });
-        y += 14;
-
-        if (fase.totale) {
-          assicuraSpazio(20);
-          testo(sinistra, y + 8, fase.totale.nome, { dimensione: 9.6, colore: TENUE });
-          testo(destra, y + 8, `${numero(fase.totale.grammi)} g`, {
-            font: 'F4',
-            dimensione: 10.4,
-            colore: ORO_SCURO,
+        righePercentuale.forEach((riga, indice) => {
+          testo(fineInterno - colonnaGrammi - 8, top + 8.8 + indice * 8.6, riga, {
+            dimensione: 7.4,
+            colore: TENUE,
             allineamento: 'destra',
           });
-          y += 18;
+        });
+        testo(fineInterno, top + 9.8, `${grammi(dose)} g`, {
+          font: 'F2',
+          dimensione: 11,
+          colore: INCHIOSTRO,
+          allineamento: 'destra',
+        });
+        if (separatore) {
+          linea(
+            { x: interno, y: top + altezza - 4 },
+            { x: fineInterno, y: top + altezza - 4 },
+            BORDO,
+            0.5,
+          );
         }
+      },
+    };
+  };
 
-        y += 12;
-      }
-    } else {
-      const dosi = dati.dosi ?? [];
-      dosi.forEach((dose, indice) => rigaDose(dose, indice < dosi.length - 1));
+  /** Intestazione di fase: etichetta piccola in maiuscolo e filo. */
+  const bloccoFase = (fase: FaseFoglio, prima: boolean): Blocco[] => {
+    const out: Blocco[] = [];
+    if (!prima) out.push(spazio(stretto ? 8 : 12));
+
+    out.push({
+      altezza: stretto ? 12 : 13,
+      disegna: (top: number) => {
+        const etichetta = fase.titolo.toUpperCase();
+        const larghezza = testo(interno, top + 8.6, etichetta, {
+          font: 'F2',
+          dimensione: 7.8,
+          colore: ACCENTO_SCURO,
+          spaziatura: 0.8,
+        });
+        const partenza = interno + larghezza + 7;
+        if (partenza < fineInterno - 8) {
+          linea({ x: partenza, y: top + 5.6 }, { x: fineInterno, y: top + 5.6 }, BORDO, 0.5);
+        }
+      },
+    });
+
+    if (fase.nota) {
+      out.push(...paragrafo(fase.nota, { dimensione: 8, colore: TENUE }));
+      out.push(spazio(3));
     }
 
-    assicuraSpazio(30);
-    linea({ x: sinistra, y }, { x: destra, y });
-    y += 15;
-    testo(sinistra, y, 'Peso impasto', { font: 'F2', dimensione: 10.5 });
-    testo(destra, y, `${numero(dati.totaleG)} g`, {
-      font: 'F4',
-      dimensione: 14,
-      colore: ORO_SCURO,
-      allineamento: 'destra',
-    });
-    y += 20;
-  }
+    if (fase.avviso) {
+      const righe = dividiInRighe(fase.avviso, 'F2', 7.2, largoInterno - 14);
+      const altezza = righe.length * 9 + 8;
+      out.push({
+        altezza: altezza + 7,
+        disegna: (top: number) => {
+          arrotondato(interno, top, largoInterno, altezza, 6, {
+            riempimento: CARTA_CREMA,
+            bordo: BORDO,
+            spessore: 0.5,
+          });
+          righe.forEach((riga, indice) => {
+            testo(interno + 7, top + 11.4 + indice * 9, riga, {
+              font: 'F2',
+              dimensione: 7.8,
+              colore: ACCENTO_SCURO,
+            });
+          });
+        },
+      });
+    }
 
-  const larghezzaOrario = 66;
-  const larghezzaAzione = LARGHEZZA_UTILE - larghezzaOrario;
-  const misuraMarcia = (passi: DatiFoglio['passi']) => passi.map((passo) => {
-    if (!passo.orario) return null;
-    const titolo = dividiInRighe(passo.titolo, 'F2', 9.2, larghezzaAzione);
-    const nota = [passo.istruzione, passo.nota].flatMap((testo) =>
-      testo ? dividiInRighe(testo, 'F1', 7.8, larghezzaAzione) : [],
-    );
-    return { titolo, nota, altezza: Math.max(29, 10 + titolo.length * 11 + nota.length * 9.5) };
+    out.push(spazio(2));
+    return out;
+  };
+
+  /** Totale della fase: non va sommato di nuovo all'impasto. */
+  const bloccoTotaleFase = (totale: { nome: string; grammi: number }): Blocco => ({
+    altezza: 19,
+    disegna: (top: number) => {
+      testo(interno, top + 10.4, totale.nome, { dimensione: 9.2, colore: TENUE });
+      testo(fineInterno, top + 10.6, `${numero(totale.grammi)} g`, {
+        font: 'F2',
+        dimensione: 10.4,
+        colore: ACCENTO_SCURO,
+        allineamento: 'destra',
+      });
+    },
   });
-  const tabellaDiMarcia = dati.passi.some((passo) => passo.orario);
 
-  function disegnaPassi(passi = dati.passi, titolo = tabellaDiMarcia ? 'TABELLA DI MARCIA' : 'PROCEDIMENTO') {
-    if (passi.length === 0) return;
-    const righeMarcia = misuraMarcia(passi);
-    assicuraSpazio(18 + (righeMarcia[0]?.altezza ?? 16));
-    testo(
-      sinistra,
-      y + 6,
-      titolo,
-      { font: 'F4', dimensione: 10.4, colore: ORO_SCURO },
-    );
-    y += 18;
-
-    passi.forEach((passo, indice) => {
-      const riga = righeMarcia[indice];
-      if (passo.orario && riga) {
-        assicuraSpazio(riga.altezza);
-        const azione = sinistra + larghezzaOrario;
-        testo(sinistra, y + 9, passo.orario.ora, { font: 'F2', dimensione: 9.2, colore: ORO_SCURO });
-        testo(sinistra, y + 20, passo.orario.giorno, { dimensione: 7.8, colore: TENUE });
-        riga.titolo.forEach((testoRiga, i) => {
-          testo(azione, y + 9 + i * 11, testoRiga, { font: 'F2', dimensione: 9.2 });
+  /** Riquadro della resa: il dato che si cerca per primo. */
+  const bloccoResa = (): Blocco => {
+    const righe = dividiInRighe(dati.totaleNota, 'F2', stretto ? 11.4 : 12.4, largoInterno - 24);
+    const altezza = (stretto ? 9 : 11) + (stretto ? 6 : 7) + righe.length * 14 + (stretto ? 8 : 9);
+    return {
+      altezza: altezza + (stretto ? 6 : 8),
+      disegna: (top: number) => {
+        arrotondato(interno, top, largoInterno, altezza, 9, {
+          riempimento: CARTA_CREMA,
+          bordo: BORDO,
+          spessore: 0.6,
         });
-        riga.nota.forEach((testoRiga, i) => {
-          testo(azione, y + 9 + riga.titolo.length * 11 + i * 9.5, testoRiga, {
-            dimensione: 7.8,
+        testo(interno + 12, top + 14, 'RESA', {
+          font: 'F2',
+          dimensione: 6.9,
+          colore: ACCENTO_SCURO,
+          spaziatura: 0.8,
+        });
+        righe.forEach((riga, indice) => {
+          testo(interno + 12, top + 30 + indice * 14, riga, {
+            font: 'F2',
+            dimensione: stretto ? 12.2 : 13.4,
+            colore: INCHIOSTRO,
+          });
+        });
+      },
+    };
+  };
+
+  /** Fascia dell'impasto: l'ultimo numero della scheda, in grande. */
+  const bloccoImpastoTotale = (): Blocco => {
+    const altezza = stretto ? 32 : 35;
+    return {
+      altezza: altezza + (stretto ? 6 : 8),
+      disegna: (top: number) => {
+        arrotondato(interno, top, largoInterno, altezza, 9, {
+          riempimento: CARTA_CREMA,
+          bordo: BORDO,
+          spessore: 0.6,
+        });
+        testo(interno + 12, top + 21.5, 'Peso impasto', {
+          font: 'F2',
+          dimensione: stretto ? 10 : 10.6,
+          colore: INCHIOSTRO,
+        });
+        testo(fineInterno - 12, top + 24, `${numero(dati.totaleG)} g`, {
+          font: 'F2',
+          dimensione: stretto ? 15.5 : 17.5,
+          colore: ACCENTO_SCURO,
+          allineamento: 'destra',
+        });
+      },
+    };
+  };
+
+  /** Riga del riepilogo tecnico: etichetta a sinistra, valore a destra. */
+  const bloccoRiepilogo = (
+    voce: { etichetta: string; valore: string; valorePdf?: string },
+    separatore: boolean,
+  ): Blocco => {
+    const valore = voce.valorePdf ?? voce.valore;
+    const larghezzaValore = largoInterno * 0.55;
+    const righeEtichetta = dividiInRighe(
+      voce.etichetta,
+      'F1',
+      8.5,
+      largoInterno - larghezzaValore - 12,
+    );
+    const righeValore = dividiInRighe(valore, 'F2', 9.2, larghezzaValore);
+
+    // Un valore lungo non si allinea a destra: va a capo sotto l'etichetta,
+    // come le note del sito, invece di diventare un blocco giustificato a caso.
+    if (righeValore.length > 1) {
+      const righeTesto = dividiInRighe(valore, 'F1', 8.8, largoInterno);
+      return {
+        altezza: 12 + righeTesto.length * 11.4 + 6,
+        disegna: (top: number) => {
+          testo(interno, top + 9, voce.etichetta, { dimensione: 8.5, colore: TENUE });
+          righeTesto.forEach((riga, indice) => {
+            testo(interno, top + 21.5 + indice * 11.8, riga, {
+              dimensione: 8.8,
+              colore: INCHIOSTRO,
+            });
+          });
+          if (separatore) {
+            const fondo = top + 12 + righeTesto.length * 11.4 + 2;
+            linea({ x: interno, y: fondo }, { x: fineInterno, y: fondo }, BORDO, 0.5);
+          }
+        },
+      };
+    }
+
+    const righe = Math.max(righeEtichetta.length, righeValore.length, 1);
+    const altezza = righe * 11 + 7;
+
+    return {
+      altezza,
+      disegna: (top: number) => {
+        righeEtichetta.forEach((riga, indice) => {
+          testo(interno, top + 9 + indice * 11, riga, { dimensione: 8.5, colore: TENUE });
+        });
+        righeValore.forEach((riga, indice) => {
+          testo(fineInterno, top + 9 + indice * 11, riga, {
+            font: 'F2',
+            dimensione: 9.2,
+            colore: INCHIOSTRO,
+            allineamento: 'destra',
+          });
+        });
+        if (separatore) {
+          linea(
+            { x: interno, y: top + altezza - 4 },
+            { x: fineInterno, y: top + altezza - 4 },
+            BORDO,
+            0.5,
+          );
+        }
+      },
+    };
+  };
+
+  /** Riga della tabella di marcia: ora a sinistra, azione a destra. */
+  const bloccoMarcia = (passo: PassoFoglio, separatore: boolean): Blocco => {
+    const larghezzaOra = 52;
+    const xAzione = interno + larghezzaOra;
+    const larghezzaAzione = largoInterno - larghezzaOra;
+    const righeTitolo = dividiInRighe(passo.titolo, 'F2', 10, larghezzaAzione);
+    const righeNota = [passo.istruzione, passo.nota].flatMap((testo) =>
+      testo ? dividiInRighe(testo, 'F1', 8, larghezzaAzione) : [],
+    );
+    const altezza = Math.max(36, 10 + righeTitolo.length * 11.6 + righeNota.length * 9.8 + 6);
+
+    return {
+      altezza,
+      disegna: (top: number) => {
+        if (passo.orario) {
+          testo(interno, top + 10, passo.orario.ora, {
+            font: 'F2',
+            dimensione: 10,
+            colore: ACCENTO_SCURO,
+          });
+          testo(interno, top + 20, passo.orario.giorno, {
+            dimensione: 7.6,
+            colore: TENUE,
+          });
+        }
+        righeTitolo.forEach((riga, indice) => {
+          testo(xAzione, top + 10.4 + indice * 11.6, riga, {
+            font: 'F2',
+            dimensione: 10,
+            colore: INCHIOSTRO,
+          });
+        });
+        righeNota.forEach((riga, indice) => {
+          testo(xAzione, top + 10.4 + righeTitolo.length * 11.6 + indice * 9.8, riga, {
+            dimensione: 8,
             colore: TENUE,
           });
         });
-        y += riga.altezza;
-        if (righeMarcia[indice + 1]) {
-          linea({ x: sinistra, y: y - 4 }, { x: sinistra + LARGHEZZA_UTILE, y: y - 4 });
+        if (separatore) {
+          linea(
+            { x: interno, y: top + altezza - 4 },
+            { x: fineInterno, y: top + altezza - 4 },
+            BORDO,
+            0.5,
+          );
         }
-        return;
-      }
+      },
+    };
+  };
 
-      const riepilogo = [passo.quando, passo.nota].filter(Boolean).join(' · ');
-      const righeTitolo = dividiInRighe(passo.titolo, 'F2', 9.2, LARGHEZZA_UTILE - 12);
+  /** Passo del procedimento: numero nel tondo, titolo, testi rientrati. */
+  const blocchiPasso = (passo: PassoFoglio, indice: number, primo: boolean): Blocco[] => {
+    const out: Blocco[] = [];
+    if (!primo) out.push(spazio(stretto ? 10 : 13));
 
-      const altezzaTitolo = righeTitolo.length * 11 + 4;
-      const primoParagrafo = passo.paragrafi?.[0];
-      const altezzaPrimo = riepilogo
-        ? dividiInRighe(riepilogo, 'F1', 7.8, LARGHEZZA_UTILE - 12).length * 9 + 2
-        : primoParagrafo
-          ? dividiInRighe(primoParagrafo, 'F1', 8, LARGHEZZA_UTILE - 12).length * 9.6 + 2
-          : 0;
-      tieniInsieme(altezzaTitolo + Math.max(11, altezzaPrimo), altezzaTitolo + 11);
+    const rientro = 20;
+    const larghezza = largoInterno - rientro;
+    const righeTitolo = dividiInRighe(passo.titolo, 'F2', stretto ? 10 : 10.5, larghezza);
 
-      rettangolo(sinistra, y + 3, 3.4, 3.4, { riempimento: ORO });
-      righeTitolo.forEach((riga, indice) => {
-        testo(sinistra + 10, y + 7 + indice * 11, riga, { font: 'F2', dimensione: 9.2 });
-      });
-      y += righeTitolo.length * 11 + 4;
-
-      if (riepilogo) {
-        const righe = dividiInRighe(riepilogo, 'F1', 7.8, LARGHEZZA_UTILE - 12);
-        tieniInsieme(righe.length * 9 + 2);
-        righe.forEach((riga) => {
-          assicuraSpazio(11);
-          testo(sinistra + 10, y + 7, riga, { dimensione: 7.8, colore: TENUE });
-          y += 9;
+    const intestazione: Blocco = {
+      altezza: righeTitolo.length * 12.4 + 2,
+      disegna: (top: number) => {
+        cerchio(interno + 6.5, alto(top + 7), 6.5, { riempimento: VELO });
+        testo(interno + 6.5, top + 9.4, String(indice + 1), {
+          font: 'F2',
+          dimensione: 7.2,
+          colore: ACCENTO_SCURO,
+          allineamento: 'centro',
         });
-        y += 2;
-      }
-
-      for (const paragrafo of passo.paragrafi ?? []) {
-        const righe = dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 12);
-        tieniInsieme(righe.length * 9.6 + 2);
-        righe.forEach((riga) => {
-          assicuraSpazio(11);
-          testo(sinistra + 10, y + 7, riga, { dimensione: 8 });
-          y += 9.6;
-        });
-        y += 2;
-      }
-
-      for (const voce of passo.elenco ?? []) {
-        const righe = dividiInRighe(voce, 'F1', 8, LARGHEZZA_UTILE - 22);
-        tieniInsieme(righe.length * 9.6 + 2);
-        righe.forEach((riga, indice) => {
-          assicuraSpazio(11);
-          if (indice === 0) {
-            testo(sinistra + 10, y + 7, '•', { dimensione: 8, colore: ORO_SCURO });
-          }
-          testo(sinistra + 20, y + 7, riga, { dimensione: 8, colore: TENUE });
-          y += 9.6;
-        });
-      }
-
-      for (const voce of passo.voci ?? []) {
-        const righeVoce = dividiInRighe(voce.titolo, 'F2', 8.6, LARGHEZZA_UTILE - 22);
-        const altezzaVoce = righeVoce.length * 10 + 5;
-        const primo = dividiInRighe(voce.paragrafi[0] ?? '', 'F1', 8, LARGHEZZA_UTILE - 22);
-        tieniInsieme(altezzaVoce + Math.max(11, primo.length * 9.6 + 2), altezzaVoce + 11);
-        y += 2;
-        righeVoce.forEach((riga, indice) => {
-          if (indice === 0) {
-            testo(sinistra + 10, y + 7, '•', { dimensione: 8, colore: ORO_SCURO });
-          }
-          testo(sinistra + 20, y + 7 + indice * 10, riga, {
+        righeTitolo.forEach((riga, posizione) => {
+          testo(interno + rientro, top + 10.4 + posizione * 12.4, riga, {
             font: 'F2',
-            dimensione: 8.6,
+            dimensione: stretto ? 10 : 10.5,
+            colore: INCHIOSTRO,
           });
         });
-        y += righeVoce.length * 10 + 3;
+      },
+    };
 
-        for (const paragrafo of voce.paragrafi) {
-          const righe = dividiInRighe(paragrafo, 'F1', 8, LARGHEZZA_UTILE - 22);
-          tieniInsieme(righe.length * 9.6 + 2);
-          righe.forEach((riga) => {
-            assicuraSpazio(11);
-            testo(sinistra + 20, y + 7, riga, { dimensione: 8, colore: TENUE });
-            y += 9.6;
+    const paragrafi = passo.paragrafi ?? [];
+    const stileParagrafo = {
+      x: interno + rientro,
+      larghezza,
+      dimensione: 8.9,
+      colore: INCHIOSTRO_TENUE,
+    };
+
+    if (paragrafi.length > 0) {
+      // Il numero e il titolo non restano mai soli in fondo alla facciata.
+      out.push(uniti([intestazione, ...paragrafo(paragrafi[0], stileParagrafo), spazio(2)]));
+      for (const testoParagrafo of paragrafi.slice(1)) {
+        out.push(...paragrafo(testoParagrafo, stileParagrafo));
+        out.push(spazio(2));
+      }
+    } else {
+      out.push(intestazione);
+      out.push(spazio(2));
+    }
+
+    for (const voce of passo.elenco ?? []) {
+      const righe = dividiInRighe(voce, 'F1', 8.9, larghezza - 9);
+      righe.forEach((riga, posizione) => {
+        out.push({
+          altezza: 10.8,
+          disegna: (top: number) => {
+            if (posizione === 0) {
+              testo(interno + rientro, top + 7.4, '•', {
+                dimensione: 8.9,
+                colore: ACCENTO_SCURO,
+              });
+            }
+            testo(interno + rientro + 9, top + 7.4, riga, {
+              dimensione: 8.9,
+              colore: INCHIOSTRO_TENUE,
+            });
+          },
+        });
+      });
+      out.push(spazio(1));
+    }
+
+    for (const voce of passo.voci ?? []) {
+      out.push(spazio(4));
+      out.push({
+        altezza: 13,
+        disegna: (top: number) => {
+          testo(interno + rientro + 9, top + 9, voce.titolo, {
+            font: 'F2',
+            dimensione: 8.9,
+            colore: INCHIOSTRO,
+          });
+          testo(interno + rientro, top + 9, '•', {
+            dimensione: 8.9,
+            colore: ACCENTO_SCURO,
+          });
+        },
+      });
+      for (const testoVoce of voce.paragrafi) {
+        out.push(
+          ...paragrafo(testoVoce, {
+            x: interno + rientro + 9,
+            larghezza: larghezza - 9,
+            dimensione: 8.1,
+            colore: INCHIOSTRO_TENUE,
+          }),
+        );
+      }
+    }
+
+    return out;
+  };
+
+  /** Voce dei consigli: pallino d'oro e testo. */
+  const blocchiNota = (nota: string, prima: boolean): Blocco[] => {
+    const out: Blocco[] = prima ? [] : [spazio(7)];
+    const righe = dividiInRighe(nota, 'F1', 8.8, largoInterno - 10);
+    out.push({
+      altezza: righe.length * 11,
+      disegna: (top: number) => {
+        righe.forEach((riga, indice) => {
+          const base = top + 7.6 + indice * 11;
+          if (indice === 0) {
+            testo(interno, base, '•', { dimensione: 8.8, colore: ACCENTO });
+          }
+          testo(interno + 10, base, riga, {
+            dimensione: 8.8,
+            colore: INCHIOSTRO_TENUE,
+          });
+        });
+      },
+    });
+    return out;
+  };
+
+  /** Didascalia dei grafici: una riga di campioni di colore, sotto il disegno. */
+  const bloccoLegenda = (
+    voci: readonly { colore: Colore; testo: string }[],
+  ): Blocco => {
+    const righe: { voci: { colore: Colore; testo: string; larghezza: number }[] }[] = [];
+    let corrente: { colore: Colore; testo: string; larghezza: number }[] = [];
+    let occupato = 0;
+
+    for (const voce of voci) {
+      const larghezza = 9 + misura(voce.testo, 'F1', 6.6) + 13;
+      if (corrente.length > 0 && occupato + larghezza > largoInterno) {
+        righe.push({ voci: corrente });
+        corrente = [];
+        occupato = 0;
+      }
+      corrente.push({ ...voce, larghezza });
+      occupato += larghezza;
+    }
+    if (corrente.length > 0) righe.push({ voci: corrente });
+
+    return {
+      altezza: 5 + righe.length * 11,
+      disegna: (top: number) => {
+        righe.forEach((riga, indice) => {
+          let x = interno;
+          for (const voce of riga.voci) {
+            arrotondato(x, top + 4 + indice * 11, 4.6, 4.6, 1.4, {
+              riempimento: voce.colore,
+              bordo: BORDO,
+              spessore: 0.3,
+            });
+            testo(x + 8, top + 8 + indice * 11, voce.testo, {
+              dimensione: 7.1,
+              colore: TENUE,
+            });
+            x += voce.larghezza;
+          }
+        });
+      },
+    };
+  };
+
+  /**
+   * Grafico della schermata con la legenda **alla sua sinistra**: sul foglio
+   * la legenda sta in colonna, non in una riga sotto il disegno, così il
+   * grafico resta largo e le voci non si accavallano.
+   */
+  const bloccoGraficoConLegenda = (
+    immagine: ImmaginePronta,
+    voci: readonly { colore: Colore; testo: string }[],
+  ): Blocco => {
+    const colonna = 84;
+    const distanza = 8;
+    const larghezzaImmagine = largoInterno - colonna - distanza;
+    const altezzaImmagine = (larghezzaImmagine * immagine.altezza) / immagine.larghezza;
+    const dimensione = 6.5;
+    const interlinea = 8.2;
+
+    const vociConRighe = voci.map((voce) => ({
+      ...voce,
+      righe: dividiInRighe(voce.testo, 'F1', dimensione, colonna - 8),
+    }));
+    const altezzaLegenda = vociConRighe.reduce(
+      (somma, voce) => somma + voce.righe.length * interlinea + 4,
+      0,
+    );
+    const altezza = Math.max(altezzaImmagine, altezzaLegenda);
+
+    return {
+      altezza: altezza + 2,
+      disegna: (top: number) => {
+        let cursore = top + Math.max(0, (altezza - altezzaLegenda) / 2) + 1;
+        for (const voce of vociConRighe) {
+          arrotondato(interno, cursore, 4.6, 4.6, 1.4, {
+            riempimento: voce.colore,
+            bordo: BORDO,
+            spessore: 0.3,
+          });
+          voce.righe.forEach((riga, indice) => {
+            testo(interno + 8, cursore + 3.8 + indice * interlinea, riga, {
+              dimensione,
+              colore: INCHIOSTRO_TENUE,
+            });
+          });
+          cursore += voce.righe.length * interlinea + 4;
+        }
+
+        const cima = top + (altezza - altezzaImmagine) / 2;
+        aggiungi(
+          `q ${larghezzaImmagine.toFixed(2)} 0 0 ${altezzaImmagine.toFixed(2)} ` +
+            `${(interno + colonna + distanza).toFixed(2)} ${alto(cima + altezzaImmagine).toFixed(2)} cm ` +
+            `/${immagine.nome} Do Q\n`,
+        );
+      },
+    };
+  };
+
+  // Il disegno vettoriale della forza resta il ripiego quando manca il JPEG.
+  const blocchiGraficoForza = (forza: NonNullable<DatiFoglio['forza']>): Blocco[] => {
+    const altezza = 48;
+    const valori = [forza.minima, forza.massima, forza.consigliata, forza.efficace ?? forza.consigliata];
+    const minimo = Math.min(...valori) - 20;
+    const massimo = Math.max(...valori) + 20;
+    const ascissa = (valore: number): number =>
+      interno + ((valore - minimo) / (massimo - minimo)) * largoInterno;
+
+    return [
+      {
+        altezza: altezza + 16,
+        disegna: (top: number) => {
+          arrotondato(ascissa(forza.minima), top + 8, ascissa(forza.massima) - ascissa(forza.minima), 16, 5, {
+            riempimento: PANNA,
+          });
+          linea({ x: interno, y: top + 26 }, { x: fineInterno, y: top + 26 }, BORDO, 0.6);
+          linea({ x: ascissa(forza.consigliata), y: top + 4 }, { x: ascissa(forza.consigliata), y: top + 26 }, INCHIOSTRO, 0.9);
+          if (forza.efficace !== null) {
+            linea({ x: ascissa(forza.efficace), y: top + 19 }, { x: ascissa(forza.efficace), y: top + 33 }, ACCENTO, 2.2);
+          }
+          testo(interno, top + 42, `${forza.minima}`, { dimensione: 6.9, colore: TENUE });
+          testo(fineInterno, top + 42, `${forza.massima}`, {
+            dimensione: 6.9,
+            colore: TENUE,
+            allineamento: 'destra',
+          });
+        },
+      },
+    ];
+  };
+
+  // Attività del lievito e temperatura, disegnate a tracciati.
+  const blocchiGraficoAttivita = (): Blocco[] => {
+    const curva = dati.curva ?? [];
+    const fasce = dati.fasce ?? [];
+    const oreTotali = dati.oreTotali ?? curva[curva.length - 1]?.ora ?? 0;
+    if (curva.length < 2) {
+      return [
+        {
+          altezza: 20,
+          disegna: (top: number) =>
+            testo(interno, top + 10, 'Nessuna curva da disegnare.', {
+              dimensione: 8,
+              colore: TENUE,
+            }),
+        },
+      ];
+    }
+
+    const altezza = 70;
+    const massimo = Math.max(1, ...curva.map((punto) => punto.attivita));
+    const ascissa = (ora: number): number =>
+      interno + (Math.max(0, Math.min(ora, oreTotali)) / (oreTotali || 1)) * largoInterno;
+
+    return [
+      {
+        altezza: altezza + 16,
+        disegna: (top: number) => {
+          const tetto = top + 6;
+          const base = top + altezza;
+
+          for (const fascia of fasce.filter((voce) => voce.inFrigo)) {
+            rettangolo(
+              ascissa(fascia.da),
+              tetto,
+              Math.max(1, ascissa(fascia.a) - ascissa(fascia.da)),
+              base - tetto,
+              { riempimento: FRIGO },
+            );
+          }
+
+          let area = `${ascissa(curva[0].ora).toFixed(2)} ${alto(base).toFixed(2)} m `;
+          for (const punto of curva) {
+            const valore = base - (punto.attivita / massimo) * (base - tetto);
+            area += `${ascissa(punto.ora).toFixed(2)} ${alto(valore).toFixed(2)} l `;
+          }
+          area += `${ascissa(curva[curva.length - 1].ora).toFixed(2)} ${alto(base).toFixed(2)} l f\n`;
+          aggiungi(`${PANNA.join(' ')} rg ${area}`);
+
+          let spezzata = '';
+          curva.forEach((punto, indice) => {
+            const valore = base - (punto.attivita / massimo) * (base - tetto);
+            spezzata += `${ascissa(punto.ora).toFixed(2)} ${alto(valore).toFixed(2)} ${
+              indice === 0 ? 'm' : 'l'
+            } `;
+          });
+          aggiungi(`${ACCENTO_SCURO.join(' ')} RG 1.4 w ${spezzata}S\n`);
+
+          linea({ x: interno, y: base }, { x: fineInterno, y: base }, BORDO, 0.6);
+
+          // La fascia del frigorifero si etichetta sopra la curva.
+          const frigo = fasce.find((fascia) => fascia.inFrigo);
+          if (frigo) {
+            const centro = (ascissa(frigo.da) + ascissa(frigo.a)) / 2;
+            testo(centro, tetto + 8, 'frigorifero', {
+              dimensione: 6.9,
+              colore: TENUE,
+              allineamento: 'centro',
+            });
+          }
+
+          testo(interno, base + 11, '0 h', { dimensione: 7.2, colore: TENUE });
+          testo(fineInterno, base + 11, `${numero(oreTotali)} h`, {
+            dimensione: 7.2,
+            colore: TENUE,
+            allineamento: 'destra',
+          });
+        },
+      },
+    ];
+  };
+
+  /* ---------------------------------------------------------------- *
+   * IMPAGINAZIONE: le schede si misurano prima di essere disegnate,
+   * così una scheda non si apre in fondo alla pagina per sbordare.
+   * ---------------------------------------------------------------- */
+
+  const disegnaScheda = (top: number, altezza: number): void => {
+    arrotondato(sinistra, top + 1.8, larghezzaUtile, altezza, RAGGIO, {
+      riempimento: OMBRA,
+    });
+    arrotondato(sinistra, top, larghezzaUtile, altezza, RAGGIO, {
+      riempimento: CARTA,
+      bordo: BORDO,
+      spessore: 0.8,
+    });
+  };
+
+  const impagina = (
+    titolo: string | undefined,
+    blocchi: Blocco[],
+    notaTitolo?: string,
+  ): void => {
+    const contenuto = blocchi.filter((blocco) => blocco.altezza > 0);
+    if (contenuto.length === 0) return;
+
+    const altezzaTitolo = titolo ? TITOLO_SCHEDA : 2;
+    const somma = contenuto.reduce((totale, blocco) => totale + blocco.altezza, 0);
+    const totale = PAD_VERT * 2 + altezzaTitolo + somma;
+
+    const disegna = (
+      top: number,
+      altezza: number,
+      pezziScheda: Blocco[],
+      continua = false,
+    ): void => {
+      disegnaScheda(top, altezza);
+      if (titolo && !continua) {
+        testo(interno, top + PAD_VERT + 11, frase(titolo), {
+          font: 'F2',
+          dimensione: stretto ? 12.2 : 13.2,
+          colore: INCHIOSTRO,
+          spaziatura: -0.15,
+        });
+        if (notaTitolo) {
+          testo(fineInterno, top + PAD_VERT + 10.4, notaTitolo, {
+            dimensione: 7.2,
+            colore: TENUE,
+            allineamento: 'destra',
           });
         }
       }
+      let cursore = top + PAD_VERT + (continua ? 0 : altezzaTitolo);
+      pezziScheda.forEach((blocco) => {
+        blocco.disegna(cursore);
+        cursore += blocco.altezza;
+      });
+    };
 
-      y += 8;
-    });
+    const disponibile = FONDO - y;
+    if (totale <= disponibile) {
+      disegna(y, totale, contenuto);
+      y += totale + DISTANZA;
+      return;
+    }
+
+    const altezzaPagina = FONDO - PAGINA.margine;
+    // Una scheda lunga si allunga sullo spazio che resta, invece di lasciarlo
+    // vuoto e ricominciare in una facciata nuova; una scheda corta si sposta
+    // intera, perché spezzare una tabella di cinque righe non aiuta nessuno.
+    const lunga = totale > altezzaPagina * 0.5 || (contenuto.length >= 8 && disponibile > 160);
+    if (!lunga) {
+      nuovaPagina();
+      disegna(y, totale, contenuto);
+      y += totale + DISTANZA;
+      return;
+    }
+    // Scheda più alta di una facciata: si spezza in più riquadri. Il titolo
+    // resta solo sul primo: le facciate seguenti continuano la scheda senza
+    // ripetere il nome della sezione.
+    let indice = 0;
+    let primaParte = true;
+    while (indice < contenuto.length) {
+      const testata = primaParte ? altezzaTitolo : 0;
+      // Quattro punti di guardia: l'ultima riga non deve toccare il bordo.
+      const spazioUtile = FONDO - y - PAD_VERT * 2 - testata - 4;
+      if (spazioUtile < 60) {
+        nuovaPagina();
+        continue;
+      }
+
+      let sommaPezzo = 0;
+      let fine = indice;
+      while (
+        fine < contenuto.length &&
+        sommaPezzo + contenuto[fine].altezza <= spazioUtile
+      ) {
+        sommaPezzo += contenuto[fine].altezza;
+        fine += 1;
+      }
+      if (fine === indice) {
+        sommaPezzo = contenuto[indice].altezza;
+        fine = indice + 1;
+      }
+
+      const altezzaPezzo = PAD_VERT * 2 + testata + sommaPezzo;
+      disegna(y, altezzaPezzo, contenuto.slice(indice, fine), !primaParte);
+      y += altezzaPezzo + DISTANZA;
+      indice = fine;
+      primaParte = false;
+      if (indice < contenuto.length) nuovaPagina();
+    }
+  };
+
+  /* ------------------------------ SCHEDE ------------------------------ */
+
+  if (!dati.soloProgramma) {
+    const blocchi: Blocco[] = [bloccoResa()];
+    const fasi = dati.fasi ?? [];
+
+    if (fasi.length > 0) {
+      fasi.forEach((fase, indiceFase) => {
+        blocchi.push(...bloccoFase(fase, indiceFase === 0));
+        fase.voci.forEach((dose, indiceDose) => {
+          blocchi.push(bloccoDose(dose, indiceDose < fase.voci.length - 1));
+        });
+        if (fase.totale) blocchi.push(bloccoTotaleFase(fase.totale));
+      });
+    } else {
+      const dosi = dati.dosi ?? [];
+      blocchi.push(spazio(6));
+      dosi.forEach((dose, indice) => {
+        blocchi.push(bloccoDose(dose, indice < dosi.length - 1));
+      });
+    }
+
+    blocchi.push(spazio(4));
+    blocchi.push(bloccoImpastoTotale());
+
+    impagina('Dosi e resa', blocchi);
   }
 
-  if (tabellaDiMarcia) {
-    disegnaPassi();
-    y += 10;
+  for (const gruppo of dati.riepilogo ?? []) {
+    const blocchi = gruppo.voci.flatMap((voce, indice) => [
+      bloccoRiepilogo(voce, indice < gruppo.voci.length - 1),
+    ]);
+    impagina(gruppo.titolo, blocchi);
   }
+
+  // La marcia della biga viene prima: è il calendario che precede il lavoro.
   if (dati.marcia?.length) {
-    disegnaPassi(dati.marcia, 'TABELLA DI MARCIA DELLA BIGA');
-    y += 10;
+    const marcia = dati.marcia;
+    impagina(
+      'Tabella di marcia della biga',
+      marcia.flatMap((passo, indice) => [bloccoMarcia(passo, indice < marcia.length - 1)]),
+    );
   }
 
-  // Forza della farina: la dichiara il calcolatore libero, non le ricette.
+  const tabellaDiMarcia = dati.passi.some((passo) => passo.orario);
+  if (dati.passi.length > 0) {
+    const titolo = tabellaDiMarcia ? 'Tabella di marcia' : 'Procedimento';
+    impagina(
+      titolo,
+      tabellaDiMarcia
+        ? dati.passi.flatMap((passo, indice) => [
+            bloccoMarcia(passo, indice < dati.passi.length - 1),
+          ])
+        : dati.passi.flatMap((passo, indice) => blocchiPasso(passo, indice, indice === 0)),
+    );
+  }
+
+  /* Grafici: la zona di forza e l'attività del lievito, con la legenda. */
   const forza = dati.forza;
-  if (forza) {
-    assicuraSpazio(90);
-    testo(sinistra, y + 6, 'FORZA DELLA FARINA', {
-      font: 'F4',
-      dimensione: 10.4,
-      colore: ORO_SCURO,
-    });
-    y += 14;
+  const forzaImmagine = immagini.find((immagine) => immagine.chiave === 'forza');
+  const attivitaImmagine = immagini.find((immagine) => immagine.chiave === 'attivita');
+  const grafici: Blocco[] = [];
 
-    const righeForza = dividiInRighe(forza.testo, 'F1', 8.4, LARGHEZZA_UTILE - 20);
-    const altezzaForza = 44 + righeForza.length * 10;
-
-    rettangolo(sinistra, y, LARGHEZZA_UTILE, altezzaForza, {
-      riempimento: SUPERFICIE,
-      bordo: BORDO,
-    });
-    testo(
-      sinistra + 10,
-      y + 13,
-      `Serve W ${forza.consigliata} · fascia tollerata ${forza.finestra}`,
-      { font: 'F2', dimensione: 7.4, colore: TENUE },
-    );
-    testo(
-      sinistra + 10,
-      y + 32,
-      forza.efficace === null
-        ? 'W non dichiarato'
-        : `Il mix è a W ${Math.round(forza.efficace)}`,
-      { font: 'F4', dimensione: 14, colore: ORO_SCURO },
-    );
-    righeForza.forEach((riga, indice) => {
-      testo(sinistra + 10, y + 44 + indice * 10, riga, { dimensione: 8.4, colore: TENUE });
-    });
-
-    y += altezzaForza + 14;
-  }
-
-  /*
-   * GRAFICI
-   * -------
-   * I due grafici della schermata, uno sotto l'altro, con la legenda a lato:
-   * ogni voce porta il suo campione di colore, così sulla carta si capisce
-   * cosa si sta guardando.
-   */
-  const altezzaProcedimento = tabellaDiMarcia ? 0 :
-    18 +
-    dati.passi.reduce((somma, passo) => {
-      const righe = dividiInRighe(
-        `${passo.quando} · ${passo.nota}`,
-        'F1',
-        7.8,
-        LARGHEZZA_UTILE - 12,
-      );
-      return somma + 12 + righe.length * 9 + 6;
-    }, 0);
-  const larghezzaLegenda = 148;
-  const larghezzaImmagine = Math.min(270, LARGHEZZA_UTILE - larghezzaLegenda - 10);
-  const altezzaImmagine = larghezzaImmagine * 0.3;
-  const forzaVettoriale = forza && !immagini.some((immagine) => immagine.chiave === 'forza');
-  const attivitaVettoriale = dati.curva !== undefined
-    && !immagini.some((immagine) => immagine.chiave === 'attivita');
-
-  if (immagini.length > 0 || forzaVettoriale) {
-    assicuraSpazio(14 + (forzaVettoriale ? 66 : altezzaImmagine + 19));
-    testo(sinistra, y + 6, 'GRAFICI', { font: 'F4', dimensione: 10.4, colore: ORO_SCURO });
-    y += 14;
-
-    const legenda: Record<'forza' | 'attivita', readonly { colore: Colore; testo: string }[]> = {
-      forza: [
-        { colore: PANNA as Colore, testo: forzaVettoriale ? 'fascia tollerata' : 'zona consigliata per queste ore' },
+  if (forzaImmagine) {
+    grafici.push(...paragrafo(TITOLI_GRAFICI.forza, {
+      dimensione: 7.4,
+      colore: ACCENTO_SCURO,
+      font: 'F2',
+    }));
+    grafici.push(
+      bloccoGraficoConLegenda(forzaImmagine, [
+        { colore: PANNA, testo: 'zona consigliata per queste ore' },
+        { colore: PANNA_CHIARA, testo: 'fascia tollerata' },
         {
-          colore: TESTO as Colore,
+          colore: INCHIOSTRO,
           testo: forza ? `serve W ${forza.consigliata}` : 'forza non dichiarata',
         },
         {
-          colore: ORO as Colore,
+          colore: ACCENTO,
           testo:
             forza?.efficace == null
               ? 'il tuo mix, W non dichiarato'
               : `il tuo mix, W ${Math.round(forza.efficace)}`,
         },
-      ],
-      attivita: [
-        { colore: PANNA as Colore, testo: 'attività del lievito' },
-        { colore: TESTO as Colore, testo: 'temperatura impasto, tratteggiata' },
-        { colore: FRIGO as Colore, testo: 'ore in frigorifero' },
-      ],
-    };
-
-    if (forzaVettoriale) {
-      const valori = [forza.minima, forza.massima, forza.consigliata, forza.efficace ?? forza.consigliata];
-      const minimo = Math.min(...valori) - 20;
-      const massimo = Math.max(...valori) + 20;
-      const x = (w: number) => sinistra + (w - minimo) / (massimo - minimo) * larghezzaImmagine;
-      testo(sinistra, y + 5, TITOLI_GRAFICI.forza, { font: 'F2', dimensione: 6.6, colore: ORO_SCURO });
-      rettangolo(x(forza.minima), y + 17, x(forza.massima) - x(forza.minima), 15, { riempimento: PANNA });
-      linea({ x: sinistra, y: y + 32 }, { x: sinistra + larghezzaImmagine, y: y + 32 });
-      linea({ x: x(forza.consigliata), y: y + 14 }, { x: x(forza.consigliata), y: y + 32 }, TESTO);
-      if (forza.efficace !== null) {
-        linea({ x: x(forza.efficace), y: y + 26 }, { x: x(forza.efficace), y: y + 36 }, ORO, 2);
-      }
-      legenda.forza.forEach((voce, indice) => {
-        const xLegenda = sinistra + larghezzaImmagine + 10;
-        const yVoce = y + 14 + indice * 8.6;
-        rettangolo(xLegenda, yVoce, 4.2, 4.2, { riempimento: voce.colore });
-        testo(xLegenda + 8, yVoce + 3.8, voce.testo, { dimensione: 6.2, colore: TENUE });
-      });
-      y += 50;
-    }
-
-    immagini.forEach((immagine) => {
-      assicuraSpazio(altezzaImmagine + 19);
-      testo(sinistra, y + 5, TITOLI_GRAFICI[immagine.chiave], {
-        font: 'F2',
-        dimensione: 6.6,
-        colore: ORO_SCURO,
-      });
-      const cima = y + 9;
-      aggiungi(
-        `q ${larghezzaImmagine.toFixed(2)} 0 0 ${altezzaImmagine.toFixed(2)} ` +
-          `${sinistra.toFixed(2)} ${alto(cima + altezzaImmagine).toFixed(2)} cm /${immagine.nome} Do Q\n`,
-      );
-
-      // Legenda a lato dell’immagine: campione di colore più parola.
-      const xLegenda = sinistra + larghezzaImmagine + 10;
-      legenda[immagine.chiave].forEach((voce, indice) => {
-        const yVoce = cima + 4 + indice * 8.6;
-        rettangolo(xLegenda, yVoce, 4.2, 4.2, { riempimento: voce.colore });
-        testo(xLegenda + 8, yVoce + 3.8, voce.testo, { dimensione: 6.2, colore: TENUE });
-      });
-
-      y = cima + altezzaImmagine + 10;
-    });
-    y += 4;
+      ]),
+    );
+  } else if (forza) {
+    grafici.push(...paragrafo(TITOLI_GRAFICI.forza, {
+      dimensione: 7.4,
+      colore: ACCENTO_SCURO,
+      font: 'F2',
+    }));
+    grafici.push(...blocchiGraficoForza(forza));
+    grafici.push(
+      bloccoLegenda([
+        { colore: PANNA, testo: 'fascia tollerata' },
+        { colore: INCHIOSTRO, testo: `serve W ${forza.consigliata}` },
+        {
+          colore: ACCENTO,
+          testo:
+            forza.efficace == null
+              ? 'il tuo mix, W non dichiarato'
+              : `il tuo mix, W ${Math.round(forza.efficace)}`,
+        },
+      ]),
+    );
   }
 
-  // Le ricette non hanno curva né grafici: la sezione non compare affatto.
-  if (attivitaVettoriale) {
-  assicuraSpazio(78);
-  // Grafico dell'attività
-  testo(sinistra, y + 6, 'ATTIVITÀ DEL LIEVITO', { font: 'F4', dimensione: 10.4, colore: ORO_SCURO });
-  y += 16;
-
-  const curva = dati.curva ?? [];
-  const fasce = dati.fasce ?? [];
-  const oreTotali = dati.oreTotali ?? curva[curva.length - 1]?.ora ?? 0;
-
-  // Le sezioni finali si misurano prima, per lasciare al grafico lo spazio che resta.
-  const altezzaNote =
-    16 +
-    dati.note.reduce(
-      (somma, nota, indice) =>
-        somma +
-        dividiInRighe(nota, 'F1', 8.2, LARGHEZZA_UTILE - 10).length * 10.6 +
-        (indice > 0 ? 6 : 0),
-      0,
-    ) + 2;
-
-  const spazioGrafico = FONDO_PAGINA - y - altezzaProcedimento - altezzaNote - 12;
-  const altezzaGrafico = Math.max(46, Math.min(78, spazioGrafico));
-
-  if (curva.length > 1) {
-    const base = y + altezzaGrafico;
-    const tetto = y + 8;
-    const massimo = Math.max(1, ...curva.map((punto) => punto.attivita));
-    const ascissa = (ora: number): number =>
-      sinistra + (Math.max(0, Math.min(ora, oreTotali)) / (oreTotali || 1)) * LARGHEZZA_UTILE;
-    const ordinata = (attivita: number): number =>
-      base - (attivita / massimo) * (base - tetto);
-
-    // Fascia del frigorifero, sotto la curva.
-    fasce
-      .filter((fascia) => fascia.inFrigo)
-      .forEach((fascia) => {
-        rettangolo(
-          ascissa(fascia.da),
-          tetto,
-          Math.max(1, ascissa(fascia.a) - ascissa(fascia.da)),
-          base - tetto,
-          { riempimento: FRIGO },
-        );
-      });
-
-    // Area sotto la curva, poi la spezzata.
-    let area = `${ascissa(curva[0].ora).toFixed(2)} ${alto(base).toFixed(2)} m `;
-    for (const punto of curva) {
-      area += `${ascissa(punto.ora).toFixed(2)} ${alto(ordinata(punto.attivita)).toFixed(2)} l `;
-    }
-    area += `${ascissa(curva[curva.length - 1].ora).toFixed(2)} ${alto(base).toFixed(2)} l f\n`;
-    aggiungi(`${PANNA.join(' ')} rg ${area}`);
-
-    let spezzata = '';
-    curva.forEach((punto, indice) => {
-      spezzata += `${ascissa(punto.ora).toFixed(2)} ${alto(ordinata(punto.attivita)).toFixed(2)} ${
-        indice === 0 ? 'm' : 'l'
-      } `;
-    });
-    aggiungi(`${ORO.join(' ')} RG 1.3 w ${spezzata}S\n`);
-
-    linea({ x: sinistra, y: base }, { x: destra, y: base }, BORDO, 0.7);
-
-    testo(sinistra, base + 10, '0 h', { dimensione: 7, colore: TENUE });
-    testo(destra, base + 10, `${numero(oreTotali)} h`, {
-      dimensione: 7,
-      colore: TENUE,
-      allineamento: 'destra',
-    });
-
-    if (fasce.some((fascia) => fascia.inFrigo)) {
-      rettangolo(sinistra + LARGHEZZA_UTILE / 2 - 26, base + 4, 7, 5, {
-        riempimento: FRIGO,
-        bordo: BORDO,
-      });
-      testo(sinistra + LARGHEZZA_UTILE / 2 - 15, base + 9, 'frigorifero', {
-        dimensione: 7,
-        colore: TENUE,
-      });
-    }
-
-    testo(sinistra, y + 5, 'quanto matura in un’ora', { dimensione: 6.6, colore: TENUE });
-  } else {
-    testo(sinistra, y + 10, 'Nessuna curva da disegnare.', { dimensione: 8, colore: TENUE });
-  }
-  y += altezzaGrafico + 16;
+  if (attivitaImmagine) {
+    grafici.push(spazio(forza || forzaImmagine ? 6 : 0));
+    grafici.push(...paragrafo(TITOLI_GRAFICI.attivita, {
+      dimensione: 7.4,
+      colore: ACCENTO_SCURO,
+      font: 'F2',
+    }));
+    grafici.push(
+      bloccoGraficoConLegenda(attivitaImmagine, [
+        { colore: PANNA, testo: 'attività del lievito' },
+        { colore: INCHIOSTRO, testo: 'temperatura impasto, tratteggiata' },
+        { colore: FRIGO, testo: 'ore in frigorifero' },
+      ]),
+    );
+  } else if (dati.curva !== undefined) {
+    grafici.push(spazio(forza || forzaImmagine ? 6 : 0));
+    grafici.push(...paragrafo(TITOLI_GRAFICI.attivita, {
+      dimensione: 7.4,
+      colore: ACCENTO_SCURO,
+      font: 'F2',
+    }));
+    grafici.push(...blocchiGraficoAttivita());
+    grafici.push(
+      bloccoLegenda([
+        { colore: PANNA, testo: 'attività del lievito' },
+        { colore: INCHIOSTRO, testo: 'temperatura impasto, tratteggiata' },
+        { colore: FRIGO, testo: 'ore in frigorifero' },
+      ]),
+    );
   }
 
-  if (!tabellaDiMarcia) disegnaPassi();
+  if (grafici.length > 0) impagina('Grafici', grafici);
 
-  // Note: come è stato calcolato il foglio libero, i consigli nelle ricette.
-  // Si leggono come un elenco: un pallino, righe più alte e un po' d'aria fra
-  // una voce e l'altra, come nella scheda a schermo.
   if (dati.note.length > 0) {
-    assicuraSpazio(38);
-    testo(sinistra, y + 6, dati.noteTitolo ?? 'NOTA', {
-      font: 'F4',
-      dimensione: 10.4,
-      colore: ORO_SCURO,
-    });
-    y += 19;
-
-    dati.note.forEach((nota, indice) => {
-      if (indice > 0) y += 6;
-      const righe = dividiInRighe(nota, 'F1', 8.2, LARGHEZZA_UTILE - 10);
-      tieniInsieme(righe.length * 10.6 + 2);
-      righe.forEach((riga, posizione) => {
-        assicuraSpazio(12);
-        if (posizione === 0) {
-          testo(sinistra + 1, y + 7, '•', { dimensione: 8.2, colore: ORO_SCURO });
-        }
-        testo(sinistra + 10, y + 7, riga, { dimensione: 8.2, colore: TENUE });
-        y += 10.6;
-      });
-    });
-    y += 2;
+    impagina(
+      dati.noteTitolo ?? 'Nota',
+      dati.note.flatMap((nota, indice) => blocchiNota(nota, indice === 0)),
+    );
   }
 
   // Ultima facciata, poi il piede su ognuna: la ricetta può essere lunga.
@@ -1115,18 +1841,18 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   flussi.forEach((_contenuto, indice) => {
     // Il piede si aggiunge al flusso della facciata, non lo sostituisce.
     pezzi = pagine[indice];
-    const base = FONDO_PAGINA + 4;
-    linea({ x: sinistra, y: base }, { x: destra, y: base });
+    const base = FONDO + 8;
+    linea({ x: sinistra, y: base }, { x: destra, y: base }, BORDO, 0.5);
 
     if (flussi.length === 1) {
-      testo(PAGINA.larghezza / 2, base + 10, firma, {
-        dimensione: 6.8,
+      testo(PAGINA.larghezza / 2, base + 11, firma, {
+        dimensione: 6.9,
         colore: TENUE,
         allineamento: 'centro',
       });
     } else {
-      testo(sinistra, base + 10, firma, { dimensione: 6.6, colore: TENUE });
-      testo(destra, base + 10, `Pagina ${indice + 1} di ${flussi.length}`, {
+      testo(sinistra, base + 11, firma, { dimensione: 6.6, colore: TENUE });
+      testo(destra, base + 11, `Pagina ${indice + 1} di ${flussi.length}`, {
         dimensione: 6.6,
         colore: TENUE,
         allineamento: 'destra',
@@ -1159,6 +1885,14 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   const baseExtra = 8 + immagini.length;
   const extra = flussi.slice(1).map((_pagina, indice) => baseExtra + indice * 2 + 1);
 
+  const risorseImmagini =
+    immagini.length > 0
+      ? `/XObject << ${immagini
+          .map((immagine, indice) => `/${immagine.nome} ${9 + indice} 0 R`)
+          .join(' ')} >> `
+      : '';
+  const risorseFont = '/Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >> ';
+
   oggetto(1, '<< /Type /Catalog /Pages 2 0 R >>');
   oggetto(
     2,
@@ -1169,13 +1903,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
   oggetto(
     3,
     `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGINA.larghezza} ${PAGINA.altezza}] ` +
-      '/Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >> ' +
-      (immagini.length > 0
-        ? `/XObject << ${immagini
-            .map((immagine, indice) => `/${immagine.nome} ${9 + indice} 0 R`)
-            .join(' ')} >> `
-        : '') +
-      '>> ' +
+      `/Resources << ${risorseFont}${risorseImmagini}>> ` +
       '/Contents 4 0 R >>',
   );
 
@@ -1211,7 +1939,7 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     oggetto(
       numeroPagina,
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGINA.larghezza} ${PAGINA.altezza}] ` +
-        '/Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >> >> ' +
+        `/Resources << ${risorseFont}${risorseImmagini}>> ` +
         `/Contents ${numeroPagina + 1} 0 R >>`,
     );
     posizioni[numeroPagina + 1] = cursore;

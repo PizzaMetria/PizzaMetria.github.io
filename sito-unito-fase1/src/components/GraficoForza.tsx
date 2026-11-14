@@ -25,6 +25,15 @@ const COLORI_GIUDIZIO: Record<GiudizioForza, string> = {
   distante: 'var(--color-errore)',
 };
 
+/** Passo delle tacche sull'asse del W: pochi numeri tondi, mai un asse fitto. */
+function passoAsse(minimo: number, massimo: number): number {
+  const intervallo = massimo - minimo;
+  for (const passo of [25, 50, 100, 125, 250, 500]) {
+    if (intervallo / passo <= 6) return passo;
+  }
+  return 1000;
+}
+
 /**
  * La zona di forza richiesta da questo impasto, con il segno del mix sopra.
  *
@@ -39,9 +48,13 @@ const COLORI_GIUDIZIO: Record<GiudizioForza, string> = {
  * il resto.
  */
 export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }: Props) {
-  const larghezza = 320;
-  const tetto = 8;
-  const base = 92;
+  const larghezza = 520;
+  const altezza = 190;
+  const margine = 12;
+  const margineDestro = 14;
+  const tetto = 18;
+  const base = 150;
+  const larghezzaArea = larghezza - margine - margineDestro;
 
   // Le fasce arrivano dal calcolo: se il motore attivo è quello a 12
   // mini-ricette sono la fascia della mini-ricetta, non il ±15% del punto.
@@ -60,7 +73,7 @@ export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }:
     efficace !== null ? efficace + 30 : Number.NEGATIVE_INFINITY,
   );
 
-  const x = (w: number) => ((w - sinistra) / (destra - sinistra)) * larghezza;
+  const x = (w: number) => margine + ((w - sinistra) / (destra - sinistra)) * larghezzaArea;
   const y = (altezza: number) => base - altezza * (base - tetto);
 
   const punti: string[] = [];
@@ -72,151 +85,193 @@ export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }:
     );
   }
   const linea = punti.join(' ');
-  const area = `${linea} L ${larghezza} ${base} L 0 ${base} Z`;
+  const area = `${linea} L ${x(destra).toFixed(1)} ${base} L ${x(sinistra).toFixed(1)} ${base} Z`;
 
   const altezzaMix = efficace === null ? null : adattamentoForza(efficace, consigliato, zone);
+  const coloreMix = giudizio ? COLORI_GIUDIZIO[giudizio] : 'var(--color-inchiostro)';
+
+  const passo = passoAsse(sinistra, destra);
+  const tacche: number[] = [];
+  for (let w = Math.ceil(sinistra / passo) * passo; w <= destra; w += passo) tacche.push(w);
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-      <div className="min-w-0 flex-1">
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${larghezza} 96`}
-        className="h-28 w-full"
-        role="img"
-        aria-label={
-          efficace !== null
-            ? `Zona di forza consigliata ${Math.round(sicura[0])}–${Math.round(
-                sicura[1],
-              )} per questo impasto, con un mix a W ${Math.round(efficace)}`
-            : `Zona di forza consigliata ${Math.round(sicura[0])}–${Math.round(sicura[1])}`
-        }
-      >
-        {/* La finestra stampata nella card: tolleranza a destra della zona. */}
-        <rect
-          x={x(finestra.minima)}
-          y={tetto}
-          width={Math.max(0, x(finestra.massima) - x(finestra.minima))}
-          height={base - tetto}
-          style={{ fill: 'var(--color-terracotta)' }}
-          opacity={0.07}
-        />
-        {/* Zona consigliata: la parte più alta della curva. */}
-        <rect
-          x={x(sicura[0])}
-          y={tetto}
-          width={Math.max(0, x(sicura[1]) - x(sicura[0]))}
-          height={base - tetto}
-          style={{ fill: 'var(--color-terracotta)' }}
-          opacity={0.17}
-        />
-
-        <path d={area} style={{ fill: 'var(--color-terracotta)' }} opacity={0.13} />
-        <path
-          d={linea}
-          fill="none"
-          style={{ stroke: 'var(--color-terracotta)' }}
-          strokeWidth={2}
-          strokeLinejoin="round"
-        />
-
-        {/* Il W che serve: il centro della zona. */}
-        <line
-          x1={x(consigliato)}
-          y1={tetto}
-          x2={x(consigliato)}
-          y2={base}
-          style={{ stroke: 'var(--color-inchiostro)' }}
-          strokeWidth={1.2}
-          strokeDasharray="4 3"
-          opacity={0.6}
-        />
-
-        {/* Il mix: il segno che si muove solo se cambiano gli ingressi. */}
-        {efficace !== null && altezzaMix !== null ? (
-          <>
-            <line
-              x1={x(efficace)}
-              y1={base}
-              x2={x(efficace)}
-              y2={y(altezzaMix)}
-              style={{
-                stroke: giudizio ? COLORI_GIUDIZIO[giudizio] : 'var(--color-inchiostro)',
-              }}
-              strokeWidth={1.6}
-            />
-            <circle
-              cx={x(efficace)}
-              cy={y(altezzaMix)}
-              r={3.6}
-              style={{
-                fill: giudizio ? COLORI_GIUDIZIO[giudizio] : 'var(--color-inchiostro)',
-              }}
-              stroke="var(--color-crema)"
-              strokeWidth={1}
-            />
-          </>
-        ) : null}
-
-        <line
-          x1={0}
-          y1={base}
-          x2={larghezza}
-          y2={base}
-          style={{ stroke: 'var(--color-bordo)' }}
-          strokeWidth={1}
-        />
-      </svg>
-
-      <div className="mt-1 flex items-center justify-between text-[11px] text-inchiostro-tenue">
-        <span>W {Math.round(sinistra)}</span>
-        <span>
-          consigliata {Math.round(sicura[0])}–{Math.round(sicura[1])} · tollerata {finestra.minima}–
-          {finestra.massima}
-        </span>
-        <span>W {Math.round(destra)}</span>
-      </div>
-      </div>
-
-      {/* Legenda a lato: il colore del mix sta qui, non in un pallino scritto. */}
-      <ul className="shrink-0 space-y-2 text-[11px] leading-snug text-inchiostro-tenue sm:w-44">
-        <li className="flex items-start gap-2">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+      {/* Legenda a sinistra: il colore del mix sta qui, non in un pallino scritto. */}
+      <ul className="order-last shrink-0 space-y-3 text-[12px] leading-snug text-inchiostro sm:order-first sm:w-44">
+        <li className="flex items-start gap-2.5">
           <span
             aria-hidden="true"
-            className="mt-0.5 inline-block h-3 w-3 shrink-0 rounded-[3px]"
+            className="mt-px inline-block h-3.5 w-3.5 shrink-0 rounded-[3px]"
             style={{ background: 'var(--color-terracotta)', opacity: 0.4 }}
           />
           <span>zona consigliata per queste ore</span>
         </li>
-        <li className="flex items-start gap-2">
+        <li className="flex items-start gap-2.5">
           <span
             aria-hidden="true"
-            className="mt-0.5 inline-block h-3 w-3 shrink-0 rounded-[3px]"
+            className="mt-px inline-block h-3.5 w-3.5 shrink-0 rounded-[3px]"
             style={{ background: 'var(--color-terracotta)', opacity: 0.14 }}
           />
           <span>fascia tollerata: il modello la considera ancora utilizzabile</span>
         </li>
-        <li className="flex items-start gap-2">
+        <li className="flex items-start gap-2.5">
           <span
             aria-hidden="true"
-            className="mt-0.5 inline-block h-3 w-3 shrink-0 rounded-[3px] border border-dashed"
-            style={{ borderColor: 'var(--color-inchiostro)' }}
+            className="mt-[7px] inline-block w-4 shrink-0"
+            style={{ borderTop: '2px dashed var(--color-inchiostro)', opacity: 0.55 }}
           />
           <span>serve W {Math.round(consigliato)}</span>
         </li>
         {efficace !== null ? (
-          <li className="flex items-start gap-2">
+          <li className="flex items-start gap-2.5">
             <span
               aria-hidden="true"
-              className="mt-0.5 inline-block h-3 w-3 shrink-0 rounded-full"
-              style={{
-                background: giudizio ? COLORI_GIUDIZIO[giudizio] : 'var(--color-inchiostro)',
-              }}
+              className="mt-px inline-block h-3.5 w-3.5 shrink-0 rounded-full"
+              style={{ background: coloreMix }}
             />
             <span>mix a W {Math.round(efficace)}</span>
           </li>
         ) : null}
       </ul>
+
+      <div className="min-w-0 flex-1">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${larghezza} ${altezza}`}
+          className="h-44 w-full"
+          role="img"
+          aria-label={
+            efficace !== null
+              ? `Zona di forza consigliata ${Math.round(sicura[0])}–${Math.round(
+                  sicura[1],
+                )} per questo impasto, con un mix a W ${Math.round(efficace)}`
+              : `Zona di forza consigliata ${Math.round(sicura[0])}–${Math.round(sicura[1])}`
+          }
+        >
+          {/* Griglia orizzontale: tre righe per leggere l'altezza della curva. */}
+          {[1 / 3, 2 / 3].map((quota) => (
+            <line
+              key={`orizzonte-${quota}`}
+              x1={margine}
+              y1={base - quota * (base - tetto)}
+              x2={larghezza - margineDestro}
+              y2={base - quota * (base - tetto)}
+              style={{ stroke: 'var(--color-bordo)' }}
+              strokeWidth={0.7}
+              strokeDasharray="2 4"
+            />
+          ))}
+
+          {/* La finestra stampata nella card: tolleranza attorno alla zona. */}
+          <rect
+            x={x(finestra.minima)}
+            y={tetto}
+            width={Math.max(0, x(finestra.massima) - x(finestra.minima))}
+            height={base - tetto}
+            style={{ fill: 'var(--color-terracotta)', stroke: 'var(--color-terracotta-scuro)' }}
+            fillOpacity={0.09}
+            strokeWidth={1}
+            strokeDasharray="5 3"
+            strokeOpacity={0.5}
+          />
+          {/* Zona consigliata: la parte più alta della curva. */}
+          <rect
+            x={x(sicura[0])}
+            y={tetto}
+            width={Math.max(0, x(sicura[1]) - x(sicura[0]))}
+            height={base - tetto}
+            style={{ fill: 'var(--color-terracotta)', stroke: 'var(--color-terracotta-scuro)' }}
+            fillOpacity={0.22}
+            strokeWidth={1.1}
+            strokeOpacity={0.85}
+          />
+
+          <path d={area} style={{ fill: 'var(--color-terracotta)' }} opacity={0.12} />
+          <path
+            d={linea}
+            fill="none"
+            style={{ stroke: 'var(--color-terracotta-scuro)' }}
+            strokeWidth={2.2}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+
+          {/* Il W che serve: il centro della zona. */}
+          <line
+            x1={x(consigliato)}
+            y1={tetto}
+            x2={x(consigliato)}
+            y2={base}
+            style={{ stroke: 'var(--color-inchiostro)' }}
+            strokeWidth={1.2}
+            strokeDasharray="5 3"
+            opacity={0.55}
+          />
+
+          {/* Il mix: il segno che si muove solo se cambiano gli ingressi. */}
+          {efficace !== null && altezzaMix !== null ? (
+            <>
+              <line
+                x1={x(efficace)}
+                y1={base}
+                x2={x(efficace)}
+                y2={y(altezzaMix)}
+                style={{ stroke: coloreMix }}
+                strokeWidth={1.8}
+              />
+              <circle
+                cx={x(efficace)}
+                cy={y(altezzaMix)}
+                r={4}
+                style={{ fill: coloreMix, stroke: 'var(--color-carta)' }}
+                strokeWidth={1.5}
+              />
+              <text
+                x={x(efficace)}
+                y={y(altezzaMix) - 9}
+                textAnchor="middle"
+                fontSize={10}
+                fontWeight={600}
+                style={{ fill: 'var(--color-inchiostro)' }}
+              >
+                W {Math.round(efficace)}
+              </text>
+            </>
+          ) : null}
+
+          <line
+            x1={margine}
+            y1={base}
+            x2={larghezza - margineDestro}
+            y2={base}
+            style={{ stroke: 'var(--color-inchiostro-tenue)' }}
+            strokeWidth={1}
+            opacity={0.6}
+          />
+          {tacche.map((valore) => (
+            <g key={`tacca-${valore}`}>
+              <line
+                x1={x(valore)}
+                y1={base}
+                x2={x(valore)}
+                y2={base + 3.5}
+                style={{ stroke: 'var(--color-inchiostro-tenue)' }}
+                strokeWidth={1}
+                opacity={0.6}
+              />
+              <text
+                x={x(valore)}
+                y={base + 14}
+                textAnchor="middle"
+                fontSize={8.8}
+                style={{ fill: 'var(--color-inchiostro-tenue)' }}
+              >
+                W {valore}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
     </div>
   );
 }

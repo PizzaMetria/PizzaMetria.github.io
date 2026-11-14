@@ -87,9 +87,9 @@ describe('foglio della ricetta', () => {
 
     expect(pdf.startsWith('%PDF-1.4')).toBe(true);
     expect(pdf).toContain('(LE MIE RICETTE) Tj');
-    expect(pdf).toContain('(PARAMETRI DELLA RICETTA) Tj');
-    expect(pdf).toContain('(PROCEDIMENTO) Tj');
-    expect(pdf).toContain('(CONSIGLI) Tj');
+    expect(pdf).toContain('(Parametri della ricetta) Tj');
+    expect(pdf).toContain('(Procedimento) Tj');
+    expect(pdf).toContain('(Consigli) Tj');
     expect(pdf).toContain('(Peso impasto) Tj');
     // Il procedimento completo non sta in una facciata sola.
     expect(pdf).toMatch(/\/Count [2-9]/);
@@ -111,11 +111,11 @@ it.each([RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA])('integra il piano misto nel PDF 
   expect(foglio.marcia?.map((passo) => passo.orario?.ora)).toEqual(['20:00', '08:00']);
   expect(foglio.passi[0].titolo).toBe('Prepara la biga');
   const pdf = new TextDecoder('latin1').decode(creaPdf(foglio));
-  expect(pdf).toContain('(PROCEDIMENTO) Tj');
-  const marcia = '(TABELLA DI MARCIA DELLA BIGA) Tj';
+  expect(pdf).toContain('(Procedimento) Tj');
+  const marcia = '(Tabella di marcia della biga) Tj';
   expect(pdf).toContain(marcia);
   expect(pdf.indexOf(marcia)).toBeGreaterThan(pdf.indexOf('(Peso impasto) Tj'));
-  expect(pdf.indexOf(marcia)).toBeLessThan(pdf.indexOf('(PROCEDIMENTO) Tj'));
+  expect(pdf.indexOf(marcia)).toBeLessThan(pdf.indexOf('(Procedimento) Tj'));
   expect(pdf).not.toContain('poi 24 ore in frigorifero');
   if (ricetta === RICETTA_TEGLIA_BIGA) {
     const mobile = new TextDecoder('latin1').decode(creaPdf(foglio, true));

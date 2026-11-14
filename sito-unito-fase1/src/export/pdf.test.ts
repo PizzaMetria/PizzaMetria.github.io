@@ -74,13 +74,18 @@ const pdf = creaPdf(dati());
 const testo = new TextDecoder('latin1').decode(pdf);
 
 describe('PDF vettoriale del foglio', () => {
-  it('è un PDF completo di una pagina', () => {
+  it('è un PDF completo, con tutte le facciate dichiarate', () => {
     expect(testo.startsWith('%PDF-1.4')).toBe(true);
     expect(testo.trimEnd().endsWith('%%EOF')).toBe(true);
     expect(testo).toContain('/Type /Catalog');
     expect(testo).toContain('/Type /Page');
-    expect(testo).toContain('/Count 1');
     expect(testo).toContain('/MediaBox [0 0 595.28 841.89]');
+
+    // Il conteggio dichiarato e le pagine elencate devono coincidere.
+    const conteggio = Number(testo.match(/\/Count (\d+)/)?.[1] ?? 0);
+    const elencate = testo.match(/\/Kids \[[^\]]+\]/)?.[0].match(/\d+ 0 R/g)?.length ?? 0;
+    expect(conteggio).toBeGreaterThanOrEqual(1);
+    expect(elencate).toBe(conteggio);
   });
 
   it('usa font standard, quindi il testo resta selezionabile', () => {
@@ -101,8 +106,8 @@ describe('PDF vettoriale del foglio', () => {
   });
 
   it('codifica le accentate e i simboli in WinAnsi', () => {
-    expect(testo).toContain('(ATTIVIT\u00c0 DEL LIEVITO) Tj');
-    expect(testo).toContain('(NOTA) Tj');
+    expect(testo).toContain('(Attività del lievito e temperatura) Tj');
+    expect(testo).toContain('(Nota) Tj');
 
     // ≥, ≤ e il punto elenco hanno un byte proprio in WinAnsi: senza la
     // mappa uscirebbero come punti interrogativi.
@@ -155,7 +160,7 @@ describe('PDF vettoriale del foglio', () => {
 
   it('disegna la forza anche quando manca il JPEG e conserva la curva', () => {
     expect(testo).toContain('(Zona di forza richiesta e mix) Tj');
-    expect(testo).toContain('(ATTIVITÀ DEL LIEVITO) Tj');
+    expect(testo).toContain('(Attività del lievito e temperatura) Tj');
   });
 
   it('sotto i grafici mette didascalia e legenda dei colori', () => {
@@ -163,10 +168,13 @@ describe('PDF vettoriale del foglio', () => {
 
     expect(con).toContain('(Zona di forza richiesta e mix) Tj');
     expect(con).toContain('(Attività del lievito e temperatura) Tj');
-    // Le voci di legenda, ognuna col suo campione di colore.
-    expect(con).toContain('(zona consigliata per queste ore) Tj');
-    expect(con).toContain('(il tuo mix, W 300) Tj');
-    expect(con).toContain('(temperatura impasto, tratteggiata) Tj');
+    // Le voci di legenda, ognuna col suo campione di colore. Sul foglio stanno
+    // in colonna a sinistra del grafico, quindi vanno a capo: le righe si
+    // riuniscono prima di cercare la voce intera.
+    const parole = [...con.matchAll(/\((.*?)\) Tj/g)].map((trovata) => trovata[1]).join(' ');
+    expect(parole).toContain('zona consigliata per queste ore');
+    expect(parole).toContain('il tuo mix, W 300');
+    expect(parole).toContain('temperatura impasto, tratteggiata');
   });
 
   it('firma il foglio con il marchio scritto per esteso', () => {
@@ -187,7 +195,10 @@ describe('PDF vettoriale del foglio', () => {
       .map((riga) => riga.trim())
       .filter((riga) => /^\d{10} 00000 n$/.test(riga));
 
-    expect(voci).toHaveLength(8);
+    // Catalogo, pagine, prima facciata, flusso, quattro font: poi due
+    // oggetti per ogni facciata successiva.
+    const facciate = Number(testo.match(/\/Count (\d+)/)?.[1] ?? 1);
+    expect(voci).toHaveLength(8 + (facciate - 1) * 2);
 
     voci.forEach((voce, indice) => {
       const offset = Number(voce.slice(0, 10));
@@ -206,8 +217,9 @@ describe('PDF vettoriale del foglio', () => {
       .map((riga) => riga.trim())
       .filter((riga) => /^\d{10} 00000 n$/.test(riga));
 
-    expect(voci).toHaveLength(10);
-    expect(con).toContain('/Size 11');
+    const facciate = Number(con.match(/\/Count (\d+)/)?.[1] ?? 1);
+    expect(voci).toHaveLength(10 + (facciate - 1) * 2);
+    expect(con).toContain(`/Size ${11 + (facciate - 1) * 2}`);
     voci.forEach((voce, indice) => {
       const offset = Number(voce.slice(0, 10));
       expect(con.startsWith(`${indice + 1} 0 obj`, offset)).toBe(true);
@@ -349,11 +361,12 @@ function datiNota(): DatiFoglio {
 const testoPdf = (pdf: Uint8Array) => new TextDecoder('latin1').decode(pdf);
 
 describe('foglio aggiornato', () => {
-  it('ha un titolo unico «Ingredienti», senza i tre riquadri in testa', () => {
+  it('raccoglie le dosi in una sola scheda «Dosi e resa»', () => {
     const pdf = testoPdf(creaPdf(datiNota()));
 
-    expect(pdf).toContain('(INGREDIENTI) Tj');
-    expect(pdf).not.toContain('(DOSI) Tj');
+    expect(pdf).toContain('(Dosi e resa) Tj');
+    expect(pdf).toContain('(RESA) Tj');
+    expect(pdf).not.toContain('(INGREDIENTI) Tj');
     expect(pdf).not.toContain('(IMPASTO TOTALE) Tj');
     expect(pdf).not.toContain('(FARINA) Tj');
   });
@@ -361,9 +374,9 @@ describe('foglio aggiornato', () => {
   it('stampa la tabella di marcia come una riga per fase', () => {
     const pdf = testoPdf(creaPdf(datiNota()));
 
-    expect(pdf).toContain('(TABELLA DI MARCIA) Tj');
-    expect(pdf.indexOf('(TABELLA DI MARCIA) Tj')).toBeGreaterThan(pdf.indexOf('(Peso impasto) Tj'));
-    expect(pdf.indexOf('(TABELLA DI MARCIA) Tj')).toBeLessThan(pdf.indexOf('(NOTA) Tj'));
+    expect(pdf).toContain('(Tabella di marcia) Tj');
+    expect(pdf.indexOf('(Tabella di marcia) Tj')).toBeGreaterThan(pdf.indexOf('(Peso impasto) Tj'));
+    expect(pdf.indexOf('(Tabella di marcia) Tj')).toBeLessThan(pdf.indexOf('(Nota) Tj'));
     expect(pdf).toContain('(19:55) Tj');
     expect(pdf).toContain('(lun 9 nov) Tj');
     expect(pdf).toContain('Chiudi l’impasto a 21 °C.');
@@ -377,8 +390,8 @@ describe('foglio aggiornato', () => {
       creaPdf(datiFoglioRicetta(risultato, RICETTA_TEGLIA_BIGA)),
     );
 
-    expect(pdf).toContain('(PROCEDIMENTO) Tj');
-    expect(pdf).not.toContain('(TABELLA DI MARCIA) Tj');
+    expect(pdf).toContain('(Procedimento) Tj');
+    expect(pdf).not.toContain('(Tabella di marcia) Tj');
   });
 
   it('stampa la temperatura consigliata nella voce Acqua prima del totale', () => {
@@ -392,12 +405,12 @@ describe('foglio aggiornato', () => {
   it('sotto il titolo NOTA lascia solo la riga sulle dosi stimate', () => {
     const pdf = testoPdf(creaPdf(datiNota()));
 
-    expect(pdf).toContain('(NOTA) Tj');
+    expect(pdf).toContain('(Nota) Tj');
     expect(pdf).not.toContain('COME È STATO CALCOLATO');
     expect(pdf).toContain('Le dosi sono stime');
   });
 
   it('disegna le icone degli ingredienti anche nel foglio vettoriale', () => {
-    expect(testoPdf(creaPdf(datiNota()))).toContain(' RG 0.8 w ');
+    expect(testoPdf(creaPdf(datiNota()))).toContain(' RG 0.85 w ');
   });
 });

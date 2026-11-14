@@ -57,11 +57,12 @@ const SVG = 'http://www.w3.org/2000/svg';
 
 /**
  * Disegna l'SVG in un canvas e restituisce il JPEG.
- * `scala` è il fattore di ingrandimento: 2,5 bastano per una stampa A4 nitida.
+ * `scala` è il fattore di ingrandimento: a 4 la curva resta liscia anche
+ * stampata, e le tacche degli assi non si impastano.
  */
 export async function rasterizzaSvg(
   svg: SVGSVGElement,
-  scala = 2.5,
+  scala = 4,
   sfondo = '#fffdf8',
 ): Promise<ImmagineRaster> {
   const clonato = svg.cloneNode(true) as SVGSVGElement;
@@ -144,5 +145,5 @@ export async function rasterizzaSvg(
   contesto.fillRect(0, 0, larghezza, altezza);
   contesto.drawImage(immagine, 0, 0, larghezza, altezza);
 
-  return { datiUrl: tela.toDataURL('image/jpeg', 0.92), larghezza, altezza };
+  return { datiUrl: tela.toDataURL('image/jpeg', 0.96), larghezza, altezza };
 }
