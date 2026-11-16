@@ -27,6 +27,7 @@ const PREFISSO = 'pizzametria-';
 const GUSCIO = [
   './',
   './index.html',
+  './privacy.html',
   './manifest.webmanifest',
   './favicon.svg',
   './icon-192.png',

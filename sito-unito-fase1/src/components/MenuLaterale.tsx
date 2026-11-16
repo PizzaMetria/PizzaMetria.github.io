@@ -5,7 +5,6 @@ import {
   CHI_SONO,
   DESCRIZIONE_SITO,
   EMAIL_CONTATTI,
-  NOTA_CONTATTI,
   OGGETTO_CONTATTI,
 } from '../config/contatti';
 
@@ -91,10 +90,15 @@ export function MenuLaterale({ aperto, onChiudi }: Props) {
           Scrivimi
         </a>
 
-        {/* Nessun modulo: il click apre solo il programma di posta. */}
-        <p className="mt-2 text-[10px] leading-relaxed text-inchiostro-tenue/80">
-          {NOTA_CONTATTI}
-        </p>
+        {/* Al posto della vecchia nota sotto «Scrivimi»: il link all'informativa.
+            È una pagina statica, non una schermata dell'app: si apre anche senza
+            JavaScript ed è nella cache del service worker per l'uso offline. */}
+        <a
+          href="./privacy.html"
+          className="mt-2 self-start text-[10px] leading-relaxed text-inchiostro-tenue/80 underline decoration-bordo underline-offset-2 hover:text-oro-chiaro hover:decoration-terracotta"
+        >
+          Informativa privacy
+        </a>
       </div>
     </div>
   );
