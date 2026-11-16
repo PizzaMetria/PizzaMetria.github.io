@@ -664,6 +664,29 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     y += 41;
   }
 
+  const parametriRicetta = dati.fasi?.length
+    ? dati.riepilogo?.find(({ titolo }) => titolo === 'Parametri della ricetta')
+    : undefined;
+  const parametriEssenziali = parametriRicetta?.voci.filter(({ etichetta }) => {
+    return etichetta === 'Farina' || etichetta === 'Autolisi'
+      || (etichetta === 'Maturazione della biga' && !dati.marcia?.length && !dati.fasi?.some(({ avviso }) => avviso));
+  }) ?? [];
+  for (const { etichetta, valore, valorePdf } of parametriEssenziali) {
+    const descrizione = valorePdf ?? valore;
+    const testoParametro = /^(?:Farina\s|Biga:)/i.test(descrizione) && etichetta === 'Farina'
+      ? descrizione
+      : `${etichetta} · ${descrizione}`;
+    const righe = testoParametro.split('\n').flatMap((riga) =>
+      dividiInRighe(riga, 'F1', 8.7, LARGHEZZA_UTILE),
+    );
+    assicuraSpazio(righe.length * 12);
+    for (const riga of righe) {
+      testo(sinistra, y + 9, riga, { dimensione: 8.7, colore: TENUE });
+      y += 12;
+    }
+  }
+  if (parametriEssenziali.length) y += 8;
+
   if (!dati.soloProgramma) {
     // Dosi: le fasi delle ricette oppure l'elenco piatto del calcolatore libero.
     const fasi = dati.fasi ?? [];
@@ -766,13 +789,9 @@ export function creaPdf(dati: DatiFoglio, stretto = false): Uint8Array {
     y += 15;
   }
 
-  // Le percentuali delle fasi si leggono accanto alle rispettive dosi.
   for (const gruppo of dati.riepilogo ?? []) {
+    if (gruppo === parametriRicetta) continue;
     const voci = gruppo.voci.filter(({ etichetta }) => {
-      if (gruppo.titolo === 'Parametri della ricetta' && dati.fasi?.length) {
-        return ['Farina', 'Autolisi'].includes(etichetta)
-          || (etichetta === 'Maturazione della biga' && !dati.marcia?.length && !dati.fasi.some(({ avviso }) => avviso));
-      }
       if (gruppo.titolo === 'Quantità') {
         const duplicato = haResa
           ? ['Numero di panetti', 'Peso di ciascun panetto', 'Numero di teglie', 'Dimensioni della teglia', 'Impasto per teglia', 'Panetti da', 'Panetti interi', 'Impasto residuo'].includes(etichetta)

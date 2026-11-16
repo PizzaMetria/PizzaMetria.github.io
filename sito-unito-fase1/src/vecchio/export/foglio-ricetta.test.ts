@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA, RICETTA_TUTTOFARE, PRODOTTI_TUTTOFARE, opzioniIniziali, tipsRicetta } from '../config/ricette';
+import { RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA, RICETTA_TRANCIO, RICETTA_TUTTOFARE, PRODOTTI_TUTTOFARE, opzioniIniziali, tipsRicetta } from '../config/ricette';
 import { calcolaPerFarina, calcolaPerPanetti, calcolaPerProdotti, calcolaPerTeglie } from '../lib/calcolo';
 import { componiProcedimento } from '../lib/procedimento';
 import { creaVistaRicetta } from '../lib/vista';
@@ -87,7 +87,9 @@ describe('foglio della ricetta', () => {
 
     expect(pdf.startsWith('%PDF-1.4')).toBe(true);
     expect(pdf).toContain('(Le mie ricette) Tj');
-    expect(pdf).toContain('(PARAMETRI DELLA RICETTA) Tj');
+    expect(pdf).not.toContain('(PARAMETRI DELLA RICETTA) Tj');
+    expect(pdf).toContain('W 300');
+    expect(pdf).toContain('(Autolisi ·');
     expect(pdf).toContain('(PROCEDIMENTO) Tj');
     expect(pdf).toContain('(CONSIGLI) Tj');
     expect(pdf).toContain('(Peso impasto) Tj');
@@ -119,7 +121,7 @@ it.each([RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA])('integra il piano misto nel PDF 
   expect(pdf).not.toContain('poi 24 ore in frigorifero');
   if (ricetta === RICETTA_TEGLIA_BIGA) {
     const mobile = new TextDecoder('latin1').decode(creaPdf(foglio, true));
-    expect(mobile).toContain('(W 300–330) Tj');
+    expect(mobile).toContain('(Farina · W 300–330) Tj');
   }
 });
 
@@ -203,4 +205,16 @@ it('mostra i cinque formati della Tuttofare nel riquadro in entrambe le modalit�
     expect(pdf).toContain('(Divisione per formato) Tj');
     expect(pdf).not.toMatch(/\b\d+ format[oi]\b/);
   }
+});
+
+it.each([false, true])('mostra farina e idratazione prima degli ingredienti del Trancio (smartphone: %s)', (stretto) => {
+  const ricetta = RICETTA_TRANCIO;
+  const calcolo = calcolaPerTeglie(ricetta, 30, 40, 1);
+  const pdf = new TextDecoder('latin1').decode(creaPdf(datiFoglioRicetta(calcolo, ricetta), stretto));
+  const ingredienti = pdf.indexOf('(INGREDIENTI) Tj');
+  for (const testo of ['W 180', '(IDRATAZIONE) Tj', '(60%) Tj']) {
+    expect(pdf.indexOf(testo)).toBeGreaterThan(-1);
+    expect(pdf.indexOf(testo)).toBeLessThan(ingredienti);
+  }
+  expect(pdf).not.toContain('(PARAMETRI DELLA RICETTA) Tj');
 });

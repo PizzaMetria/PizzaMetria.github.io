@@ -723,6 +723,7 @@ export default function App({
       onCambiaParametro={cambiaParametro}
       onRipristinaParametri={ripristinaParametri}
       onCalcola={calcola}
+      onAvantiDosi={sezione === 'dosi' ? () => calcola(true) : undefined}
       sezione={sezione}
     />
   );
@@ -783,7 +784,7 @@ export default function App({
             passi={passiGuidati}
             attivo={indiceGuidato}
             onIndietro={() => vaiAPagina(2)}
-            onAvanti={() => calcola(true)}
+            formAvanti="calcolatore"
           />
         </>
       ) : null}

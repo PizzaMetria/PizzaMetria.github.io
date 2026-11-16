@@ -47,6 +47,7 @@ interface Props {
   onCambiaParametro: (chiave: ChiaveParametro, valore: number) => void;
   onRipristinaParametri: () => void;
   onCalcola: () => void;
+  onAvantiDosi?: () => void;
   /**
    * Nel percorso guidato il modulo si spezza in due passi: prima le dosi, poi
    * lievito, biga e percentuali. Sul desktop resta un blocco solo.
@@ -85,6 +86,7 @@ export function FormCalcolo({
   onCambiaParametro,
   onRipristinaParametri,
   onCalcola,
+  onAvantiDosi,
   sezione = 'tutto',
 }: Props) {
   // Le percentuali mostrate seguono la quota di biga scelta nel pannello.
@@ -744,9 +746,8 @@ export function FormCalcolo({
       noValidate
       onSubmit={(evento) => {
         evento.preventDefault();
-        // Nel passo delle dosi non c'è il comando di calcolo: Invio non deve
-        // saltare alla pagina del risultato.
-        if (mostraPersonalizzazione && !bigaNonValida) onCalcola();
+        if (sezione === 'dosi') onAvantiDosi?.();
+        else if (!bigaNonValida) onCalcola();
       }}
       className="rounded-2xl border border-bordo/80 bg-carta/70 p-3 shadow-xl shadow-ombra/20 sm:p-5"
     >
