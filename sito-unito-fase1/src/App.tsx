@@ -2509,12 +2509,6 @@ export default function App({
         </div>
         )}
 
-        
-
-        <p className="mt-6 text-center text-[11px] text-inchiostro-tenue">
-          PizzaMetria · calcolatore libero · versione di prova. Tutti i calcoli restano nel tuo
-          browser.
-        </p>
       </main>
     </div>
   );
