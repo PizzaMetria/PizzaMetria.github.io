@@ -1,4 +1,4 @@
-import{i as ie,T as fo,F as ae,S as X,g as ce,a as re,d as se,L as le}from"./index-9eXi8ME2.js";const Vo={larghezza:595.28,altezza:841.89,margine:44},fe={larghezza:360,altezza:780,margine:26};let C=Vo,u=C.larghezza-C.margine*2,ao=C.altezza-30;function me(h){C=h?fe:Vo,u=C.larghezza-C.margine*2,ao=C.altezza-30}const Uo={F1:"Helvetica",F2:"Helvetica-Bold",F3:"Times-Roman",F4:"Times-Bold"},ge={F1:mo(`
+import{i as ie,T as fo,F as ae,S as X,g as ce,a as re,d as se,L as le}from"./index-B620Kk_F.js";const Vo={larghezza:595.28,altezza:841.89,margine:44},fe={larghezza:360,altezza:780,margine:26};let C=Vo,u=C.larghezza-C.margine*2,ao=C.altezza-30;function me(h){C=h?fe:Vo,u=C.larghezza-C.margine*2,ao=C.altezza-30}const Uo={F1:"Helvetica",F2:"Helvetica-Bold",F3:"Times-Roman",F4:"Times-Bold"},ge={F1:mo(`
     278 278 355 556 556 889 667 191 333 333 389 584 278 333 278 278
     556 556 556 556 556 556 556 556 556 556 278 278 584 584 584 556
     1015 667 667 722 722 667 611 778 722 278 500 667 556 833 722 778

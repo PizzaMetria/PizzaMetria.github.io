@@ -48,13 +48,6 @@ export function Testata({
           </a>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <span className="hidden items-center gap-1.5 rounded-full border border-bordo bg-carta/70 px-3 py-1.5 text-[11px] font-medium text-inchiostro-tenue sm:inline-flex">
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 rounded-full bg-terracotta"
-              />
-              Anteprima privata
-            </span>
             <button
               type="button"
               onClick={() => setMenuAperto(true)}
