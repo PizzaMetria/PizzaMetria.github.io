@@ -3,13 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      I due tag che devono restare in OGNI build pubblicata su GitHub Pages:
+      la verifica di Google Search Console e le statistiche di Cloudflare.
+      Stanno qui, nel modello di Vite, così arrivano in dist/index.html e non
+      si perdono quando la radice viene rigenerata.
+    -->
+    <meta name="google-site-verification" content="yjXk4EXRgt1ayw8GAGrjVf_44HPc2qqikiYhl3a6siw" />
+    <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "533e4f32bb3b44299bcd643c22b1a737"}'></script>
     <meta
       name="description"
       content="PizzaMetria: le quattro ricette personalizzate con biga, autolisi e trancio milanese, più le ricette classiche con il calcolatore di impasti su ore, temperature e forza della farina."
     />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f5f1ea" />
-    <title>PizzaMetria · Anteprima</title>
+    <title>PizzaMetria — ricette personalizzate e calcolatore</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./icon-192.png" />

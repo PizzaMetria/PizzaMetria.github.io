@@ -10,6 +10,16 @@ for (const prefisso of ['PaginePdf-', 'pdf-', 'pdf.worker.min-']) {
   }
 }
 
+// I due tag da non perdere finiscono nella pagina compilata. Se mancano, il
+// modello di Vite è stato modificato: meglio fermarsi qui che pubblicarne uno
+// solo (è già successo: il build aveva lasciato fuori la verifica di Google).
+const pagina = await readFile(new URL('index.html', dist), 'utf8');
+for (const tag of ['google-site-verification', 'static.cloudflareinsights.com/beacon.min.js']) {
+  if (!pagina.includes(tag)) {
+    throw new Error(`Tag mancante in dist/index.html: ${tag}`);
+  }
+}
+
 const urlWorker = new URL('sw.js', dist);
 const worker = await readFile(urlWorker, 'utf8');
 const hash = createHash('sha256').update(worker);
