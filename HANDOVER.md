@@ -5,6 +5,18 @@
 Questo file serve a riprendere il lavoro in una nuova chat senza ricostruire il
 contesto. Aggiornalo quando cambia qualcosa di importante.
 
+## I due tag della pagina pubblicata
+
+In `sito-unito-fase1/index.html` (il modello di Vite) stanno due tag che devono
+arrivare **sempre** in `dist/index.html` e quindi nell'`index.html` di radice:
+
+- `meta name="google-site-verification"` — verifica di Google Search Console;
+- lo script `static.cloudflareinsights.com/beacon.min.js` — statistiche di visita.
+
+`scripts/precache.mjs` controlla che ci siano entrambi e ferma il build se ne
+manca uno. Successo già una volta: il build che ha aggiunto il beacon Cloudflare
+aveva rigenerato la radice perdendo il meta di Google (16 novembre 2026).
+
 ## Stato attuale — 9 novembre 2026 (PizzaMetria, `sito-unito-fase1/`)
 
 Le sezioni sotto sono storiche (v8, ottobre 2026). Il progetto
