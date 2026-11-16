@@ -160,7 +160,7 @@ export const RICETTE_12: Record<Ramo, RicettaMaster12> = {
     nome: 'Tonda contemporanea',
     idroRif: 75,
     sale: 2.4,
-    olio: 1,
+    olio: 2,
     malto: 0,
     formato: 'tonda',
     massa: 280,

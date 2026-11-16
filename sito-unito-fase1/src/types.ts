@@ -7,7 +7,7 @@ export type TipoImpasto = 'verace' | 'contemporanea' | 'teglia';
  * Ramo di calibrazione della dose di lievito: uno per ricetta.
  *
  * Verace e contemporanea non condividono più i coefficienti: la seconda nasce
- * al 75% di idratazione, con panetti più grandi e spesso con il frigorifero,
+ * al 70% di idratazione, con panetti più grandi e spesso con il frigorifero,
  * e un solo ramo per le due tonde costringeva l'esponente dell'idratazione a
  * fare da surrogato della ricetta.
  */

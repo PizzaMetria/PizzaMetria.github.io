@@ -48,26 +48,27 @@ self.addEventListener('install', (evento) => {
         } catch {
           // Gli asset restano recuperabili alla prima apertura online.
         }
-      })
-      .then(() => self.skipWaiting()),
+      }),
   );
 });
 
+self.addEventListener('message', (evento) => {
+  if (evento.data?.tipo === 'ATTIVA_AGGIORNAMENTO') evento.waitUntil(self.skipWaiting());
+});
+
 self.addEventListener('activate', (evento) => {
-  evento.waitUntil(
-    caches
-      .keys()
-      .then((chiavi) =>
-        Promise.all(
-          chiavi
-            // Solo le versioni vecchie di questo progetto: un'altra app sulla
-            // stessa origine ha diritto alla sua cache.
-            .filter((chiave) => chiave.startsWith(PREFISSO) && chiave !== CACHE && chiave !== CACHE_PDF)
-            .map((chiave) => caches.delete(chiave)),
-        ),
-      )
-      .then(() => self.clients.claim()),
-  );
+  evento.waitUntil((async () => {
+    // Una scheda aperta può ancora chiedere i chunk della build precedente.
+    // Se ci sono finestre, rimanda la pulizia alla prossima attivazione senza schede.
+    const finestre = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (!finestre.length) {
+      const chiavi = await caches.keys();
+      await Promise.all(chiavi
+        .filter((chiave) => chiave.startsWith(PREFISSO) && chiave !== CACHE && chiave !== CACHE_PDF)
+        .map((chiave) => caches.delete(chiave)));
+    }
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (evento) => {
@@ -97,7 +98,7 @@ self.addEventListener('fetch', (evento) => {
           }
           return risposta;
         })
-        .catch(() => caches.match('./index.html')),
+        .catch(() => caches.open(CACHE).then((cache) => cache.match('./index.html'))),
     );
     return;
   }

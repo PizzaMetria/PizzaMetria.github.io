@@ -1,5 +1,6 @@
 import { formattaNumero } from '../lib/formato';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { PulsantePasso } from '../../components/Passi';
 import type {
   ErroriCampi,
   ModalitaCalcolo,
@@ -12,8 +13,9 @@ import type {
 } from '../types';
 import { FRIGO, oreAmbienteSuggerite, oreAttesa, piano as pianoMotore, stimaBigaMistaDaCampo } from '../lib/motore-biga';
 import { completaCoppia, giornoDi, oraDi, orarioPredefinito, spostaOrarioBiga } from '../lib/orari';
-import type { ChiaveParametro } from '../config/personalizzazione';
-import { LIMITI } from '../lib/validazione';
+import { calcolaDaFarinaTotale } from '../lib/calcolo';
+import { configPersonalizzata, type ChiaveParametro } from '../config/personalizzazione';
+import { leggiIntero, leggiNumeroDecimale, LIMITI } from '../lib/validazione';
 import { testoMaturazione } from '../lib/vista';
 import { SceltaFrigoBiga } from './SceltaFrigoBiga';
 import { CampoNumero } from './CampoNumero';
@@ -94,6 +96,23 @@ export function FormCalcolo({
   // I formati sono un elenco a fisarmonica: se ne apre uno per volta, e tutti
   // partono a zero, così si sceglie soltanto quello che serve.
   const [apertoProdotto, setApertoProdotto] = useState<string | null>(null);
+
+  const erroriPrecedenti = useRef<ErroriCampi>({});
+  useEffect(() => {
+    const precedenti = erroriPrecedenti.current;
+    erroriPrecedenti.current = errori;
+    if (!mostraDosi) return;
+    const chiave = Object.keys(errori).find((nome) =>
+      /^(?:prodotti|prodotto-.+-dim-[ab])$/.test(nome) && !precedenti[nome as keyof ErroriCampi],
+    );
+    if (!chiave) return;
+    const formato = /^prodotto-(.+)-dim-[ab]$/.exec(chiave)?.[1];
+    if (formato) setApertoProdotto(formato);
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(chiave === 'prodotti' ? 'errore-formati' : chiave)?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [errori, mostraDosi]);
 
   // Il motore della biga: l'idratazione della biga non è più una percentuale
   // fissa, la ricava dall'attesa e dalle due temperature.
@@ -176,11 +195,11 @@ export function FormCalcolo({
   /** Subtotale e totale del calcolatore misto, solo con numeri validi. */
   const righeProdotti = (ricetta.prodotti ?? []).map((prodotto) => {
     const riga = valori.prodotti?.[prodotto.id];
-    const quantita = riga ? Number.parseInt(riga.quantita, 10) : 0;
-    const peso = riga ? Number.parseFloat(riga.peso.replace(',', '.')) : 0;
+    const quantita = leggiIntero(riga?.quantita ?? '') ?? 0;
+    const peso = leggiNumeroDecimale(riga?.peso ?? String(prodotto.pesoBaseG)) ?? 0;
     const valida = Number.isFinite(quantita) && Number.isFinite(peso);
     const subtotale = valida ? Math.max(0, quantita) * Math.max(0, peso) : 0;
-    return { prodotto, riga, subtotale };
+    return { prodotto, riga, subtotale, peso, quantita };
   });
   const pesoComplessivo = righeProdotti.reduce(
     (totale, riga) => totale + riga.subtotale,
@@ -193,6 +212,28 @@ export function FormCalcolo({
   }
 
   const bigaNonValida = pianoBiga !== null && (oreDagliOrari === null || (misto ? !stimaMista?.piano : pianoBiga.stato !== 'ok'));
+
+  /*
+   * Quando la biga non si può pianificare il tasto si spegne. Senza una ragione
+   * scritta sembra che il calcolatore sia rotto: qui il motivo, e cosa cambiare.
+   */
+  const motivoBiga = !bigaNonValida
+    ? null
+    : oreDagliOrari === null
+      ? 'La biga non può essere pronta prima di essere preparata: sposta avanti il giorno o l’ora di fine.'
+      : misto && (oreMiste ?? '').trim() === ''
+        ? `Scegli quante ore lasciare a temperatura ambiente: con ${testoNumero(Math.round(oreBiga * 10) / 10)} ore in tutto il motore non propone una ripartizione da solo. Scrivi le ore, oppure scegli «24 ore in frigo»: sopra i 27 °C in casa la biga va tutta in frigo.`
+        : misto && !stimaMista?.piano
+          ? stimaMista && 'errore' in stimaMista
+            ? stimaMista.errore
+            : 'Con questa temperatura e queste ore il motore non trova una maturazione valida: abbassa la temperatura ambiente o scegli «24 ore in frigo».'
+          : pianoBiga?.stato === 'oltre-modello'
+            ? 'Sopra i 27 °C il motore non copre la maturazione della biga: scegli «24 ore in frigo» oppure abbassa la temperatura ambiente.'
+            : pianoBiga?.stato === 'troppo-corto'
+              ? 'Le ore a disposizione sono poche per una biga: parti prima oppure allunga l’attesa.'
+              : pianoBiga?.stato === 'troppo-lungo'
+                ? 'Le ore a disposizione sono troppe per una biga: accorcia l’attesa oppure mettila in frigo.'
+                : 'La biga non si può pianificare con questi valori: controlla orari e temperature.';
 
   const configurazione = mostraPersonalizzazione ? (
     <div
@@ -446,7 +487,258 @@ export function FormCalcolo({
     </div>
   ) : null;
 
+  const farinaKg = leggiNumeroDecimale(valori.farina.farinaKg);
+  const bilancio = mostraDosi && modalita === 'farina' && ricetta.prodotti &&
+    farinaKg !== null && farinaKg > 0 && farinaKg <= LIMITI.maxFarinaKg
+    ? calcolaDaFarinaTotale(configPersonalizzata(ricetta, parametri, opzioni), farinaKg * 1000, opzioni)
+    : null;
+  const differenzaG = (bilancio?.pesoImpastoG ?? 0) - pesoComplessivo;
+  const sceltaProdotti = (
+    <div className="mt-4 grid gap-3">
+      {bilancio ? (
+        <div role="status" className="rounded-xl border border-bordo/70 bg-crema-scuro/40 px-3 py-2.5 text-sm">
+          {differenzaG < -1e-7
+            ? `Farina mancante: ${formattatoreGrammi.format(Math.ceil(-differenzaG / bilancio.fattorePeso))} g`
+            : `Farina disponibile: ${formattatoreGrammi.format(Math.floor(Math.max(0, differenzaG) / bilancio.fattorePeso + 1e-7))} g`}
+          <span className="mt-1 block text-xs text-inchiostro-tenue">
+            {formattatoreGrammi.format(pesoComplessivo)} g di impasto assegnati su {formattatoreGrammi.format(bilancio.pesoImpastoG)} g
+          </span>
+        </div>
+      ) : null}
+
+      {errori.prodotti ? (
+        <p
+          id="errore-formati"
+          tabIndex={-1}
+          role="alert"
+          className="rounded-xl border border-errore/40 bg-errore/10 px-3 py-2 text-sm font-medium text-errore"
+        >
+          {errori.prodotti}
+        </p>
+      ) : null}
+
+      {righeProdotti.map(({ prodotto, riga, subtotale, peso, quantita }) => {
+        const dimensione = prodotto.dimensione;
+        const aggiungibili = bilancio && peso > 0
+          ? Math.max(0, Math.floor((differenzaG + 1e-7) / peso))
+          : null;
+        const dimensioneScelta = dimensione
+          ? dimensione.tipo === 'stampo'
+            ? `${riga?.dimA ?? dimensione.baseA} × ${riga?.dimB ?? dimensione.baseB ?? 1} ${dimensione.unita}`
+            : `Ø ${riga?.dimA ?? dimensione.baseA} ${dimensione.unita}`
+          : prodotto.nota;
+        const riferimentoDimensione = dimensione
+          ? dimensione.tipo === 'stampo'
+            ? `${dimensione.baseA} × ${dimensione.baseB ?? 1} cm corrispondono a ${formattatoreGrammi.format(dimensione.pesoBaseG)} g`
+            : `${dimensione.baseA} cm corrispondono a ${formattatoreGrammi.format(dimensione.pesoBaseG)} g`
+          : '';
+
+        return (
+          <div
+            key={prodotto.id}
+            className="rounded-xl border border-bordo/70 bg-crema-scuro/40 p-3.5 sm:p-4"
+          >
+            <button
+              type="button"
+              aria-expanded={apertoProdotto === prodotto.id}
+              aria-controls={`prodotto-${prodotto.id}-dettagli`}
+              onClick={() =>
+                setApertoProdotto(
+                  apertoProdotto === prodotto.id ? null : prodotto.id,
+                )
+              }
+              className="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block font-serif text-base leading-tight font-bold text-inchiostro">
+                  {prodotto.id === 'bauletti' ? 'Pane in cassetta' : prodotto.nome}
+                </span>
+                <span className="mt-0.5 block text-[11px] text-inchiostro-tenue">
+                  {dimensioneScelta}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="text-right text-[11px] leading-tight text-inchiostro-tenue tabular-nums">
+                  <span className="block font-semibold text-inchiostro">
+                    {quantita} pz.
+                  </span>
+                  {formattatoreGrammi.format(subtotale)} g
+                  {aggiungibili !== null ? (
+                    <span className="block">+{aggiungibili} pz. possibili</span>
+                  ) : null}
+                </span>
+                <svg
+                  aria-hidden="true"
+                  focusable="false"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={`h-3.5 w-3.5 shrink-0 text-inchiostro-tenue transition-transform duration-200 motion-reduce:transition-none ${
+                    apertoProdotto === prodotto.id ? 'rotate-90' : ''
+                  }`}
+                >
+                  <path d="M4 2l4 4-4 4" />
+                </svg>
+              </span>
+            </button>
+
+            {apertoProdotto === prodotto.id ? (
+              <div id={`prodotto-${prodotto.id}-dettagli`}>
+            {/* Su smartphone i due campi stanno uno sotto l'altro: con i
+                tasti − e + affiancati il valore resterebbe illeggibile. */}
+            <div className="mt-3 grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
+              <CampoNumero
+                id={`prodotto-${prodotto.id}-quantita`}
+                label="Pezzi"
+                centrato
+                value={riga?.quantita ?? '0'}
+                onChange={(valore) =>
+                  onCambiaCampo(
+                    'prodotti',
+                    `${prodotto.id}:quantita`,
+                    valore,
+                  )
+                }
+                inputMode="numeric"
+                incremento={1}
+                minimo={0}
+                massimo={aggiungibili === null ? LIMITI.maxPezzi : Math.min(LIMITI.maxPezzi, quantita + aggiungibili)}
+                decimali={0}
+              />
+              <CampoNumero
+                id={`prodotto-${prodotto.id}-peso`}
+                label="Peso per pezzo"
+                unit="g"
+                centrato
+                value={riga?.peso ?? String(prodotto.pesoBaseG)}
+                onChange={(valore) =>
+                  onCambiaCampo('prodotti', `${prodotto.id}:peso`, valore)
+                }
+                inputMode="decimal"
+                incremento={5}
+                minimo={5}
+                massimo={LIMITI.maxPesoPanettoG}
+              />
+            </div>
+
+            {dimensione ? (
+              <div className="mx-auto mt-3.5 w-full max-w-[320px] rounded-xl border border-bordo/60 bg-carta/60 px-3 py-3">
+                {dimensione.tipo === 'stampo' ? (
+                  <>
+                    <p className="text-center text-[11px] font-semibold tracking-wide text-inchiostro-tenue uppercase">
+                      {dimensione.etichetta}
+                    </p>
+                    {/* I due lati restano impilati: affiancati, i tasti
+                        lascerebbero al campo una larghezza inutilizzabile. */}
+                    <div className="mt-2 grid grid-cols-1 gap-3">
+                      <CampoNumero
+                        id={`prodotto-${prodotto.id}-dim-a`}
+                        error={errori[`prodotto-${prodotto.id}-dim-a`]}
+                        label="Lato A"
+                        unit={dimensione.unita}
+                        centrato
+                        value={
+                          riga?.dimA ?? String(dimensione.baseA)
+                        }
+                        onChange={(valore) =>
+                          onCambiaCampo(
+                            'prodotti',
+                            `${prodotto.id}:dimA`,
+                            valore,
+                          )
+                        }
+                        inputMode="decimal"
+                        incremento={dimensione.incremento}
+                        minimo={dimensione.min}
+                        massimo={dimensione.max}
+                        decimali={1}
+                      />
+                      <CampoNumero
+                        id={`prodotto-${prodotto.id}-dim-b`}
+                        error={errori[`prodotto-${prodotto.id}-dim-b`]}
+                        label="Lato B"
+                        unit={dimensione.unita}
+                        centrato
+                        value={
+                          riga?.dimB ?? String(dimensione.baseB ?? 1)
+                        }
+                        onChange={(valore) =>
+                          onCambiaCampo(
+                            'prodotti',
+                            `${prodotto.id}:dimB`,
+                            valore,
+                          )
+                        }
+                        inputMode="decimal"
+                        incremento={dimensione.incremento}
+                        minimo={dimensione.min}
+                        massimo={dimensione.max}
+                        decimali={1}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <CampoNumero
+                    id={`prodotto-${prodotto.id}-dim-a`}
+                    error={errori[`prodotto-${prodotto.id}-dim-a`]}
+                    label={dimensione.etichetta}
+                    unit={dimensione.unita}
+                    centrato
+                    value={riga?.dimA ?? String(dimensione.baseA)}
+                    onChange={(valore) =>
+                      onCambiaCampo(
+                        'prodotti',
+                        `${prodotto.id}:dimA`,
+                        valore,
+                      )
+                    }
+                    inputMode="decimal"
+                    incremento={dimensione.incremento}
+                    minimo={dimensione.min}
+                    massimo={dimensione.max}
+                    decimali={1}
+                  />
+                )}
+                <p className="mt-2 text-center text-[11px] leading-relaxed text-inchiostro-tenue">
+                  Il peso si ricalcola dalla superficie ({riferimentoDimensione}) e resta modificabile a mano.
+                </p>
+              </div>
+            ) : null}
+
+            {errori[`prodotto-${prodotto.id}`] ? (
+              <p role="alert" className="mt-2 text-xs font-medium text-errore">
+                {errori[`prodotto-${prodotto.id}`]}
+              </p>
+            ) : null}
+
+            <p className="mt-2.5 text-right text-[11px] font-semibold text-inchiostro-tenue tabular-nums">
+              Subtotale:{' '}
+              {formattatoreGrammi.format(subtotale)} g
+            </p>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+
+      {!bilancio && modalita === 'prodotti' ? (
+      <p className="flex items-baseline justify-between gap-2 rounded-xl border border-terracotta/25 bg-oro-velo px-3 py-2.5">
+        <span className="text-xs font-semibold text-inchiostro">
+          Peso complessivo
+        </span>
+        <span className="font-serif text-base font-bold tabular-nums text-oro-chiaro">
+          {formattatoreGrammi.format(pesoComplessivo)} g
+        </span>
+      </p>
+      ) : null}
+    </div>
+  );
+
   return (
+    <>
     <form
       id="calcolatore"
       noValidate
@@ -467,9 +759,9 @@ export function FormCalcolo({
       </h2>
       <p className="mt-1 text-sm leading-relaxed text-inchiostro-tenue">
         {sezione === 'personalizza'
-          ? 'Lievito, biga e percentuali: qui cambi la ricetta. Se va bene così, premi «Calcola impasto».'
+          ? 'Qui puoi regolare lievito, tempi e percentuali della ricetta.'
           : modalita === 'farina' && ricetta.prodotti
-            ? 'Parti dalla farina che hai: calcoliamo l’impasto totale e la ripartizione indicativa tra i formati.'
+            ? 'Indica la farina disponibile, poi scegli i formati da preparare.'
             : TESTI_MODALITA[modalita]}
       </p>
 
@@ -595,231 +887,7 @@ export function FormCalcolo({
         </div>
       ) : null}
 
-      {mostraDosi && modalita === 'prodotti' ? (
-        <div className="mt-4 grid gap-3">
-          <p className="text-xs leading-relaxed text-inchiostro-tenue">
-            I tempi base si riferiscono alle pezzature di riferimento; cambia
-            pure i pesi, adattando poi la cottura.
-          </p>
-
-          {errori.prodotti ? (
-            <p
-              role="alert"
-              className="rounded-xl border border-errore/40 bg-errore/10 px-3 py-2 text-sm font-medium text-errore"
-            >
-              {errori.prodotti}
-            </p>
-          ) : null}
-
-          {righeProdotti.map(({ prodotto, riga, subtotale }) => {
-            const dimensione = prodotto.dimensione;
-            const quantita = riga ? Number.parseInt(riga.quantita, 10) || 0 : 0;
-            const dimensioneScelta = dimensione
-              ? dimensione.tipo === 'stampo'
-                ? `${riga?.dimA ?? dimensione.baseA} × ${riga?.dimB ?? dimensione.baseB ?? 1} ${dimensione.unita}`
-                : `Ø ${riga?.dimA ?? dimensione.baseA} ${dimensione.unita}`
-              : prodotto.nota;
-            const riferimentoDimensione = dimensione
-              ? dimensione.tipo === 'stampo'
-                ? `${dimensione.baseA} × ${dimensione.baseB ?? 1} cm corrispondono a ${formattatoreGrammi.format(dimensione.pesoBaseG)} g`
-                : `${dimensione.baseA} cm corrispondono a ${formattatoreGrammi.format(dimensione.pesoBaseG)} g`
-              : '';
-
-            return (
-              <div
-                key={prodotto.id}
-                className="rounded-xl border border-bordo/70 bg-crema-scuro/40 p-3.5 sm:p-4"
-              >
-                <button
-                  type="button"
-                  aria-expanded={apertoProdotto === prodotto.id}
-                  aria-controls={`prodotto-${prodotto.id}-dettagli`}
-                  onClick={() =>
-                    setApertoProdotto(
-                      apertoProdotto === prodotto.id ? null : prodotto.id,
-                    )
-                  }
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                >
-                  <span className="min-w-0">
-                    <span className="block font-serif text-base leading-tight font-bold text-inchiostro">
-                      {prodotto.nome}
-                    </span>
-                    <span className="mt-0.5 block text-[11px] text-inchiostro-tenue">
-                      {dimensioneScelta}
-                    </span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <span className="text-right text-[11px] leading-tight text-inchiostro-tenue tabular-nums">
-                      <span className="block font-semibold text-inchiostro">
-                        {quantita} {quantita === 1 ? "pezzo" : "pezzi"}
-                      </span>
-                      {formattatoreGrammi.format(subtotale)} g
-                    </span>
-                    <svg
-                      aria-hidden="true"
-                      focusable="false"
-                      viewBox="0 0 12 12"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`h-3.5 w-3.5 shrink-0 text-inchiostro-tenue transition-transform duration-200 motion-reduce:transition-none ${
-                        apertoProdotto === prodotto.id ? 'rotate-90' : ''
-                      }`}
-                    >
-                      <path d="M4 2l4 4-4 4" />
-                    </svg>
-                  </span>
-                </button>
-
-                {apertoProdotto === prodotto.id ? (
-                  <div id={`prodotto-${prodotto.id}-dettagli`}>
-                {/* Su smartphone i due campi stanno uno sotto l'altro: con i
-                    tasti − e + affiancati il valore resterebbe illeggibile. */}
-                <div className="mt-3 grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
-                  <CampoNumero
-                    id={`prodotto-${prodotto.id}-quantita`}
-                    label="Pezzi"
-                    centrato
-                    value={riga?.quantita ?? '0'}
-                    onChange={(valore) =>
-                      onCambiaCampo(
-                        'prodotti',
-                        `${prodotto.id}:quantita`,
-                        valore,
-                      )
-                    }
-                    inputMode="numeric"
-                    incremento={1}
-                    minimo={0}
-                    massimo={LIMITI.maxPezzi}
-                    decimali={0}
-                  />
-                  <CampoNumero
-                    id={`prodotto-${prodotto.id}-peso`}
-                    label="Peso per pezzo"
-                    unit="g"
-                    centrato
-                    value={riga?.peso ?? String(prodotto.pesoBaseG)}
-                    onChange={(valore) =>
-                      onCambiaCampo('prodotti', `${prodotto.id}:peso`, valore)
-                    }
-                    inputMode="decimal"
-                    incremento={5}
-                    minimo={5}
-                    massimo={LIMITI.maxPesoPanettoG}
-                  />
-                </div>
-
-                {dimensione ? (
-                  <div className="mx-auto mt-3.5 w-full max-w-[320px] rounded-xl border border-bordo/60 bg-carta/60 px-3 py-3">
-                    {dimensione.tipo === 'stampo' ? (
-                      <>
-                        <p className="text-center text-[11px] font-semibold tracking-wide text-inchiostro-tenue uppercase">
-                          {dimensione.etichetta}
-                        </p>
-                        {/* I due lati restano impilati: affiancati, i tasti
-                            lascerebbero al campo una larghezza inutilizzabile. */}
-                        <div className="mt-2 grid grid-cols-1 gap-3">
-                          <CampoNumero
-                            id={`prodotto-${prodotto.id}-dim-a`}
-                            label="Lato A"
-                            unit={dimensione.unita}
-                            centrato
-                            value={
-                              riga?.dimA ?? String(dimensione.baseA)
-                            }
-                            onChange={(valore) =>
-                              onCambiaCampo(
-                                'prodotti',
-                                `${prodotto.id}:dimA`,
-                                valore,
-                              )
-                            }
-                            inputMode="decimal"
-                            incremento={dimensione.incremento}
-                            minimo={dimensione.min}
-                            massimo={dimensione.max}
-                            decimali={1}
-                          />
-                          <CampoNumero
-                            id={`prodotto-${prodotto.id}-dim-b`}
-                            label="Lato B"
-                            unit={dimensione.unita}
-                            centrato
-                            value={
-                              riga?.dimB ?? String(dimensione.baseB ?? 1)
-                            }
-                            onChange={(valore) =>
-                              onCambiaCampo(
-                                'prodotti',
-                                `${prodotto.id}:dimB`,
-                                valore,
-                              )
-                            }
-                            inputMode="decimal"
-                            incremento={dimensione.incremento}
-                            minimo={dimensione.min}
-                            massimo={dimensione.max}
-                            decimali={1}
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <CampoNumero
-                        id={`prodotto-${prodotto.id}-dim-a`}
-                        label={dimensione.etichetta}
-                        unit={dimensione.unita}
-                        centrato
-                        value={riga?.dimA ?? String(dimensione.baseA)}
-                        onChange={(valore) =>
-                          onCambiaCampo(
-                            'prodotti',
-                            `${prodotto.id}:dimA`,
-                            valore,
-                          )
-                        }
-                        inputMode="decimal"
-                        incremento={dimensione.incremento}
-                        minimo={dimensione.min}
-                        massimo={dimensione.max}
-                        decimali={1}
-                      />
-                    )}
-                    <p className="mt-2 text-center text-[11px] leading-relaxed text-inchiostro-tenue">
-                      Il peso si ricalcola dalla superficie ({riferimentoDimensione}) e resta modificabile a mano.
-                    </p>
-                  </div>
-                ) : null}
-
-                {errori[`prodotto-${prodotto.id}`] ? (
-                  <p role="alert" className="mt-2 text-xs font-medium text-errore">
-                    {errori[`prodotto-${prodotto.id}`]}
-                  </p>
-                ) : null}
-
-                <p className="mt-2.5 text-right text-[11px] font-semibold text-inchiostro-tenue tabular-nums">
-                  Subtotale:{' '}
-                  {formattatoreGrammi.format(subtotale)} g
-                </p>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-
-          <p className="flex items-baseline justify-between gap-2 rounded-xl border border-terracotta/25 bg-oro-velo px-3 py-2.5">
-            <span className="text-xs font-semibold text-inchiostro">
-              Peso complessivo
-            </span>
-            <span className="font-serif text-base font-bold tabular-nums text-oro-chiaro">
-              {formattatoreGrammi.format(pesoComplessivo)} g
-            </span>
-          </p>
-        </div>
-      ) : null}
+      {mostraDosi && modalita === 'prodotti' ? sceltaProdotti : null}
 
       {mostraDosi && modalita === 'farina' ? (
         <div className="mt-4 grid gap-4">
@@ -839,13 +907,7 @@ export function FormCalcolo({
             massimo={LIMITI.maxFarinaKg}
           />
 
-          {ricetta.prodotti ? (
-            <p className="rounded-xl border border-bordo/80 bg-crema-scuro/50 px-3.5 py-2.5 text-xs leading-relaxed text-inchiostro-tenue">
-              Dalla farina calcoliamo l’impasto totale e, nel risultato, la
-              ripartizione indicativa tra i formati alle loro pezzature di
-              riferimento.
-            </p>
-          ) : ricetta.famiglia === 'diretto' ? (
+          {ricetta.prodotti ? sceltaProdotti : ricetta.famiglia === 'diretto' ? (
             <div className="rounded-xl border border-bordo/80 bg-crema-scuro/50 p-3.5">
               <p className="text-xs font-semibold text-inchiostro">
                 Stima delle teglie{' '}
@@ -936,24 +998,23 @@ export function FormCalcolo({
         </p>
       ) : null}
 
-      {/* Colori invertiti con il pulsante «Modifica ricetta»: il comando che
-          genera la ricetta è ora in stile secondario, quello che apre la
-          personalizzazione è pieno. */}
-      {mostraPersonalizzazione ? (
-        <>
-      <button
-        type="submit"
-        disabled={bigaNonValida}
-        className="mt-5 disabled:cursor-not-allowed disabled:opacity-50 flex min-h-12 w-full items-center justify-center rounded-xl border border-terracotta/40 bg-transparent px-5 py-3.5 text-base font-bold text-oro-chiaro transition-all hover:-translate-y-px hover:border-terracotta/70 hover:bg-terracotta/10 active:translate-y-0"
-      >
-        Calcola impasto
-      </button>
-
-      <p className="mt-2.5 text-center text-xs text-inchiostro-tenue">
-        I calcoli avvengono nel tuo browser. Nessun dato viene inviato altrove.
-      </p>
-        </>
+      {motivoBiga ? (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-avviso/50 bg-avviso-tenue px-3 py-2 text-sm font-medium text-avviso"
+        >
+          {motivoBiga}
+        </p>
       ) : null}
+
+      {/*
+       * Un solo comando finale, sotto il modulo e uguale in tutte le ricette:
+       * anche nel percorso guidato, invece che nella barra dei passi.
+       */}
+      <div className="mt-5 flex justify-end">
+        <PulsantePasso etichetta="Risultato" form="calcolatore" disabilitato={bigaNonValida} />
+      </div>
     </form>
+    </>
   );
 }

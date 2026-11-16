@@ -49,11 +49,13 @@ function passoAsse(minimo: number, massimo: number): number {
  */
 export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }: Props) {
   const larghezza = 520;
-  const altezza = 190;
+  // Stessa altezza dell'attività: i due grafici stanno uno sopra l'altro e
+  // devono respirare allo stesso modo, con la legenda in colonna a sinistra.
+  const altezza = 242;
   const margine = 12;
   const margineDestro = 14;
-  const tetto = 18;
-  const base = 150;
+  const tetto = 20;
+  const base = 192;
   const larghezzaArea = larghezza - margine - margineDestro;
 
   // Le fasce arrivano dal calcolo: se il motore attivo è quello a 12
@@ -62,15 +64,24 @@ export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }:
   const sicura = zone.sicura;
   // La fascia chiara è la finestra stampata nella card: stessi numeri, disegnati.
   const finestra = { minima: zone.tollerata[0], massima: zone.tollerata[1] };
-  const sinistra = Math.min(
-    100,
-    finestra.minima - 40,
-    efficace !== null ? efficace - 30 : Number.POSITIVE_INFINITY,
+  // L'asse segue i dati invece di stare fisso fra 100 e 500: con una zona
+  // stretta (per esempio 247–307) la curva si schiacciava in fondo e il mix
+  // finiva sul bordo, senza margine per leggere il numero.
+  const minimoDati = Math.min(
+    finestra.minima,
+    sicura[0],
+    efficace !== null ? efficace : Number.POSITIVE_INFINITY,
   );
+  const massimoDati = Math.max(
+    finestra.massima,
+    sicura[1],
+    efficace !== null ? efficace : Number.NEGATIVE_INFINITY,
+  );
+  const respiro = Math.max(20, Math.round((massimoDati - minimoDati) * 0.4));
+  const sinistra = Math.max(25, Math.floor((minimoDati - respiro) / 25) * 25);
   const destra = Math.max(
-    500,
-    finestra.massima + 40,
-    efficace !== null ? efficace + 30 : Number.NEGATIVE_INFINITY,
+    sinistra + 100,
+    Math.ceil((massimoDati + respiro) / 25) * 25,
   );
 
   const x = (w: number) => margine + ((w - sinistra) / (destra - sinistra)) * larghezzaArea;
@@ -120,7 +131,7 @@ export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }:
             className="mt-[7px] inline-block w-4 shrink-0"
             style={{ borderTop: '2px dashed var(--color-inchiostro)', opacity: 0.55 }}
           />
-          <span>serve W {Math.round(consigliato)}</span>
+          <span>W consigliato {Math.round(consigliato)}</span>
         </li>
         {efficace !== null ? (
           <li className="flex items-start gap-2.5">
@@ -138,7 +149,7 @@ export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }:
         <svg
           ref={svgRef}
           viewBox={`0 0 ${larghezza} ${altezza}`}
-          className="h-44 w-full"
+          className="h-auto w-full"
           role="img"
           aria-label={
             efficace !== null
@@ -148,6 +159,9 @@ export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }:
               : `Zona di forza consigliata ${Math.round(sicura[0])}–${Math.round(sicura[1])}`
           }
         >
+          <text x={margine} y={12} fontSize={12} fontWeight={600} fill="var(--color-inchiostro-tenue)">
+            Compatibilità stimata
+          </text>
           {/* Griglia orizzontale: tre righe per leggere l'altezza della curva. */}
           {[1 / 3, 2 / 3].map((quota) => (
             <line
@@ -266,10 +280,14 @@ export function GraficoForza({ consigliato, efficace, giudizio, fasce, svgRef }:
                 fontSize={8.8}
                 style={{ fill: 'var(--color-inchiostro-tenue)' }}
               >
-                W {valore}
+                {valore}
               </text>
             </g>
           ))}
+          <text x={larghezza / 2} y={base + 33} textAnchor="middle" fontSize={12}
+            fill="var(--color-inchiostro-tenue)">
+            Forza della farina (W)
+          </text>
         </svg>
       </div>
     </div>

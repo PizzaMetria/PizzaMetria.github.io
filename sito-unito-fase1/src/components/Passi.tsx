@@ -11,15 +11,18 @@
 export function PulsantePasso({
   etichetta,
   onClick,
+  form,
   disabilitato = false,
 }: {
   etichetta: string;
-  onClick: () => void;
+  onClick?: () => void;
+  form?: string;
   disabilitato?: boolean;
 }) {
   return (
     <button
-      type="button"
+      type={form ? 'submit' : 'button'}
+      form={form}
       onClick={onClick}
       disabled={disabilitato}
       className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-terracotta px-6 text-xs font-bold tracking-wider text-su-oro uppercase shadow-lg shadow-ombra/30 transition-all hover:-translate-y-px hover:bg-terracotta-scuro active:translate-y-0 disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none"
@@ -38,6 +41,7 @@ export function NavigazionePassi({
   attivo,
   onIndietro,
   onAvanti,
+  formAvanti,
   etichettaAvanti = 'Avanti',
   bloccaAvanti = false,
   notaAvanti,
@@ -46,6 +50,7 @@ export function NavigazionePassi({
   attivo: number;
   onIndietro?: () => void;
   onAvanti?: () => void;
+  formAvanti?: string;
   etichettaAvanti?: string;
   /** Tasto spento: c'è qualcosa da sistemare nel passo, non al risultato. */
   bloccaAvanti?: boolean;
@@ -85,10 +90,11 @@ export function NavigazionePassi({
         ) : (
           <span aria-hidden="true" />
         )}
-        {onAvanti ? (
+        {onAvanti || formAvanti ? (
           <PulsantePasso
             etichetta={etichettaAvanti}
             onClick={onAvanti}
+            form={formAvanti}
             disabilitato={attivo === passi.length - 1 || bloccaAvanti}
           />
         ) : (

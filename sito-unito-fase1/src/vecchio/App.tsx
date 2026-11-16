@@ -17,11 +17,13 @@ import {
   trovaRicetta,
 } from './config/ricette';
 import {
+  calcolaDaFarinaTotale,
   calcolaPerFarina,
   calcolaPerPanetti,
   calcolaPerProdotti,
   calcolaPerTeglie,
   pesoDaDimensione,
+  type RigaProdottoCalcolo,
 } from './lib/calcolo';
 import {
   campiParametri,
@@ -37,6 +39,7 @@ import {
   validaModalitaFarina,
   validaModalitaPanetti,
   validaModalitaProdotti,
+  validaMisuraFormato,
   validaModalitaTeglie,
   validaStimaTeglia,
 } from './lib/validazione';
@@ -143,7 +146,11 @@ export default function App({
     nome: string;
     url: string;
     blob: Blob;
+    /** L'impaginato del file che si sta guardando. */
+    ottimizza: boolean;
   } | null>(null);
+  // Una rigenerazione in corso non deve riaprire l'anteprima appena chiusa.
+  const richiestaAnteprima = useRef(0);
 
   /** Scarica il file in anteprima: è l'unico punto che salva davvero. */
   function salvaAnteprima() {
@@ -151,9 +158,14 @@ export default function App({
   }
 
   function chiudiAnteprima() {
+    richiestaAnteprima.current += 1;
+    inEsportazioneRef.current = false;
     if (anteprima) {
       URL.revokeObjectURL(anteprima.url);
     }
+    // Anche qui lo stato «sto preparando» si spegne alla chiusura: la richiesta
+    // scartata non deve lasciare i tasti spenti.
+    setEsportazione(null);
     setAnteprima(null);
   }
   const [messaggioEsportazione, setMessaggioEsportazione] =
@@ -357,14 +369,13 @@ export default function App({
             (voce) => voce.id === id,
           )?.dimensione;
           if (dimensione && (attributo === 'dimA' || attributo === 'dimB')) {
-            const a =
-              leggiNumeroDecimale(aggiornata.dimA ?? '') ?? dimensione.baseA;
-            const b =
-              dimensione.tipo === 'stampo'
-                ? (leggiNumeroDecimale(aggiornata.dimB ?? '') ??
-                  (dimensione.baseB ?? 1))
-                : undefined;
-            aggiornata.peso = String(pesoDaDimensione(dimensione, a, b));
+            const a = validaMisuraFormato(aggiornata.dimA ?? String(dimensione.baseA), dimensione.min, dimensione.max);
+            const b = dimensione.tipo === 'stampo'
+              ? validaMisuraFormato(aggiornata.dimB ?? String(dimensione.baseB ?? 1), dimensione.min, dimensione.max)
+              : undefined;
+            if (a !== null && b !== null) {
+              aggiornata.peso = String(pesoDaDimensione(dimensione, a, b));
+            }
           }
 
           prossimi = {
@@ -385,16 +396,28 @@ export default function App({
       };
     });
 
-    // Gli errori dei formati sono uno per riga, non uno per campo.
-    const chiaveErrore: ChiaveErrore =
-      gruppo === 'prodotti'
-        ? (`prodotto-${campo.split(':')[0]}` as ChiaveErrore)
-        : (campo as ChiaveErrore);
+    const [idProdotto, attributo] = campo.split(':');
+    const chiaveErrore: ChiaveErrore = gruppo === 'prodotti'
+      ? `prodotto-${idProdotto}`
+      : campo as ChiaveErrore;
+    const chiaveMisura = gruppo === 'prodotti' && (attributo === 'dimA' || attributo === 'dimB')
+      ? `prodotto-${idProdotto}-dim-${attributo === 'dimA' ? 'a' : 'b'}` as const
+      : undefined;
 
+    const escludiFormato = gruppo === 'prodotti' && attributo === 'quantita'
+      && (valore.trim() === '' || leggiNumeroDecimale(valore) === 0);
     setErrori((precedenti) => {
-      if (!precedenti[chiaveErrore]) return precedenti;
+      const cambiaDisponibilita = gruppo === 'prodotti' || gruppo === 'farina';
+      if (!precedenti[chiaveErrore] && !(chiaveMisura && precedenti[chiaveMisura])
+        && !(cambiaDisponibilita && precedenti.prodotti) && !escludiFormato) return precedenti;
       const successivi = { ...precedenti };
       delete successivi[chiaveErrore];
+      if (chiaveMisura) delete successivi[chiaveMisura];
+      if (escludiFormato) {
+        delete successivi[`prodotto-${idProdotto}-dim-a`];
+        delete successivi[`prodotto-${idProdotto}-dim-b`];
+      }
+      if (cambiaDisponibilita) delete successivi.prodotti;
       return successivi;
     });
     setErroreGenerale(null);
@@ -402,19 +425,20 @@ export default function App({
     if (risultato) setDaAggiornare(true);
   }
 
-  function calcola() {
+  function calcola(soloDosi = false) {
     setMessaggioEsportazione(null);
     setErroreGenerale(null);
 
     let erroriCalcolo: ErroriCampi = {};
 
     try {
-      let nuovo: RisultatoCalcolo;
+      let nuovo: RisultatoCalcolo | undefined;
       // Le percentuali personalizzate vivono in una copia della ricetta:
       // formule, fasi e testi restano quelli originali.
       const config = configPersonalizzata(ricetta, parametri, opzioni);
 
-      if (modalita === 'prodotti') {
+      let prodotti: RigaProdottoCalcolo[] = [];
+      if (ricetta.prodotti) {
         const righe = (ricetta.prodotti ?? []).map((prodotto) => ({
           id: prodotto.id,
           quantita: valori.prodotti?.[prodotto.id]?.quantita ?? '0',
@@ -425,26 +449,41 @@ export default function App({
         erroriCalcolo = esito.errori;
         if (!esito.valori) {
           setErrori(erroriCalcolo);
+          if (proceduraGuidata && paginaApp === 4) vaiAPagina(3);
           setAnnuncioCalcolo(
             'Calcolo non eseguito: controlla i formati scelti.',
           );
           return;
         }
 
-        const prodotti = esito.valori.map((riga) => {
+        prodotti = esito.valori.map((riga) => {
           const dimensione = ricetta.prodotti?.find((prodotto) => prodotto.id === riga.id)?.dimensione;
           if (!dimensione) return riga;
           const scelta = valori.prodotti?.[riga.id];
-          const latoA = leggiNumeroDecimale(scelta?.dimA ?? '') ?? dimensione.baseA;
-          const latoB = leggiNumeroDecimale(scelta?.dimB ?? '') ?? dimensione.baseB;
-          if (latoA <= 0 || (dimensione.tipo === 'stampo' && (latoB === undefined || latoB <= 0))) return riga;
+          const latoA = validaMisuraFormato(scelta?.dimA ?? String(dimensione.baseA), dimensione.min, dimensione.max);
+          const latoB = dimensione.tipo === 'stampo'
+            ? validaMisuraFormato(scelta?.dimB ?? String(dimensione.baseB ?? 1), dimensione.min, dimensione.max)
+            : undefined;
+          const messaggio = `Inserisci una misura tra ${dimensione.min} e ${dimensione.max} ${dimensione.unita}.`;
+          if (latoA === null) erroriCalcolo[`prodotto-${riga.id}-dim-a`] = messaggio;
+          if (latoB === null) erroriCalcolo[`prodotto-${riga.id}-dim-b`] = messaggio;
+          if (latoA === null || latoB === null) return riga;
           const numero = (valore: number) => valore.toLocaleString('it-IT', { maximumFractionDigits: 2 });
           const misura = dimensione.tipo === 'stampo'
-            ? `${numero(latoA)} × ${numero(latoB!)} ${dimensione.unita}`
-            : `diametro ${numero(latoA)} ${dimensione.unita}`;
+            ? `${numero(latoA)}×${numero(latoB!)} ${dimensione.unita}`
+            : `Ø ${numero(latoA)} ${dimensione.unita}`;
           return { ...riga, misura };
         });
-        nuovo = calcolaPerProdotti(config, prodotti, opzioni);
+        if (Object.keys(erroriCalcolo).length) {
+          setErrori(erroriCalcolo);
+          if (proceduraGuidata && paginaApp === 4) vaiAPagina(3);
+          setAnnuncioCalcolo('Controlla le misure dei formati scelti.');
+          return;
+        }
+      }
+
+      if (modalita === 'prodotti') {
+        if (!soloDosi) nuovo = calcolaPerProdotti(config, prodotti, opzioni);
       } else if (modalita === 'panetti') {
         const esito = validaModalitaPanetti(
           valori.panetti.numeroPanetti,
@@ -453,13 +492,14 @@ export default function App({
         erroriCalcolo = esito.errori;
         if (!esito.valori) {
           setErrori(erroriCalcolo);
+          if (proceduraGuidata && paginaApp === 4) vaiAPagina(3);
           setAnnuncioCalcolo(
             'Calcolo non eseguito: controlla i campi evidenziati.',
           );
           return;
         }
 
-        nuovo = calcolaPerPanetti(
+        if (!soloDosi) nuovo = calcolaPerPanetti(
           config,
           esito.valori.numeroPanetti,
           esito.valori.pesoPanetto,
@@ -474,13 +514,14 @@ export default function App({
         erroriCalcolo = esito.errori;
         if (!esito.valori) {
           setErrori(erroriCalcolo);
+          if (proceduraGuidata && paginaApp === 4) vaiAPagina(3);
           setAnnuncioCalcolo(
             'Calcolo non eseguito: controlla i campi evidenziati.',
           );
           return;
         }
 
-        nuovo = calcolaPerTeglie(
+        if (!soloDosi) nuovo = calcolaPerTeglie(
           config,
           esito.valori.latoA,
           esito.valori.latoB,
@@ -510,6 +551,7 @@ export default function App({
 
         if (!esito.valori) {
           setErrori(erroriCalcolo);
+          if (proceduraGuidata && paginaApp === 4) vaiAPagina(3);
           setAnnuncioCalcolo(
             'Calcolo non eseguito: controlla i campi evidenziati.',
           );
@@ -518,13 +560,27 @@ export default function App({
 
         if (conStimaTeglie && (erroriCalcolo.latoA || erroriCalcolo.latoB)) {
           setErrori(erroriCalcolo);
+          if (proceduraGuidata && paginaApp === 4) vaiAPagina(3);
           setAnnuncioCalcolo(
             'Calcolo non eseguito: controlla la stima delle teglie.',
           );
           return;
         }
 
-        nuovo = calcolaPerFarina(
+        if (prodotti.length) {
+          const { pesoImpastoG, fattorePeso } = calcolaDaFarinaTotale(
+            config, esito.valori.farinaKg * 1000, opzioni,
+          );
+          const pesoScelto = prodotti.reduce((totale, riga) => totale + riga.quantita * riga.pesoG, 0);
+          if (pesoScelto - pesoImpastoG > 1e-7) {
+            const mancante = Math.ceil((pesoScelto - pesoImpastoG) / fattorePeso);
+            setErrori({ prodotti: `Mancano ${formattaGrammi(mancante)} di farina per i formati scelti.` });
+            if (proceduraGuidata && paginaApp === 4) vaiAPagina(3);
+            return;
+          }
+        }
+
+        if (!soloDosi) nuovo = calcolaPerFarina(
           config,
           esito.valori.farinaKg,
           ricetta.famiglia === 'diretto'
@@ -532,7 +588,14 @@ export default function App({
             : esito.valori.pesoPanettoG,
           opzioni,
           stimaTeglia,
+          prodotti,
         );
+      }
+
+      if (!nuovo) {
+        setErrori({});
+        vaiAPagina(4);
+        return;
       }
 
       const vista = creaVistaRicetta(nuovo, nuovo.config);
@@ -580,6 +643,7 @@ export default function App({
     const nomeFile = creaNomeFile(risultato, config, adesso, tipo);
 
     inEsportazioneRef.current = true;
+    const richiesta = ++richiestaAnteprima.current;
     setEsportazione(tipo);
     setMessaggioEsportazione(null);
 
@@ -599,6 +663,8 @@ export default function App({
         blob = await jpgBlob(dati, SCALA_JPG, smartphone);
       }
 
+      if (richiesta !== richiestaAnteprima.current) return;
+
       if (anteprimaNellApp()) {
         apriNellApp(blob, nomeFile);
         return;
@@ -607,21 +673,26 @@ export default function App({
       if (anteprima) {
         URL.revokeObjectURL(anteprima.url);
       }
+      const url = URL.createObjectURL(blob);
       setAnteprima({
         tipo,
         nome: nomeFile,
         blob,
-        url: URL.createObjectURL(blob),
+        url,
+        ottimizza: smartphone,
       });
     } catch (errore) {
+      if (richiesta !== richiestaAnteprima.current) return;
       console.error(`Errore durante l’esportazione ${tipo}`, errore);
       setMessaggioEsportazione({
         tipo: 'errore',
         testo: 'Non è stato possibile creare il file. Riprova.',
       });
     } finally {
-      inEsportazioneRef.current = false;
-      setEsportazione(null);
+      if (richiesta === richiestaAnteprima.current) {
+        inEsportazioneRef.current = false;
+        setEsportazione(null);
+      }
     }
   }
 
@@ -665,7 +736,11 @@ export default function App({
         esportazione={esportazione}
         messaggio={messaggioEsportazione}
         ottimizzaSmartphone={ottimizzaSmartphone}
-        onCambiaOttimizzaSmartphone={setOttimizzaSmartphone}
+        onCambiaOttimizzaSmartphone={(valore) => {
+          setOttimizzaSmartphone(valore);
+          // Con l'anteprima aperta il file si rifà con l'altro impaginato.
+          if (anteprima) void esporta(anteprima.tipo, valore);
+        }}
         onEsporta={esporta}
         anteprima={anteprima}
         onSalvaAnteprima={salvaAnteprima}
@@ -708,21 +783,12 @@ export default function App({
             passi={passiGuidati}
             attivo={indiceGuidato}
             onIndietro={() => vaiAPagina(2)}
-            onAvanti={() => vaiAPagina(4)}
+            onAvanti={() => calcola(true)}
           />
         </>
       ) : null}
 
-      {paginaApp === 4 ? (
-        <>
-          {moduloCalcolo('personalizza')}
-          <NavigazionePassi
-            passi={passiGuidati}
-            attivo={indiceGuidato}
-            onIndietro={() => vaiAPagina(3)}
-          />
-        </>
-      ) : null}
+      {paginaApp === 4 ? moduloCalcolo('personalizza') : null}
 
       {paginaApp === PAGINA_RISULTATO && esitoCalcolo ? (
         <>

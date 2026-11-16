@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { AnteprimaExport } from '../AnteprimaExport';
 import { Pulsante } from './Pulsante';
 
@@ -6,9 +7,13 @@ import { Pulsante } from './Pulsante';
  * -----------------------------------
  * Prima esistevano due versioni dello stesso riquadro: una nel calcolatore
  * nuovo e una nel pannello risultato delle ricette. Avevano testi, spinner e
- * spaziature leggermente diversi. Ora il riquadro è questo e basta: casella
- * «Ottimizza per smartphone», due pulsanti JPG e PDF con gli stessi nomi, la
- * stessa anteprima e lo stesso messaggio di errore ovunque.
+ * spaziature leggermente diversi. Ora il riquadro è questo e basta: due pulsanti
+ * JPG e PDF con gli stessi nomi, la stessa anteprima e lo stesso messaggio di
+ * errore ovunque.
+ *
+ * La scelta fra foglio da computer e foglio da smartphone non sta più qui: sta
+ * dentro l'anteprima, dove si vede il risultato e si passa da una versione
+ * all'altra senza chiudere nulla.
  */
 
 export type FormatoEsportazione = 'jpg' | 'pdf';
@@ -17,6 +22,8 @@ export interface AnteprimaFile {
   tipo: FormatoEsportazione;
   nome: string;
   url: string;
+  /** Impaginato del file che si sta guardando. */
+  ottimizza: boolean;
 }
 
 export interface MessaggioEsporta {
@@ -39,7 +46,6 @@ function Spinner({ scuro = false }: { scuro?: boolean }) {
 
 export function BloccoEsporta({
   esportando,
-  ottimizza,
   onOttimizza,
   onEsporta,
   anteprima,
@@ -51,7 +57,6 @@ export function BloccoEsporta({
 }: {
   /** Formato in preparazione, o null quando è tutto fermo. */
   esportando: FormatoEsportazione | null;
-  ottimizza: boolean;
   onOttimizza: (valore: boolean) => void;
   onEsporta: (formato: FormatoEsportazione) => void;
   anteprima: AnteprimaFile | null;
@@ -62,20 +67,11 @@ export function BloccoEsporta({
   errore?: string | null;
   messaggio?: MessaggioEsporta | null;
 }) {
+  const bloccoRef = useRef<HTMLDivElement>(null);
   const disabilitato = bloccato || esportando !== null;
 
   return (
-    <div className="grid gap-2.5">
-      <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-xl border border-bordo/70 bg-carta/35 px-3 py-2 text-sm font-medium text-inchiostro">
-        <span>Ottimizza per smartphone</span>
-        <input
-          type="checkbox"
-          checked={ottimizza}
-          onChange={(evento) => onOttimizza(evento.target.checked)}
-          className="h-5 w-5 accent-terracotta"
-        />
-      </label>
-
+    <div ref={bloccoRef} className="grid gap-2.5">
       <div className="grid gap-2.5 sm:grid-cols-2">
         <Pulsante
           variante="secondario"
@@ -129,8 +125,17 @@ export function BloccoEsporta({
           tipo={anteprima.tipo}
           nome={anteprima.nome}
           url={anteprima.url}
+          ottimizza={anteprima.ottimizza}
+          onOttimizza={onOttimizza}
+          inPreparazione={esportando !== null}
           onSalva={onSalva}
-          onChiudi={onChiudi}
+          onChiudi={() => {
+            onChiudi();
+            requestAnimationFrame(() => {
+              const tasti = bloccoRef.current?.querySelectorAll<HTMLButtonElement>('button');
+              tasti?.[anteprima.tipo === 'jpg' ? 0 : 1]?.focus();
+            });
+          }}
         />
       ) : null}
 

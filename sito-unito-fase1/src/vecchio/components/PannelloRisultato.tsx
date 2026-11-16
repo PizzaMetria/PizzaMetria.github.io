@@ -26,6 +26,8 @@ interface Props {
     tipo: TipoEsportazione;
     nome: string;
     url: string;
+    /** Impaginato del file in anteprima: computer o smartphone. */
+    ottimizza: boolean;
   } | null;
   onSalvaAnteprima: () => void;
   onChiudiAnteprima: () => void;
@@ -69,7 +71,9 @@ export function PannelloRisultato({
           >
             {titolo ?? vista.nomeRicetta}
           </h2>
-          <p className="mt-1 text-sm text-inchiostro-tenue">{vista.resa}</p>
+          {vista.ripartizione.length === 0 ? (
+            <p className="mt-1 text-sm text-inchiostro-tenue">{vista.resa}</p>
+          ) : null}
         </div>
         <span className="rounded-full border border-bordo bg-carta/60 px-2.5 py-1 text-[11px] font-semibold text-inchiostro-tenue">
           {vista.modalitaEtichetta}
@@ -129,21 +133,18 @@ export function PannelloRisultato({
       {vista.ripartizione.length > 0 ? (
         <div className="mt-4 rounded-xl border border-bordo/70 bg-carta/40 px-3.5 py-3">
           <p className="font-serif text-sm font-bold text-inchiostro">
-            Ripartizione indicativa per formato
-          </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-inchiostro-tenue">
-            Con questa farina ottieni indicativamente:
+            Divisione per formato
           </p>
           <dl className="mt-2 space-y-1.5">
             {vista.ripartizione.map((voce) => (
               <div
                 key={voce.etichetta}
-                className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5"
+                className="flex items-baseline justify-between gap-2"
               >
-                <dt className="text-xs font-semibold text-inchiostro">
+                <dt className="min-w-0 break-words text-xs font-semibold text-inchiostro">
                   {voce.etichetta}
                 </dt>
-                <dd className="text-xs text-inchiostro-tenue tabular-nums">
+                <dd className="min-w-0 break-words text-right text-xs text-inchiostro-tenue tabular-nums">
                   {voce.valore}
                 </dd>
               </div>
@@ -155,7 +156,6 @@ export function PannelloRisultato({
       <div className="mt-4 border-t border-bordo/60 pt-4">
         <BloccoEsporta
           esportando={esportazione}
-          ottimizza={ottimizzaSmartphone}
           onOttimizza={onCambiaOttimizzaSmartphone}
           onEsporta={(formato) => onEsporta(formato, ottimizzaSmartphone)}
           bloccato={esportazioniBloccate}

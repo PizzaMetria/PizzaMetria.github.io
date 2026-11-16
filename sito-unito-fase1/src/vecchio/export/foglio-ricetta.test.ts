@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA, RICETTA_TUTTOFARE, opzioniIniziali, tipsRicetta } from '../config/ricette';
-import { calcolaPerPanetti, calcolaPerProdotti } from '../lib/calcolo';
+import { RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA, RICETTA_TUTTOFARE, PRODOTTI_TUTTOFARE, opzioniIniziali, tipsRicetta } from '../config/ricette';
+import { calcolaPerFarina, calcolaPerPanetti, calcolaPerProdotti, calcolaPerTeglie } from '../lib/calcolo';
 import { componiProcedimento } from '../lib/procedimento';
 import { creaVistaRicetta } from '../lib/vista';
 import { creaPdf } from '../../export/pdf';
@@ -86,10 +86,10 @@ describe('foglio della ricetta', () => {
     const pdf = new TextDecoder('latin1').decode(creaPdf(dati));
 
     expect(pdf.startsWith('%PDF-1.4')).toBe(true);
-    expect(pdf).toContain('(LE MIE RICETTE) Tj');
-    expect(pdf).toContain('(Parametri della ricetta) Tj');
-    expect(pdf).toContain('(Procedimento) Tj');
-    expect(pdf).toContain('(Consigli) Tj');
+    expect(pdf).toContain('(Le mie ricette) Tj');
+    expect(pdf).toContain('(PARAMETRI DELLA RICETTA) Tj');
+    expect(pdf).toContain('(PROCEDIMENTO) Tj');
+    expect(pdf).toContain('(CONSIGLI) Tj');
     expect(pdf).toContain('(Peso impasto) Tj');
     // Il procedimento completo non sta in una facciata sola.
     expect(pdf).toMatch(/\/Count [2-9]/);
@@ -111,11 +111,11 @@ it.each([RICETTA_CANOTTO, RICETTA_TEGLIA_BIGA])('integra il piano misto nel PDF 
   expect(foglio.marcia?.map((passo) => passo.orario?.ora)).toEqual(['20:00', '08:00']);
   expect(foglio.passi[0].titolo).toBe('Prepara la biga');
   const pdf = new TextDecoder('latin1').decode(creaPdf(foglio));
-  expect(pdf).toContain('(Procedimento) Tj');
-  const marcia = '(Tabella di marcia della biga) Tj';
+  expect(pdf).toContain('(PROCEDIMENTO) Tj');
+  const marcia = '(TABELLA DI MARCIA DELLA BIGA) Tj';
   expect(pdf).toContain(marcia);
   expect(pdf.indexOf(marcia)).toBeGreaterThan(pdf.indexOf('(Peso impasto) Tj'));
-  expect(pdf.indexOf(marcia)).toBeLessThan(pdf.indexOf('(Procedimento) Tj'));
+  expect(pdf.indexOf(marcia)).toBeLessThan(pdf.indexOf('(PROCEDIMENTO) Tj'));
   expect(pdf).not.toContain('poi 24 ore in frigorifero');
   if (ricetta === RICETTA_TEGLIA_BIGA) {
     const mobile = new TextDecoder('latin1').decode(creaPdf(foglio, true));
@@ -133,4 +133,74 @@ it('mantiene le misure accanto alle rispettive focacce nel PDF del Tuttofare', (
   const pdf = new TextDecoder('latin1').decode(creaPdf(datiFoglioRicetta(risultato, ricetta)));
   expect(pdf).toContain('diametro 24 cm');
   expect(pdf).toContain('30 × 50 cm');
+});
+
+
+it('unisce numero e dimensioni delle teglie nello stesso riquadro del PDF', () => {
+  for (const [numero, resa] of [[1, '1 teglia'], [2, '2 teglie']] as const) {
+    const risultato = calcolaPerTeglie(RICETTA_TEGLIA_BIGA, 30, 40, numero);
+    const pdf = new TextDecoder('latin1').decode(creaPdf(datiFoglioRicetta(risultato, RICETTA_TEGLIA_BIGA), true));
+    expect(pdf).toContain(`(${resa} da 30 × 40 cm ·`);
+    expect(pdf).toContain('(RESA) Tj');
+    expect(pdf).not.toContain('(Numero di teglie) Tj');
+    expect(pdf).not.toContain('(Dimensioni della teglia) Tj');
+    expect(pdf).toContain('di impasto per teglia');
+  }
+});
+
+it.each([false, true])('stampa tutti gli ingredienti e il totale in prima pagina (smartphone: %s)', (stretto) => {
+  const misto = calcolaPerProdotti(RICETTA_TUTTOFARE, PRODOTTI_TUTTOFARE.map((prodotto) => ({
+    id: prodotto.id,
+    quantita: 3,
+    pesoG: prodotto.pesoBaseG,
+  })));
+  for (const foglio of [
+    datiFoglioRicetta(calcolaPerPanetti(RICETTA_CANOTTO, 3, 280), RICETTA_CANOTTO),
+    datiFoglioRicetta(misto, RICETTA_TUTTOFARE),
+  ]) {
+    const pdf = new TextDecoder('latin1').decode(creaPdf(foglio, stretto));
+    const prima = /\nstream\n([\s\S]*?)\nendstream/.exec(pdf)?.[1] ?? '';
+    const titoloResa = foglio.formati ? '(Divisione per formato) Tj' : '(RESA) Tj';
+    expect(prima).toContain(titoloResa);
+    expect(prima).toContain('(INGREDIENTI) Tj');
+    expect(prima).toContain('(Peso impasto) Tj');
+    expect(prima.indexOf(titoloResa)).toBeLessThan(prima.indexOf('(INGREDIENTI) Tj'));
+    expect(pdf.split(titoloResa)).toHaveLength(2);
+    expect(pdf).not.toContain('(QUANTITÀ) Tj');
+  }
+});
+
+it('usa tutta la riga per le misure della teglia nel PDF per smartphone', () => {
+  const etichetta = 'Teglia rettangolare per focaccia (30 × 50 cm)';
+  const valore = '2 × 665 g = 1.330 g';
+  const pdf = new TextDecoder('latin1').decode(creaPdf({
+    ...dati,
+    formati: { titolo: 'Divisione per formato', voci: [{ etichetta, valore }] },
+  }, true));
+
+  expect(pdf).toContain('(Teglia rettangolare per focaccia \\(30 × 50 cm\\)) Tj');
+  expect(pdf).toContain(`(${valore}) Tj`);
+});
+
+it('mostra i cinque formati della Tuttofare nel riquadro in entrambe le modalità', () => {
+  const ricetta = RICETTA_TUTTOFARE;
+  const prodotti = PRODOTTI_TUTTOFARE.map(({ id, pesoBaseG }) => ({
+    id,
+    quantita: 1,
+    pesoG: pesoBaseG,
+  }));
+
+  for (const risultato of [
+    calcolaPerFarina(ricetta, 1, null, undefined, null, prodotti),
+    calcolaPerProdotti(ricetta, prodotti),
+  ]) {
+    const foglio = datiFoglioRicetta(risultato, ricetta);
+    expect(foglio.sottotitolo).toBe(ricetta.descrizione);
+    expect(foglio.intestazionePdf?.resa).toBeUndefined();
+    expect(foglio.formati?.voci.filter(({ etichetta }) => !['Peso complessivo', 'Avanzo totale'].includes(etichetta))).toHaveLength(5);
+
+    const pdf = new TextDecoder('latin1').decode(creaPdf(foglio));
+    expect(pdf).toContain('(Divisione per formato) Tj');
+    expect(pdf).not.toMatch(/\b\d+ format[oi]\b/);
+  }
 });

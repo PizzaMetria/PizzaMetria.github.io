@@ -63,6 +63,12 @@ export function leggiNumeroDecimale(grezzo: string): number | null {
   return Number.isFinite(numero) ? numero : null;
 }
 
+/** Una dimensione digitata deve rientrare nei limiti del formato. */
+export function validaMisuraFormato(grezzo: string, minimo: number, massimo: number): number | null {
+  const valore = leggiNumeroDecimale(grezzo);
+  return valore !== null && valore >= minimo && valore <= massimo ? valore : null;
+}
+
 /** Legge un intero positivo/zero (la positività è validata a parte). */
 export function leggiIntero(grezzo: string): number | null {
   const numero = leggiNumeroDecimale(grezzo);

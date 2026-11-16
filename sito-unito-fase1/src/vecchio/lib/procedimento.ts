@@ -121,14 +121,13 @@ function pezzature(prodotti: readonly ProdottoScelto[]): string {
 
 /**
  * Divisione dell'impasto nel calcolatore misto. Con i formati scelti elenca le
- * pezzature; partendo dalla farina resta sul riferimento della ricetta, perché
- * i formati si decidono dopo.
+ * pezzature, oppure mostra le pezzature di riferimento.
  */
 function divisioneFormati(
   ricetta: RicettaConfig,
   risultato: RisultatoCalcolo,
 ): string {
-  if (risultato.modalita === 'prodotti') {
+  if (risultato.prodotti?.length) {
     return `Dividi l’impasto nelle pezzature scelte (${pezzature(
       risultato.prodotti ?? [],
     )}) e forma secondo i prodotti.`;

@@ -156,14 +156,11 @@ function creaResa(risultato: RisultatoCalcolo): string {
 
   if (risultato.modalita === 'prodotti') {
     const prodotti = risultato.prodotti ?? [];
-    const formati = prodotti.length;
     const totale = prodotti.reduce(
       (somma, prodotto) => somma + prodotto.subtotaleG,
       0,
     );
-    return `${formattaIntero(formati)} ${
-      formati === 1 ? 'formato' : 'formati'
-    } · ${formattaGrammi(totale)}`;
+    return formattaGrammi(totale);
   }
 
   const base = `Dosi per ${formattaNumero(farinaKg, 3)} kg di farina`;
@@ -525,8 +522,7 @@ function creaChiarimenti(
   if (ricetta.prodotti && ricetta.prodotti.length > 0) {
     if (risultato.modalita === 'farina') {
       return [
-        'Le dosi partono dalla farina indicata: la ripartizione tra i formati è indicativa.',
-        'La ripartizione usa le pezzature di riferimento di ciascun formato.',
+        'Le dosi usano tutta la farina indicata. Il peso non assegnato ai formati è l’avanzo totale.',
       ];
     }
 
@@ -692,22 +688,18 @@ function creaParametriTecnici(
  * rapportato alle pezzature di riferimento della ricetta.
  */
 function creaRipartizione(risultato: RisultatoCalcolo): VoceVista[] {
-  return (risultato.prodotti ?? []).map((prodotto) => ({
-    etichetta: prodotto.nome,
-    valore:
-      prodotto.quantita === 0
-        ? `Impasto insufficiente per un pezzo da ${formattaGrammi(prodotto.pesoG)}`
-        : [
-            `${formattaIntero(prodotto.quantita)} ${
-              prodotto.quantita === 1 ? 'pezzo' : 'pezzi'
-            } da ${formattaGrammi(prodotto.pesoG)}`,
-            (prodotto.residuoG ?? 0) >= 1
-              ? `avanzo ${formattaGrammi(prodotto.residuoG ?? 0)}`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(' · '),
-  }));
+  const voci = (risultato.prodotti ?? []).map((prodotto) => {
+    const nome = prodotto.id === 'bauletti' ? 'Pane in cassetta' : prodotto.nome;
+    return {
+      etichetta: prodotto.misura ? `${nome} (${prodotto.misura})` : nome,
+      valore: `${formattaIntero(prodotto.quantita)} pz. · ${formattaGrammi(prodotto.pesoG)}`,
+    };
+  });
+  const avanzo = risultato.residuoG ?? 0;
+  if (voci.length && risultato.modalita === 'farina' && avanzo >= 0.5) {
+    voci.push({ etichetta: 'Avanzo totale', valore: formattaGrammi(avanzo) });
+  }
+  return voci;
 }
 
 /** Sezione B: quantità della specifica esportazione, così com'è stata calcolata. */
@@ -744,11 +736,7 @@ function creaQuantitaEsportazione(risultato: RisultatoCalcolo): VoceVista[] {
   }
 
   if ((risultato.prodotti ?? []).length > 0) {
-    // Modalità farina del calcolatore misto: la ripartizione tra i formati è
-    // indicativa e usa le pezzature di riferimento della ricetta.
-    for (const voce of creaRipartizione(risultato)) {
-      voci.push({ etichetta: `${voce.etichetta} (indicativo)`, valore: voce.valore });
-    }
+    voci.push(...creaRipartizione(risultato));
   } else if (risultato.modalita === 'teglie' && risultato.teglie) {
     voci.push(
       {

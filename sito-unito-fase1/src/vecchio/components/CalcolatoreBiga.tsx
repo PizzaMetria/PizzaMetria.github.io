@@ -1,5 +1,5 @@
 import { orarioFase } from '../../lib/orari';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { TipoEsportazione, TipoLievito } from '../types';
 import { calcolaBigaSola, oreTraDate } from '../lib/biga-sola';
 import { FRIGO, oreAmbienteSuggerite, stimaBigaMista } from '../lib/motore-biga';
@@ -8,7 +8,7 @@ import { giornoDi, orarioPredefinito, oraDi, spostaOrarioBiga } from '../lib/ora
 import { creaNomeFile } from '../lib/nomeFile';
 import { testoMaturazione } from '../lib/vista';
 import { useMediaQuery } from '../lib/useMediaQuery';
-import { NavigazionePassi } from '../../components/Passi';
+import { NavigazionePassi, PulsantePasso } from '../../components/Passi';
 import { SCALA_JPG, jpgBlob } from '../../export/foglio';
 import { datiFoglioRicetta } from '../export/foglio-ricetta';
 import {
@@ -66,15 +66,18 @@ const LIMITI = {
 const SOGLIA_GUIDATA = '(max-width: 1023px)';
 
 /** I passi del percorso guidato: gli stessi nomi del calcolatore delle pizze. */
-const PASSI = ['Scegli le dosi', 'Quando la vuoi', 'Il tuo impasto'];
+const PASSI = ['Dosi e tempi', 'Il tuo impasto'];
 
 /**
  * Il calcolatore della sola biga: farina, giorno e ora di impasto e di biga
  * pronta, temperature. Il motore decide idratazione e ripartizione fra
  * ambiente e frigorifero; scheda, PDF e JPG sono quelli del resto del sito.
  *
- * Sul telefono si compila un passo per volta — dosi, tempi, impasto — come
- * nelle ricette; sul desktop i tre riquadri restano uno sotto l'altro.
+ * Dosi e tempi stanno nello stesso riquadro: cambiare la temperatura
+ * dell'ambiente o del frigorifero si rifà subito vedere sulla biga, senza
+ * cambiare passo. Sul telefono si compila un passo per volta — dosi e tempi,
+ * impasto — come nelle ricette; sul desktop i riquadri restano uno sotto
+ * l'altro.
  */
 export function CalcolatoreBiga() {
   const [farina, setFarina] = useState('1');
@@ -86,14 +89,23 @@ export function CalcolatoreBiga() {
   const [temperatura, setTemperatura] = useState('20');
   const [temperaturaFrigo, setTemperaturaFrigo] = useState('4');
   const [lievito, setLievito] = useState<TipoLievito>('fresco');
-  const [smartphone, setSmartphone] = useState(false);
+  // Il foglio parte impaginato come il dispositivo da cui si guarda il sito.
+  const [smartphone, setSmartphone] = useState(
+    () =>
+      typeof navigator !== 'undefined' &&
+      /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent),
+  );
   const [esportazione, setEsportazione] = useState<TipoEsportazione | null>(null);
   const [anteprima, setAnteprima] = useState<{
     tipo: TipoEsportazione;
     nome: string;
     url: string;
     blob: Blob;
+    /** L'impaginato del file che si sta guardando. */
+    ottimizza: boolean;
   } | null>(null);
+  // Una rigenerazione in corso non deve riaprire l'anteprima chiusa nel frattempo.
+  const richiestaAnteprima = useRef(0);
 
   const guidato = useMediaQuery(SOGLIA_GUIDATA);
   const [passo, setPasso] = useState(0);
@@ -104,9 +116,13 @@ export function CalcolatoreBiga() {
   }
 
   function chiudiAnteprima() {
+    richiestaAnteprima.current += 1;
     if (anteprima) {
       URL.revokeObjectURL(anteprima.url);
     }
+    // Chiudere mentre il file si rigenera scarta la richiesta: lo stato «sto
+    // preparando» va spento qui, altrimenti i due tasti restano disabilitati.
+    setEsportazione(null);
     setAnteprima(null);
   }
   const [messaggio, setMessaggio] = useState<MessaggioEsportazione | null>(null);
@@ -147,6 +163,7 @@ export function CalcolatoreBiga() {
   async function esporta(tipo: TipoEsportazione, ottimizza: boolean) {
     if (!pianoValido) return;
     setEsportazione(tipo);
+    const richiesta = ++richiestaAnteprima.current;
     setMessaggio(null);
 
     try {
@@ -156,7 +173,7 @@ export function CalcolatoreBiga() {
       // Anteprima come nel resto del sito: non si scarica da solo, e il foglio
       // è lo stesso del resto del sito.
       await document.fonts.ready;
-      const dati = { ...datiFoglioRicetta(risultato, config, adesso, 'PREFERMENTO'), note: [] };
+      const dati = { ...datiFoglioRicetta(risultato, config, adesso, 'Calcola il prefermento'), note: [] };
       let blob: Blob;
       if (tipo === 'pdf') {
         // Il motore dei PDF arriva solo quando serve: all'apertura del sito
@@ -190,11 +207,17 @@ export function CalcolatoreBiga() {
       if (anteprima) {
         URL.revokeObjectURL(anteprima.url);
       }
+      const url = URL.createObjectURL(blob);
+      if (richiesta !== richiestaAnteprima.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
       setAnteprima({
         tipo,
         nome: nomeFile,
         blob,
-        url: URL.createObjectURL(blob),
+        url,
+        ottimizza,
       });
     } catch (errore) {
       console.error('Errore durante l’esportazione della biga', errore);
@@ -203,7 +226,7 @@ export function CalcolatoreBiga() {
         testo: 'Non è stato possibile creare il file. Riprova.',
       });
     } finally {
-      setEsportazione(null);
+      if (richiesta === richiestaAnteprima.current) setEsportazione(null);
     }
   }
 
@@ -403,6 +426,17 @@ export function CalcolatoreBiga() {
     </section>
   );
 
+  /**
+   * Dosi e tempi insieme: la temperatura si muove e la biga che ne esce —
+   * idratazione, maturazione, orari — si aggiorna nella stessa schermata.
+   */
+  const moduloScelte = (
+    <div className="grid min-w-0 gap-4">
+      {moduloDosi}
+      <div className="min-w-0 border-t border-bordo/70 pt-4">{moduloTempi}</div>
+    </div>
+  );
+
   const esitoBiga = (
     <PannelloRisultato
       risultato={risultato}
@@ -412,7 +446,10 @@ export function CalcolatoreBiga() {
       esportazione={esportazione}
       messaggio={messaggio}
       ottimizzaSmartphone={smartphone}
-      onCambiaOttimizzaSmartphone={setSmartphone}
+      onCambiaOttimizzaSmartphone={(valore) => {
+        setSmartphone(valore);
+        if (anteprima) void esporta(anteprima.tipo, valore);
+      }}
       onEsporta={esporta}
       anteprima={anteprima}
       onSalvaAnteprima={salvaAnteprima}
@@ -424,9 +461,8 @@ export function CalcolatoreBiga() {
     <div id="passi-biga" className="grid min-w-0 gap-4 scroll-mt-24">
       {guidato ? (
         <>
-          {passo === 0 ? moduloDosi : null}
-          {passo === 1 ? moduloTempi : null}
-          {passo === 2 && pianoValido ? esitoBiga : null}
+          {passo === 0 ? moduloScelte : null}
+          {passo === 1 && pianoValido ? esitoBiga : null}
           <NavigazionePassi
             passi={PASSI}
             attivo={passo}
@@ -434,15 +470,26 @@ export function CalcolatoreBiga() {
             onAvanti={
               passo === PASSI.length - 1 ? undefined : () => vaiAlPasso(passo + 1)
             }
-            bloccaAvanti={passo === 1 && !pianoValido}
-            etichettaAvanti={passo === 1 ? 'Risultato' : 'Avanti'}
+            bloccaAvanti={passo === 0 && !pianoValido}
+            etichettaAvanti={passo === 0 ? 'Risultato' : 'Avanti'}
           />
         </>
       ) : (
         <>
-          {moduloDosi}
-          {moduloTempi}
-          {pianoValido ? esitoBiga : null}
+          {moduloScelte}
+          <div className="flex justify-end">
+            <PulsantePasso
+              etichetta="Risultato"
+              disabilitato={!pianoValido}
+              onClick={() => {
+                setPasso(1);
+                requestAnimationFrame(() => {
+                  document.getElementById('risultato-titolo')?.scrollIntoView({ block: 'start' });
+                });
+              }}
+            />
+          </div>
+          {passo === 1 && pianoValido ? esitoBiga : null}
         </>
       )}
     </div>

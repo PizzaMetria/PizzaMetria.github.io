@@ -27,7 +27,6 @@ import {
   apriNellApp,
 } from './lib/anteprima';
 import { scaricaBlob } from './lib/download';
-import { rasterizzaSvg } from './lib/immagine';
 import type { DatiFoglio } from './export/foglio';
 import { nomeFoglio } from './export/nomeFile';
 import {
@@ -416,8 +415,6 @@ export default function App({
   // sola, con tutti i riquadri in vista, come nel progetto vecchio.
   const guidato = useMediaQuery('(max-width: 1023px)');
   const [menuAperto, setMenuAperto] = useState(false);
-  const graficoRef = useRef<SVGSVGElement>(null);
-  const forzaRef = useRef<SVGSVGElement>(null);
   const [esportando, setEsportando] = useState<'jpg' | 'pdf' | null>(null);
   // Il file preparato resta qui finché l'utente non decide: si può guardare e
   // chiudere senza salvarlo, oppure salvarlo con il pulsante.
@@ -426,7 +423,12 @@ export default function App({
     nome: string;
     url: string;
     blob: Blob;
+    /** L'impaginato del file che si sta guardando, non quello desiderato. */
+    ottimizza: boolean;
   } | null>(null);
+  // Ogni richiesta di file ha un numero: se l'utente chiude l'anteprima mentre
+  // il file si rifà, il risultato che arriva dopo si butta via.
+  const richiestaAnteprima = useRef(0);
   // Come nel vecchio sito: il foglio si può stringere per leggerlo sul telefono.
   // Il foglio «stretto» è pensato per il telefono: lì parte già acceso, sul
   // desktop resta spento (il PDF esce in A4). La scelta resta modificabile.
@@ -963,7 +965,11 @@ export default function App({
     });
   }
 
-  async function esporta(formato: 'jpg' | 'pdf', soloIngredienti = false) {
+  async function esporta(
+    formato: 'jpg' | 'pdf',
+    // L'anteprima può chiedere l'altro impaginato senza toccare il resto.
+    ottimizza = ottimizzaSmartphone,
+  ) {
     // Il foglio prende i grammi dal risultato e il tipo di lievito dal modulo:
     // con dati modificati e non ricalcolati le due cose non coinciderebbero (il
     // PDF direbbe «secco» accanto ai grammi del fresco). Meglio fermarsi qui.
@@ -973,13 +979,12 @@ export default function App({
       return;
     }
 
-    const completo = preparaFoglio();
-    if (!completo) return;
-    // «Salva ingredienti» lascia fuori il procedimento: restano dosi e resa.
-    const dati = soloIngredienti ? { ...completo, passi: [], note: [] } : completo;
+    const dati = preparaFoglio();
+    if (!dati) return;
 
     setErroreExport(null);
     setEsportando(formato);
+    const richiesta = ++richiestaAnteprima.current;
 
     try {
       // Senza i font caricati il canvas ripiegherebbe sui caratteri di sistema.
@@ -993,19 +998,21 @@ export default function App({
         // Il motore dei PDF arriva solo quando serve: all'apertura del sito
         // non pesa sul telefono.
         const { pdfBlob } = await import('./export/pdf');
-        // Ogni grafico può usare il ripiego vettoriale indipendentemente dall'altro.
-        const [forza, attivita] = await Promise.all([
-          forzaRef.current ? rasterizzaSvg(forzaRef.current).catch(() => null) : null,
-          graficoRef.current ? rasterizzaSvg(graficoRef.current).catch(() => null) : null,
-        ]);
-        const grafici = { forza, attivita };
-        blob = pdfBlob({ ...dati, grafici }, ottimizzaSmartphone);
+        blob = pdfBlob(dati, ottimizza);
       } else {
-        blob = await jpgBlob(dati, SCALA_JPG, ottimizzaSmartphone);
+        blob = await jpgBlob(dati, SCALA_JPG, ottimizza);
       }
 
       if (anteprimaNellApp()) {
         apriNellApp(blob, nome);
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      // Anteprima chiusa (o altra richiesta partita) mentre il file si faceva:
+      // il risultato non si mostra più.
+      if (richiesta !== richiestaAnteprima.current) {
+        URL.revokeObjectURL(url);
         return;
       }
 
@@ -1016,12 +1023,16 @@ export default function App({
         tipo: formato,
         nome,
         blob,
-        url: URL.createObjectURL(blob),
+        url,
+        ottimizza,
       });
     } catch (errore) {
       setErroreExport(errore instanceof Error ? errore.message : 'Esportazione non riuscita.');
     } finally {
-      setEsportando(null);
+      // Solo la richiesta più recente spegne lo stato «sto preparando»: una
+      // richiesta vecchia che finisce dopo non deve riabilitare «Salva»
+      // mentre l'altra sta ancora lavorando.
+      if (richiesta === richiestaAnteprima.current) setEsportando(null);
     }
   }
 
@@ -1031,9 +1042,15 @@ export default function App({
   }
 
   function chiudiAnteprima() {
+    // Una rigenerazione ancora in corso non deve riaprire l'anteprima.
+    richiestaAnteprima.current += 1;
     if (anteprima) {
       URL.revokeObjectURL(anteprima.url);
     }
+    // La richiesta scartata non arriverà mai al `finally` che spegne «sto
+    // preparando»: se non lo spegnessimo qui, chiudendo l'anteprima mentre il
+    // file si rigenera i tasti JPG e PDF resterebbero spenti fino al ricarico.
+    setEsportando(null);
     setAnteprima(null);
   }
 
@@ -1056,7 +1073,7 @@ export default function App({
         ]} />
         {daRicalcolare ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-avviso-tenue p-2 text-xs" role="status">
-            <span>Dosi dell’ultimo calcolo. I dati del modulo sono cambiati.</span>
+            <span>Hai cambiato i dati. Queste dosi sono del calcolo precedente.</span>
             <button type="button" onClick={confermaCalcolo} className="rounded-md border border-bordo px-3 py-2 font-semibold">Ricalcola</button>
           </div>
         ) : null}
@@ -1105,9 +1122,12 @@ export default function App({
     <Card titolo="La tua ricetta">
       <BloccoEsporta
         esportando={esportando}
-        ottimizza={ottimizzaSmartphone}
-        onOttimizza={setOttimizzaSmartphone}
-        onEsporta={(formato) => esporta(formato, formato === 'jpg')}
+        onOttimizza={(valore) => {
+          setOttimizzaSmartphone(valore);
+          // L'anteprima aperta si rifà subito con l'altro impaginato.
+          if (anteprima) void esporta(anteprima.tipo, valore);
+        }}
+        onEsporta={(formato) => esporta(formato)}
         bloccato={daRicalcolare}
         messaggio={
           daRicalcolare ? { tipo: 'errore' as const, testo: MESSAGGIO_DATI_CAMBIATI } : null
@@ -1552,21 +1572,21 @@ export default function App({
               {tabellaMarcia}
 
               <Card titolo="Attività e temperatura">
-                <Grafico svgRef={graficoRef} curva={r.curva} fasce={r.fasce} oreTotali={oreTotaliGrafico} />
+                <Grafico curva={r.curva} fasce={r.fasce} oreTotali={oreTotaliGrafico} />
               </Card>
 
               {cardEsporta}
             </>
           ) : (
             <div className="space-y-4">
-              <Card titolo="Calcola impasto">
+              <Card titolo="Dosi e resa">
                 <button
                   type="button"
                   onClick={confermaCalcolo}
                   disabled={farinaNonValida || (!facile && esito.mixNonValido)}
                   className="flex min-h-12 w-full items-center justify-center rounded-xl border border-terracotta/40 bg-transparent px-5 py-3.5 text-base font-bold text-oro-chiaro transition-all hover:-translate-y-px hover:border-terracotta/70 hover:bg-terracotta/10 active:translate-y-0"
                 >
-                  Calcola impasto
+                  Risultato
                 </button>
               </Card>
               {problemi.length > 0 ? (
@@ -2067,7 +2087,7 @@ export default function App({
                   <>
                     <CampoNumero
                       id="ore-ta-prima"
-                      label="Ore a TA prima"
+                      label="Ore a temperatura ambiente prima del frigo"
                       unit="h"
                       value={oreTaPrima}
                       onChange={setOreTaPrima}
@@ -2093,7 +2113,7 @@ export default function App({
                     />
                     <div className="min-w-0 rounded-xl border border-bordo bg-crema px-3.5 py-2.5">
                       <p className="text-sm font-semibold text-inchiostro">
-                        Ore a TA dopo il frigo
+                        Ore a temperatura ambiente dopo il frigo
                       </p>
                       <p className="font-serif text-xl tabular-nums text-oro-chiaro">
                         {ore(Math.max(0, esito.taDopo))}{' '}
@@ -2253,8 +2273,7 @@ export default function App({
             {daRicalcolare && !r ? (
               <Card titolo="Dati cambiati">
                 <p className="text-sm leading-relaxed text-inchiostro-tenue">
-                  Hai modificato qualcosa: le dosi qui sotto sono quelle del
-                  calcolo precedente.
+                  Hai modificato i dati. Premi «Ricalcola» per ottenere le nuove dosi.
                 </p>
                 <button
                   type="button"
@@ -2268,7 +2287,7 @@ export default function App({
             ) : null}
 
             {calcolo === null ? (
-              <Card titolo="Calcola impasto">
+              <Card titolo="Dosi e resa">
                 <p className="text-sm leading-relaxed text-inchiostro-tenue">
                   Controlla i dati e premi il pulsante: dosi, tempi e procedimento
                   compaiono qui.
@@ -2279,7 +2298,7 @@ export default function App({
                   disabled={farinaNonValida || (!facile && esito.mixNonValido)}
                   className="flex min-h-12 w-full items-center justify-center rounded-xl border border-terracotta/40 bg-transparent px-5 py-3.5 text-base font-bold text-oro-chiaro transition-all hover:-translate-y-px hover:border-terracotta/70 hover:bg-terracotta/10 active:translate-y-0"
                 >
-                  Calcola impasto
+                  Risultato
                 </button>
               </Card>
             ) : problemi.length > 0 ? (
@@ -2398,7 +2417,6 @@ export default function App({
                   </p>
                   <div className="mt-2">
                     <GraficoForza
-                      svgRef={forzaRef}
                       consigliato={r.forzaConsigliata}
                       efficace={r.wEfficace}
                       giudizio={r.giudizioForza}
@@ -2463,7 +2481,7 @@ export default function App({
                   }
                 >
                   <Grafico
-                    svgRef={graficoRef}
+                   
                     curva={r.curva}
                     fasce={r.fasce}
                     oreTotali={oreTotaliGrafico}

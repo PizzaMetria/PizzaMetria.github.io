@@ -2,10 +2,12 @@ import type { ConfigImpasto, ConfigSpessore } from '../types';
 
 /**
  * Impasti diretti. I valori di partenza sono quelli classici: la verace sta
- * sul 62%, la contemporanea e la teglia sul 75% (alta idratazione), la teglia
- * con olio e un filo di malto.
+ * sul 62%, la contemporanea sul 70%, la teglia sul 75% con olio e un filo di
+ * malto.
  *
- * La teglia sta al 75% perché è l'idratazione a cui sono tarate le sue
+ * La contemporanea nasce al 70%: è l'idratazione con cui la ricetta è pensata,
+ * abbastanza alta da dare un cornicione alveolato e ancora gestibile a mano.
+ * Il 75% resta per la teglia, perché è l'idratazione a cui sono tarate le sue
  * mini-ricette: al 70% lo stesso programma 2+18+4 chiede W 288 invece di 300,
  * e la fascia della mini-ricetta non coinciderebbe più con il punto.
  *
@@ -36,9 +38,11 @@ export const IMPASTI: readonly ConfigImpasto[] = [
     nomeBreve: 'Tonda contemporanea',
     sottotitolo:
       'Maggiore idratazione e lievitazione per ottenere un cornicione alto, alveolato e leggerissimo come una nuvola.',
-    idratazione: 75,
+    idratazione: 70,
     sale: 2.5,
-    olio: 0,
+    // Il 2% di olio è la dose della contemporanea: 19 g su un chilo di farina,
+    // abbastanza da ammorbidire la maglia senza ungere l'impasto.
+    olio: 2,
     malto: 0,
     // La contemporanea è più idratata e sta su un cornicione più alto: il
     // panetto è più grande di quello della verace (280 contro 250 g).

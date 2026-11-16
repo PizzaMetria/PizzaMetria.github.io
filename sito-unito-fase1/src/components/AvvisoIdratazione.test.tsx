@@ -23,7 +23,7 @@ describe('avviso di idratazione a schermo', () => {
     );
 
     expect(html).toContain('Idratazione superiore all’intervallo consigliato per la Contemporanea');
-    expect(html).toContain('Intervallo consigliato: 65–78%.');
+    expect(html).toContain('Intervallo consigliato: 63–75%.');
     // Non è un errore: il calcolo prosegue.
     expect(html).toContain('role="status"');
   });

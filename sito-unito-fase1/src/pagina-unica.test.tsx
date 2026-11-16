@@ -25,18 +25,18 @@ describe('pagina unica', () => {
   });
 
   it('ha le tre voci: pizza, ricette di casa e biga', () => {
-    expect(html.indexOf('Calcola la tua Pizza')).toBeGreaterThan(-1);
-    expect(html.indexOf('Calcola la tua Pizza')).toBeLessThan(
+    expect(html.indexOf('Calcola la tua pizza')).toBeGreaterThan(-1);
+    expect(html.indexOf('Calcola la tua pizza')).toBeLessThan(
       html.indexOf('Le mie ricette'),
     );
     expect(html.indexOf('Le mie ricette')).toBeLessThan(
       html.indexOf('Calcola il prefermento'),
     );
     expect(html).toContain(
-      'Scegli tra Verace, Contemporanea o in Teglia e calcola il tuo impasto diretto.',
+      'Imposta dosi e tempi per Verace, Contemporanea o pizza in teglia.',
     );
     expect(html).toContain(
-      'già perfettamente bilanciate. Ti consiglio di usarle chiare e pronte così come sono.',
+      'Scegli una ricetta e segui il procedimento, dall’impasto alla cottura.',
     );
     expect(html).toContain(
       'Dai una spinta in più al tuo impasto con la gestione su misura dei prefermenti.',
@@ -98,7 +98,7 @@ describe('una ricetta sola alla volta', () => {
  * nome e descrizione della ricetta scelta al posto della categoria.
  */
 describe('testata della voce con la ricetta aperta', () => {
-  const categoria = { titolo: 'Calcola la tua Pizza', nota: 'Scegli la ricetta' };
+  const categoria = { titolo: 'Calcola la tua pizza', nota: 'Scegli la ricetta' };
   const chiuso = { diretta: null, bigaScelta: false, vecchia: null };
 
   it('mostra nome e descrizione di ognuna delle tre dirette', () => {
@@ -157,7 +157,7 @@ describe('testata della voce con la ricetta aperta', () => {
 describe('calcolatore della biga', () => {
   const html = renderToStaticMarkup(<CalcolatoreBiga />);
 
-  it('ha farina, orari e temperature, e le dosi della biga', () => {
+  it('ha farina, orari e temperature prima del risultato', () => {
     expect(html).toContain('Farina');
     // Giorno e ora, non solo l'ora: la biga può finire il giorno dopo.
     expect(html).toContain('Quando ti serve la biga?');
@@ -166,10 +166,8 @@ describe('calcolatore della biga', () => {
     expect(html).toContain('datetime-local');
     expect(html).toContain('Temperatura ambiente');
     expect(html).toContain('Lievito');
-    // Le dosi della sola biga, senza sale né olio.
-    expect(html).toContain('Farina totale');
-    expect(html).toContain('Idratazione');
-    expect(html).toContain('Biga pronta');
+    expect(html).toContain('>Risultato</button>');
+    expect(html).not.toContain('Farina totale');
     expect(html).not.toContain('Sale');
     expect(html).not.toContain('Olio');
   });
@@ -203,9 +201,10 @@ describe('calcolatore nella pagina unica', () => {
     expect(html).not.toContain('Tonda contemporanea');
     expect(html).not.toContain('Impasto diretto, dosi esatte');
     // Il calcolatore c'è: parte dai suoi passi, senza chiedere l'impasto, e
-    // aspetta «Calcola impasto» prima di mostrare dosi ed export.
+    // aspetta «Risultato» prima di mostrare dosi ed export.
     expect(html).toContain('Scegli le dosi');
-    expect(html).toContain('Calcola impasto');
+    expect(html).toContain('>Risultato</button>');
+    expect(html).not.toContain('Calcola impasto');
     expect(html).not.toContain('Salva ricetta completa');
   });
 });

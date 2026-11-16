@@ -15,7 +15,7 @@
  */
 
 // Il build sostituisce questa riga con la versione e gli asset effettivi.
-const BUILD = {"versione":"0d019392b134e23b","sito":["./assets/index-CsB_2WTh.js","./assets/index-DEmnpQ2z.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-BrMgIdAr.js","./assets/pdf-BK-nLYUI.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
+const BUILD = {"versione":"721e45c88b6abe6a","sito":["./assets/index-CmO3ZalP.js","./assets/index-zKT_HTUM.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-Dd6uNmb4.js","./assets/pdf-BxY5BhW-.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
 const CACHE = `pizzametria-${BUILD?.versione ?? 'dev'}`;
 const CACHE_PDF = `${CACHE}-pdf`;
 const ASSET_PDF = new Set((BUILD?.pdf ?? []).map(
@@ -48,26 +48,27 @@ self.addEventListener('install', (evento) => {
         } catch {
           // Gli asset restano recuperabili alla prima apertura online.
         }
-      })
-      .then(() => self.skipWaiting()),
+      }),
   );
 });
 
+self.addEventListener('message', (evento) => {
+  if (evento.data?.tipo === 'ATTIVA_AGGIORNAMENTO') evento.waitUntil(self.skipWaiting());
+});
+
 self.addEventListener('activate', (evento) => {
-  evento.waitUntil(
-    caches
-      .keys()
-      .then((chiavi) =>
-        Promise.all(
-          chiavi
-            // Solo le versioni vecchie di questo progetto: un'altra app sulla
-            // stessa origine ha diritto alla sua cache.
-            .filter((chiave) => chiave.startsWith(PREFISSO) && chiave !== CACHE && chiave !== CACHE_PDF)
-            .map((chiave) => caches.delete(chiave)),
-        ),
-      )
-      .then(() => self.clients.claim()),
-  );
+  evento.waitUntil((async () => {
+    // Una scheda aperta può ancora chiedere i chunk della build precedente.
+    // Se ci sono finestre, rimanda la pulizia alla prossima attivazione senza schede.
+    const finestre = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (!finestre.length) {
+      const chiavi = await caches.keys();
+      await Promise.all(chiavi
+        .filter((chiave) => chiave.startsWith(PREFISSO) && chiave !== CACHE && chiave !== CACHE_PDF)
+        .map((chiave) => caches.delete(chiave)));
+    }
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (evento) => {
@@ -97,7 +98,7 @@ self.addEventListener('fetch', (evento) => {
           }
           return risposta;
         })
-        .catch(() => caches.match('./index.html')),
+        .catch(() => caches.open(CACHE).then((cache) => cache.match('./index.html'))),
     );
     return;
   }

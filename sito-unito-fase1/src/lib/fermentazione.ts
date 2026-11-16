@@ -85,7 +85,7 @@ export function fattoreTemperatura(temperatura: number): number {
  * `esponenteAcqua` è negativo: più acqua, più velocità, meno lievito. È un
  * parametro del ramo e non una costante globale, perché l'effetto misurato a
  * temperatura ambiente (-1,2 sul riferimento, fra 55% e 80%) non descrive bene una
- * contemporanea che nasce al 75%: lì quell'esponente stava assorbendo la
+ * contemporanea che nasce al 70%: lì quell'esponente stava assorbendo la
  * differenza fra le ricette, non quella fra le acque.
  */
 export interface RamoDose {

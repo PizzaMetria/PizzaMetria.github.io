@@ -613,6 +613,7 @@ export function calcolaPerFarina(
   pesoPanettoG: number | null = null,
   opzioni: OpzioniRicetta = opzioniIniziali(ricetta),
   stimaTeglia: { latoA: number; latoB: number } | null = null,
+  righe: readonly RigaProdottoCalcolo[] = [],
 ): RisultatoCalcolo {
   richiediPositivo('La farina', farinaKg);
   if (pesoPanettoG !== null) {
@@ -641,27 +642,15 @@ export function calcolaPerFarina(
     );
   }
 
-  // Calcolatore misto partendo dalla farina: l'impasto ottenuto si rapporta
-  // alle pezzature di riferimento di ogni formato, con l'avanzo che ne resta.
-  const configurazione = ricetta.prodotti ?? [];
-  const prodotti: ProdottoScelto[] | undefined =
-    configurazione.length > 0
-      ? configurazione.map((prodotto) => {
-          const quantita = Math.floor(
-            base.pesoImpastoG / prodotto.pesoBaseG,
-          );
-          const subtotaleG = quantita * prodotto.pesoBaseG;
-
-          return {
-            id: prodotto.id,
-            nome: prodotto.nome,
-            quantita,
-            pesoG: prodotto.pesoBaseG,
-            subtotaleG,
-            residuoG: base.pesoImpastoG - subtotaleG,
-          };
-        })
-      : undefined;
+  const prodotti = righe.length ? preparaProdotti(ricetta, righe) : undefined;
+  const pesoProdottiG = prodotti?.reduce((totale, prodotto) => totale + prodotto.subtotaleG, 0);
+  if (pesoProdottiG !== undefined) {
+    const avanzo = base.pesoImpastoG - pesoProdottiG;
+    if (avanzo < -1e-7) {
+      throw new RangeError('La farina non basta per i formati scelti.');
+    }
+    residuoG = Math.max(0, avanzo);
+  }
 
   return {
     ...base,
@@ -683,6 +672,7 @@ export function calcolaPerFarina(
     pesoPerTegliaG: null,
     stimaTeglie,
     prodotti,
+    pesoProdottiG,
   };
 }
 
@@ -755,16 +745,10 @@ export interface RigaProdottoCalcolo {
   pesoG: number;
 }
 
-/**
- * Calcolatore misto: il peso complessivo dei formati scelti determina la farina
- * e quindi un unico impasto. Il peso per pezzo non è un limite culinario: si
- * controlla solo che sia un numero positivo.
- */
-export function calcolaPerProdotti(
+function preparaProdotti(
   ricetta: RicettaConfig,
   righe: readonly RigaProdottoCalcolo[],
-  opzioni: OpzioniRicetta = opzioniIniziali(ricetta),
-): RisultatoCalcolo {
+): ProdottoScelto[] {
   const configurazione = ricetta.prodotti;
   if (!configurazione || configurazione.length === 0) {
     throw new Error('Questa ricetta non prevede il calcolo per prodotti.');
@@ -775,7 +759,7 @@ export function calcolaPerProdotti(
     throw new RangeError('Indica almeno un prodotto.');
   }
 
-  const prodotti: ProdottoScelto[] = scelti.map((riga) => {
+  return scelti.map((riga) => {
     const prodotto = configurazione.find((voce) => voce.id === riga.id);
     if (!prodotto) {
       throw new Error(`Prodotto non previsto dalla ricetta: ${riga.id}.`);
@@ -795,6 +779,19 @@ export function calcolaPerProdotti(
     };
   });
 
+}
+
+/**
+ * Calcolatore misto: il peso complessivo dei formati scelti determina la farina
+ * e quindi un unico impasto. Il peso per pezzo non è un limite culinario: si
+ * controlla solo che sia un numero positivo.
+ */
+export function calcolaPerProdotti(
+  ricetta: RicettaConfig,
+  righe: readonly RigaProdottoCalcolo[],
+  opzioni: OpzioniRicetta = opzioniIniziali(ricetta),
+): RisultatoCalcolo {
+  const prodotti = preparaProdotti(ricetta, righe);
   const pesoProdottiG = prodotti.reduce(
     (totale, prodotto) => totale + prodotto.subtotaleG,
     0,

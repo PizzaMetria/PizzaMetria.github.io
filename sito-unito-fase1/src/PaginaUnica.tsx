@@ -21,13 +21,13 @@ const GRUPPI: readonly {
 }[] = [
   {
     id: 'nuovo',
-    titolo: 'Calcola la tua Pizza',
-    nota: 'Scegli tra Verace, Contemporanea o in Teglia e calcola il tuo impasto diretto.',
+    titolo: 'Calcola la tua pizza',
+    nota: 'Imposta dosi e tempi per Verace, Contemporanea o pizza in teglia.',
   },
   {
     id: 'vecchio',
     titolo: 'Le mie ricette',
-    nota: 'Tra diretti e indiretti: qui trovi le mie ricette preferite, già perfettamente bilanciate. Ti consiglio di usarle chiare e pronte così come sono.',
+    nota: 'Scegli una ricetta e segui il procedimento, dall’impasto alla cottura.',
   },
   {
     id: 'biga',

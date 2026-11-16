@@ -25,7 +25,7 @@ export function datiFoglioRicetta(
   ricetta: RicettaConfig,
   data: Date = new Date(),
   /** Testo in alto a destra: cambia per gruppo, la posizione è la stessa. */
-  occhiello = 'LE MIE RICETTE',
+  occhiello = 'Le mie ricette',
 ): DatiFoglio {
   const vista = creaVistaRicetta(risultato, ricetta);
   const lievito = risultato.ingredienti.find(
@@ -93,7 +93,13 @@ export function datiFoglioRicetta(
 
   return {
     titolo: vista.nomeRicetta,
-    sottotitolo: `${vista.resa} · ${vista.descrizione}`,
+    sottotitolo: vista.ripartizione.length
+      ? vista.descrizione
+      : `${vista.resa} · ${vista.descrizione}`,
+    intestazionePdf: {
+      descrizione: vista.descrizione,
+      resa: vista.ripartizione.length ? undefined : vista.resa,
+    },
     tipoLievito: tipoImpasto(ricetta),
     etichettaLievito: lievito?.etichetta ?? 'Lievito',
     lievitoG: lievito?.grammi ?? 0,
@@ -104,6 +110,9 @@ export function datiFoglioRicetta(
         ? `${formattaPercentuale(lievito.percentuale)} sulla ${lievito.basePercentuale}`
         : 'dose totale, già compresa nell’impasto',
     farinaG: risultato.farinaTotaleG,
+    idratazione: risultato.farinaTotaleG > 0
+      ? 100 * risultato.acquaTotaleG / risultato.farinaTotaleG
+      : undefined,
     fasi,
     riepilogo: vista.riepilogoTecnico.map((gruppo) => ({
       titolo: gruppo.titolo,
@@ -113,6 +122,14 @@ export function datiFoglioRicetta(
         valorePdf: voce.etichetta === 'Farina' ? ricetta.farinaPdf : undefined,
       })),
     })),
+    formati: risultato.prodotti?.length
+      ? {
+          titolo: 'Divisione per formato',
+          voci: risultato.modalita === 'farina' ? vista.ripartizione : vista.riepilogoTecnico[1].voci.filter(
+            ({ etichetta }) => etichetta !== 'Farina totale' && etichetta !== 'Peso impasto',
+          ),
+        }
+      : undefined,
     totaleG: risultato.pesoImpastoG,
     totaleNota: vista.resa,
     passi,

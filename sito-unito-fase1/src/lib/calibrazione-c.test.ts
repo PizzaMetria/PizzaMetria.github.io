@@ -100,7 +100,7 @@ describe('tre rami distinti', () => {
 
   it('l’acqua pesa meno sulla contemporanea che sulla verace', () => {
     // La verace ha l'esponente misurato a temperatura ambiente (-1,2); la
-    // contemporanea nasce al 75% e lì quell'esponente assorbiva la ricetta.
+    // contemporanea nasce al 70% e lì quell'esponente assorbiva la ricetta.
     const verace62 = dose(12, 'verace', 62);
     const verace75 = dose(12, 'verace', 75);
     const cont62 = dose(12, 'contemporanea', 62);

@@ -138,8 +138,7 @@ describe('rasterizzaSvg', () => {
 
     const immagine = await rasterizzaSvg(svg as unknown as SVGSVGElement);
 
-    // A scala 4 il 320 × 96 del finto grafico diventa 1280 × 384.
-    expect(immagine).toEqual({ datiUrl: 'data:image/jpeg;base64,AAAA', larghezza: 1280, altezza: 384 });
+    expect(immagine).toEqual({ datiUrl: 'data:image/jpeg;base64,AAAA', larghezza: 800, altezza: 240 });
     // Il difetto dei grafici neri: nessuna var(--…) deve arrivare all'immagine.
     expect(serializzato).not.toContain('var(');
     expect(serializzato).not.toContain('style=');
@@ -147,6 +146,6 @@ describe('rasterizzaSvg', () => {
     expect(serializzato).toContain('fill="#efeae0"');
     expect(serializzato).toContain('stroke="#b89428"');
     // Il fondo del JPEG è dipinto per primo.
-    expect(serializzato).toMatch(/^<svg[^>]*width="1280"[^>]*><rect[^>]*fill="#fffdf8"\/>/);
+    expect(serializzato).toMatch(/^<svg[^>]*width="800"[^>]*><rect[^>]*fill="#fffdf8"\/>/);
   });
 });

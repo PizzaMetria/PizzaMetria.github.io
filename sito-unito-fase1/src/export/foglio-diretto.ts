@@ -111,6 +111,9 @@ export function foglioDiretto(ingressi: IngressiFoglioDiretto): DatiFoglio {
     sottotitolo:
       `${formatta(idrNum, 0)}% di idratazione · ${formato}` +
       (r.residuoG !== null && r.residuoG > 0 ? ` · avanzano ${grammi(r.residuoG)} g` : ''),
+    intestazionePdf: {
+      resa: formato + (r.residuoG !== null && r.residuoG > 0 ? ` · avanzano ${grammi(r.residuoG)} g` : ''),
+    },
     tipoLievito: NOMI_LIEVITO[tipoLievito],
     lievitoG: r.lievitoG,
     lievitoNota: `${formatta(r.percentualeLievito, 2)}% sulla farina · ${formatta(
@@ -118,6 +121,8 @@ export function foglioDiretto(ingressi: IngressiFoglioDiretto): DatiFoglio {
       1,
     )} g per kg`,
     dosi,
+    farinaG: r.farinaG,
+    idratazione: idrNum,
     totaleG: r.pesoImpastoG,
     totaleNota: formato,
     forza: {
@@ -126,6 +131,7 @@ export function foglioDiretto(ingressi: IngressiFoglioDiretto): DatiFoglio {
       finestra: `${r.forzaMinima}–${r.forzaMassima}`,
       minima: r.forzaMinima,
       massima: r.forzaMassima,
+      zonaSicura: [r.zonaMinima, r.zonaMassima],
       testo:
         r.wEfficace !== null && r.giudizioForza
           ? `${ETICHETTE_GIUDIZIO[r.giudizioForza]}. ${testoGiudizio(
@@ -147,7 +153,7 @@ export function foglioDiretto(ingressi: IngressiFoglioDiretto): DatiFoglio {
       nota: passo.nota,
     })),
     // Il grafico viaggia con il foglio: lo usa il PDF vettoriale.
-    curva: r.curva.map((punto) => ({ ora: punto.ora, attivita: punto.attivita })),
+    curva: r.curva.map((punto) => ({ ora: punto.ora, attivita: punto.attivita, temperatura: punto.temperatura })),
     fasce: r.fasce.map((fascia) => ({ da: fascia.da, a: fascia.a, inFrigo: fascia.inFrigo })),
     oreTotali: r.fasce.reduce((massimo, fascia) => Math.max(massimo, fascia.a), 0),
     // Niente note sul foglio: le dosi si correggono col forno, non con una frase

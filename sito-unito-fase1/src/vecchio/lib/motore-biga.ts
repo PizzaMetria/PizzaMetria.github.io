@@ -482,7 +482,18 @@ export function oreAmbienteSuggerite(temperatura: number, frigo: number, oreTota
   if (fine < inizio) return null;
 
   const centro = Math.round((inizio + fine) / 2) / 100;
-  return stimaBigaMista(temperatura, frigo, centro, oreTotali - centro).piano ? centro : null;
+  if (stimaBigaMista(temperatura, frigo, centro, oreTotali - centro).piano) return centro;
+
+  /*
+   * Il centro della finestra a volte non basta (temperature alte, arrotondamenti):
+   * prima di dire «non c'è una ripartizione» si cerca la prima durata che il
+   * motore accetta. Senza questo il campo restava vuoto e il calcolatore spento
+   * anche quando una ripartizione valida esisteva.
+   */
+  for (let ore = 0.5; ore < oreTotali; ore += 0.5) {
+    if (stimaBigaMista(temperatura, frigo, ore, oreTotali - ore).piano) return ore;
+  }
+  return null;
 }
 
 /** Legge le ore del campo misto e applica la stessa verifica in anteprima e nel calcolo. */

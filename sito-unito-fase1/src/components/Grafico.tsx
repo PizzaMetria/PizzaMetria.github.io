@@ -25,13 +25,15 @@ interface Props {
  */
 export function Grafico({ curva, fasce, oreTotali, svgRef }: Props) {
   const larghezza = 520;
-  const altezza = 190;
+  // Il riquadro è largo: il disegno prende anche l'altezza che avanza, così la
+  // curva si legge senza strizzare gli occhi e la legenda resta sulla sinistra.
+  const altezza = 232;
   // Spazio a sinistra per le temperature: l'asse verticale sta lì, non sparse
   // fra le etichette in basso.
   const margine = 42;
   const margineDestro = 14;
-  const base = 150;
-  const tetto = 14;
+  const base = 192;
+  const tetto = 16;
   const larghezzaArea = larghezza - margine - margineDestro;
 
   const maxOre = Math.max(oreTotali, 0.5);
@@ -122,7 +124,7 @@ export function Grafico({ curva, fasce, oreTotali, svgRef }: Props) {
         <svg
           ref={svgRef}
           viewBox={`0 0 ${larghezza} ${altezza}`}
-          className="h-44 w-full"
+          className="h-auto w-full"
           role="img"
           aria-label={`Andamento della temperatura dell'impasto e del ritmo di lievitazione in ${Math.round(
             oreTotali,

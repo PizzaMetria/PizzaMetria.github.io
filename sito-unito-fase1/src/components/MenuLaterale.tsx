@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useDialogo } from '../lib/useDialogo';
+import { useRef } from 'react';
 import { Marchio } from './Marchio';
 import {
   CHI_SONO,
@@ -21,33 +22,13 @@ interface Props {
  * pagina sotto non scorre.
  */
 export function MenuLaterale({ aperto, onChiudi }: Props) {
-  const chiudiRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!aperto) return;
-
-    const fuocoPrecedente = document.activeElement;
-    chiudiRef.current?.focus();
-
-    function suTasto(evento: KeyboardEvent) {
-      if (evento.key === 'Escape') onChiudi();
-    }
-
-    const scorrimentoPrecedente = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', suTasto);
-
-    return () => {
-      document.removeEventListener('keydown', suTasto);
-      document.body.style.overflow = scorrimentoPrecedente;
-      if (fuocoPrecedente instanceof HTMLElement) fuocoPrecedente.focus();
-    };
-  }, [aperto, onChiudi]);
+  const dialogo = useRef<HTMLDivElement>(null);
+  useDialogo(dialogo, aperto, onChiudi);
 
   if (!aperto) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div ref={dialogo} tabIndex={-1} className="fixed inset-0 z-50">
       <div
         aria-hidden="true"
         onClick={onChiudi}
@@ -77,7 +58,7 @@ export function MenuLaterale({ aperto, onChiudi }: Props) {
             </span>
           </div>
           <button
-            ref={chiudiRef}
+            data-focus-iniziale
             type="button"
             onClick={onChiudi}
             aria-label="Chiudi il menu"

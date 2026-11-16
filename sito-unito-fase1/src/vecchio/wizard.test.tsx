@@ -43,18 +43,19 @@ describe('percorso guidato delle ricette', () => {
     expect(testo).not.toContain('Calcola impasto');
   });
 
-  it('la sola biga ha gli stessi passi: dosi, tempi, impasto', () => {
+  it('la sola biga ha due passi: dosi e tempi insieme, poi l’impasto', () => {
     telefono();
     const html = renderToStaticMarkup(<CalcolatoreBiga />);
     vi.unstubAllGlobals();
 
     const testo = html.replace(/<!-- -->/g, '');
 
-    expect(testo).toContain('Passo 1 di 3');
-    expect(testo).toContain('Scegli le dosi');
+    expect(testo).toContain('Passo 1 di 2');
+    expect(testo).toContain('Dosi e tempi');
+    // Temperatura e orari stanno nello stesso passo: il cambio si vede subito.
     expect(testo).toContain('Temperatura ambiente');
-    // I tempi e il risultato arrivano nei passi successivi.
-    expect(testo).not.toContain('Biga pronta il');
+    expect(testo).toContain('Quando ti serve la biga?');
+    // Il risultato arriva nel passo dopo.
     expect(testo).not.toContain('Farina totale');
   });
 });

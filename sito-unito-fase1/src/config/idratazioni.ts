@@ -10,7 +10,7 @@
  * motore, così nessuna formula dipende da questo file.
  *
  * Riferimenti delle idratazioni di lavoro (il centro di ogni intervallo):
- * - verace 62%, contemporanea 75%, teglia 75% (config/impasti.ts);
+ * - verace 62%, contemporanea 70%, teglia 75% (config/impasti.ts);
  * - teglia con biga 80%, Trancio 60%, contemporanea con biga 77%,
  *   Impasto Tuttofare 60% (vecchio/config/ricette.ts);
  * - biga 55% (la decide il motore, non l'utente).
@@ -51,7 +51,7 @@ const VOCI: Record<string, VoceIdratazione> = {
       'Idratazione inferiore all’intervallo consigliato per la Verace. Puoi proseguire, ma presta maggiore attenzione alla stesura, perché l’impasto resta molto sodo.',
   },
   contemporanea: {
-    range: { min: 65, max: 78 },
+    range: { min: 63, max: 75 },
     alto:
       'Idratazione superiore all’intervallo consigliato per la Contemporanea. Puoi proseguire, ma presta maggiore attenzione alla forza della farina e alla gestione dell’impasto.',
     basso:

@@ -163,94 +163,51 @@ describe('Impasto Tuttofare — calcolatore misto', () => {
     expect(Object.keys(pesoNonValido.errori)).toContain('prodotto-panini');
   });
 
-  it('formatta la resa con formati e peso complessivo', () => {
+  it('formatta la resa con il peso complessivo', () => {
     const vista = creaVistaRicetta(
       calcolaPerProdotti(RICETTA_TUTTOFARE, righe(misto)),
       RICETTA_TUTTOFARE,
     );
 
-    expect(vista.resa).toBe('4 formati · 1.200 g');
+    expect(vista.resa).toBe('1.200 g');
     expect(vista.nomeRicetta).toBe('Impasto Tuttofare');
     expect(vista.fasi).toHaveLength(1);
   });
 });
 
 describe('Impasto Tuttofare — modalità farina', () => {
-  it('calcola l’impasto dalla farina e ripartisce tra i formati', () => {
-    const risultato = calcolaPerFarina(RICETTA_TUTTOFARE, 1);
+  it('assegna i formati scelti a un solo impasto e riepiloga un unico avanzo', () => {
+    const risultato = calcolaPerFarina(RICETTA_TUTTOFARE, 1, null, undefined, null, [
+      { id: 'pizzette', quantita: 2, pesoG: 50 },
+      { id: 'bauletti', quantita: 1, pesoG: 500, misura: '20×10 cm' },
+    ]);
     const vista = creaVistaRicetta(risultato, RICETTA_TUTTOFARE);
 
     expect(risultato.modalita).toBe('farina');
     expect(risultato.farinaTotaleG).toBe(1000);
-    expect(risultato.pesoImpastoG).toBeCloseTo(1752, 6);
-
-    // Pezzature di riferimento in ordine di peso: pizzette 50 g, panini 90 g,
-    // focaccia rotonda 200 g, bauletti 500 g, focaccia in teglia 530 g.
-    expect(risultato.prodotti?.map((prodotto) => prodotto.quantita)).toEqual([
-      35, 19, 8, 3, 3,
+    expect(risultato.pesoImpastoG).toBeCloseTo(1752);
+    expect(risultato.residuoG).toBeCloseTo(1152);
+    expect(vista.ripartizione).toEqual([
+      { etichetta: 'Pizzette', valore: '2 pz. · 50 g' },
+      { etichetta: 'Pane in cassetta (20×10 cm)', valore: '1 pz. · 500 g' },
+      { etichetta: 'Avanzo totale', valore: '1.152 g' },
     ]);
-    const perId = Object.fromEntries(
-      (risultato.prodotti ?? []).map((prodotto) => [prodotto.id, prodotto]),
-    );
-    expect(perId.pizzette.residuoG).toBeCloseTo(2, 6);
-    expect(perId.focacce.residuoG).toBeCloseTo(152, 6);
-    expect(perId.bauletti.residuoG).toBeCloseTo(252, 6);
-    expect(perId['focacce-teglia'].residuoG).toBeCloseTo(162, 6);
-
-    expect(vista.resa).toBe('Dosi per 1 kg di farina · 1.752 g di impasto');
-    expect(vista.ripartizione.map((voce) => voce.etichetta)).toEqual([
-      'Pizzette',
-      'Panini',
-      'Focaccia rotonda',
-      'Bauletti / pane in cassetta',
-      'Focaccia in teglia',
-    ]);
-    expect(vista.ripartizione[0].valore).toBe('35 pezzi da 50 g · avanzo 2 g');
-    expect(vista.riepilogoTecnico[1].voci[0]).toEqual({
-      etichetta: 'Pizzette (indicativo)',
-      valore: '35 pezzi da 50 g · avanzo 2 g',
-    });
-    expect(vista.chiarimenti.join(' ')).toContain(
-      'la ripartizione tra i formati è indicativa',
-    );
-  });
-
-  it('mostra tutti i formati e i consigli specifici partendo dalla farina', () => {
-    const risultato = calcolaPerFarina(RICETTA_TUTTOFARE, 1);
     const passi = componiProcedimento(RICETTA_TUTTOFARE, risultato);
-    const testo = passi.flatMap((passo) => passo.paragrafi).join(' ');
-
-    // I formati stanno dentro il punto «Prodotti lievitati», come elenco
-    // puntato, nell'ordine di infornata.
-    const prodotti = passi.find(
-      (passo) => passo.titolo === 'Prodotti lievitati',
-    );
+    const prodotti = passi.find((passo) => passo.titolo === 'Prodotti lievitati');
     expect(prodotti?.voci?.map((voce) => voce.titolo)).toEqual([
-      'Panini',
-      'Pizzette',
-      'Bauletti / pane in cassetta',
-      'Focacce',
+      'Pizzette', 'Bauletti / pane in cassetta',
     ]);
-
-    expect(testo).not.toContain('{');
-    expect(testo).toContain(
-      'Dividi l’impasto secondo i formati che vuoi preparare: le pezzature di riferimento sono pizzetta 50 g, panino 90 g, focaccia rotonda 200 g, bauletto 500 g, focaccia in teglia 530 g.',
-    );
-
-    const tips = tipsRicetta(RICETTA_TUTTOFARE, risultato);
-    expect(tips).toHaveLength(
-      RICETTA_TUTTOFARE.tips.length + (RICETTA_TUTTOFARE.tipsProdotti?.length ?? 0),
-    );
   });
 
-  it('segnala i formati che l’impasto non copre', () => {
-    const risultato = calcolaPerFarina(RICETTA_TUTTOFARE, 0.05);
-    const vista = creaVistaRicetta(risultato, RICETTA_TUTTOFARE);
-    const bauletti = vista.ripartizione.find(
-      (voce) => voce.etichetta === 'Bauletti / pane in cassetta',
-    );
+  it('rifiuta una selezione oltre l’impasto disponibile', () => {
+    expect(() => calcolaPerFarina(RICETTA_TUTTOFARE, 0.05, null, undefined, null, [
+      { id: 'bauletti', quantita: 1, pesoG: 500 },
+    ])).toThrow('La farina non basta');
+  });
 
-    expect(bauletti?.valore).toContain('Impasto insufficiente');
+  it('lascia la selezione vuota finché l’utente non sceglie un formato', () => {
+    const risultato = calcolaPerFarina(RICETTA_TUTTOFARE, 1);
+    expect(risultato.prodotti).toBeUndefined();
   });
 });
 

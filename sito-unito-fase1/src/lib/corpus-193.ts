@@ -12,7 +12,7 @@
  * Questo modulo esiste per non avere due copie della stessa lettura: lo usano
  * sia `scripts/confronto-193.ts` sia `corpus-193.test.ts`.
  */
-import grezze from '../../../artifacts/calcolatori/ricette-italiane.json';
+import grezze from '../../artifacts/calcolatori/ricette-italiane.json';
 import type { InputCalcolo, Modello, Ramo } from '../types';
 
 interface Ricetta {

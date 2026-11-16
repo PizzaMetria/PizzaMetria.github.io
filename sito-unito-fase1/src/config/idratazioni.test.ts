@@ -99,6 +99,6 @@ describe('intervalli di idratazione sicura', () => {
   });
 
   it('scrive l’intervallo consigliato in italiano', () => {
-    expect(testoSicurezza('contemporanea')).toBe('Intervallo consigliato: 65–78%.');
+    expect(testoSicurezza('contemporanea')).toBe('Intervallo consigliato: 63–75%.');
   });
 });
