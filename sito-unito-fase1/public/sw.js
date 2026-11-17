@@ -36,33 +36,31 @@ const GUSCIO = [
 ];
 
 self.addEventListener('install', (evento) => {
-  evento.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll([...GUSCIO, ...(BUILD?.sito ?? [])]))
-      .then(async () => {
-        // L'impronta della password va salvata subito: al primo avvio il sito
-        // la chiede prima che il worker controlli la pagina, quindi quella
-        // copia non passerebbe di qui. Senza questa riga chi installa l'app e
-        // passa in modalità aereo senza ricaricare resta fuori.
-        // Se il file manca l'installazione non deve fallire: il sito resta
-        // utilizzabile, e l'impronta arriva alla prima apertura online.
-        try {
-          await cache.addAll(['./accesso.json']);
-        } catch {
-          // Nessun file di accesso: il sito è aperto, non serve altro.
-        }
+  evento.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll([...GUSCIO, ...(BUILD?.sito ?? [])]);
 
-        if (!BUILD?.pdf.length) return;
-        // La mancata disponibilità del PDF non impedisce l'installazione del sito.
-        try {
-          const cachePdf = await caches.open(CACHE_PDF);
-          await cachePdf.addAll(BUILD.pdf);
-        } catch {
-          // Gli asset restano recuperabili alla prima apertura online.
-        }
-      }),
-  );
+    // L'impronta della password va salvata subito: al primo avvio il sito la
+    // chiede prima che il worker controlli la pagina, quindi quella copia non
+    // passerebbe di qui. Senza queste righe chi installa l'app e passa in
+    // modalità aereo senza ricaricare resta fuori.
+    // Se il file manca l'installazione non deve fallire: il sito è aperto e
+    // l'impronta arriva alla prima apertura online.
+    try {
+      await cache.addAll(['./accesso.json']);
+    } catch {
+      // Nessun file di accesso da salvare.
+    }
+
+    if (!BUILD?.pdf.length) return;
+    // La mancata disponibilità del PDF non impedisce l'installazione del sito.
+    try {
+      const cachePdf = await caches.open(CACHE_PDF);
+      await cachePdf.addAll(BUILD.pdf);
+    } catch {
+      // Gli asset restano recuperabili alla prima apertura online.
+    }
+  })());
 });
 
 self.addEventListener('message', (evento) => {
