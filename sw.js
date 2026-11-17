@@ -15,7 +15,7 @@
  */
 
 // Il build sostituisce questa riga con la versione e gli asset effettivi.
-const BUILD = {"versione":"6550fd0b5df2cf06","sito":["./assets/index-CWgWwVlX.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-Cj9GJehR.js","./assets/pdf-DSvrOA1G.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
+const BUILD = {"versione":"0c51589fbefbad0f","sito":["./assets/index-CWgWwVlX.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-Cj9GJehR.js","./assets/pdf-DSvrOA1G.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
 const CACHE = `pizzametria-${BUILD?.versione ?? 'dev'}`;
 const CACHE_PDF = `${CACHE}-pdf`;
 const ASSET_PDF = new Set((BUILD?.pdf ?? []).map(
@@ -41,6 +41,18 @@ self.addEventListener('install', (evento) => {
       .open(CACHE)
       .then((cache) => cache.addAll([...GUSCIO, ...(BUILD?.sito ?? [])]))
       .then(async () => {
+        // L'impronta della password va salvata subito: al primo avvio il sito
+        // la chiede prima che il worker controlli la pagina, quindi quella
+        // copia non passerebbe di qui. Senza questa riga chi installa l'app e
+        // passa in modalità aereo senza ricaricare resta fuori.
+        // Se il file manca l'installazione non deve fallire: il sito resta
+        // utilizzabile, e l'impronta arriva alla prima apertura online.
+        try {
+          await cache.addAll(['./accesso.json']);
+        } catch {
+          // Nessun file di accesso: il sito è aperto, non serve altro.
+        }
+
         if (!BUILD?.pdf.length) return;
         // La mancata disponibilità del PDF non impedisce l'installazione del sito.
         try {

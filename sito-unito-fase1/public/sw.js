@@ -41,6 +41,18 @@ self.addEventListener('install', (evento) => {
       .open(CACHE)
       .then((cache) => cache.addAll([...GUSCIO, ...(BUILD?.sito ?? [])]))
       .then(async () => {
+        // L'impronta della password va salvata subito: al primo avvio il sito
+        // la chiede prima che il worker controlli la pagina, quindi quella
+        // copia non passerebbe di qui. Senza questa riga chi installa l'app e
+        // passa in modalità aereo senza ricaricare resta fuori.
+        // Se il file manca l'installazione non deve fallire: il sito resta
+        // utilizzabile, e l'impronta arriva alla prima apertura online.
+        try {
+          await cache.addAll(['./accesso.json']);
+        } catch {
+          // Nessun file di accesso: il sito è aperto, non serve altro.
+        }
+
         if (!BUILD?.pdf.length) return;
         // La mancata disponibilità del PDF non impedisce l'installazione del sito.
         try {
