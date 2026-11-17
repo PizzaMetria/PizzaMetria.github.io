@@ -15,7 +15,7 @@
  */
 
 // Il build sostituisce questa riga con la versione e gli asset effettivi.
-const BUILD = {"versione":"d27c0fac0496d7dc","sito":["./assets/index-DFr0WHmW.css","./assets/index-VocXmK_p.js","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-DAcKSAde.js","./assets/pdf-PH5BgloV.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
+const BUILD = {"versione":"ab253036e1b833fa","sito":["./assets/index-B2DGDWwQ.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-tjDlAy7v.js","./assets/pdf-BVZ5Df7v.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
 const CACHE = `pizzametria-${BUILD?.versione ?? 'dev'}`;
 const CACHE_PDF = `${CACHE}-pdf`;
 const ASSET_PDF = new Set((BUILD?.pdf ?? []).map(
@@ -79,7 +79,24 @@ self.addEventListener('fetch', (evento) => {
   const url = new URL(richiesta.url);
   if (url.origin !== self.location.origin) return;
   // I pacchetti da scaricare non si mettono in cache.
-  if (url.pathname.includes('/apk/')) return;
+  if (url.pathname.includes('/apk/') || url.pathname.includes('/files/')) return;
+
+  // La password si cambia senza ricostruire il sito: il file di accesso si
+  // chiede sempre alla rete, e la copia salvata serve solo senza rete.
+  if (url.pathname.endsWith('/accesso.json')) {
+    evento.respondWith(
+      fetch(richiesta, { cache: 'no-store' })
+        .then((risposta) => {
+          if (risposta.ok && risposta.type === 'basic') {
+            const copia = risposta.clone();
+            evento.waitUntil(caches.open(CACHE).then((cache) => cache.put(richiesta, copia)));
+          }
+          return risposta;
+        })
+        .catch(() => caches.match(richiesta).then((trovata) => trovata ?? Response.error())),
+    );
+    return;
+  }
 
   // Pagine: prima la rete, la copia salvata solo se la rete non risponde.
   if (richiesta.mode === 'navigate') {

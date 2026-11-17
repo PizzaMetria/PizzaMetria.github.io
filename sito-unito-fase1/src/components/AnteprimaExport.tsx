@@ -36,8 +36,8 @@ interface Props {
 }
 
 const VERSIONI: readonly { chiave: string; etichetta: string; stretto: boolean }[] = [
-  { chiave: 'computer', etichetta: 'Computer', stretto: false },
-  { chiave: 'smartphone', etichetta: 'Smartphone', stretto: true },
+  { chiave: 'computer', etichetta: 'Versione Computer', stretto: false },
+  { chiave: 'smartphone', etichetta: 'Versione Smartphone', stretto: true },
 ];
 
 /**
@@ -50,9 +50,10 @@ const VERSIONI: readonly { chiave: string; etichetta: string; stretto: boolean }
  * resta libera.
  *
  * Sul telefono comanda lo spazio: il nome del file non si stampa nella barra
- * (resta nell'etichetta per i lettori di schermo) e la scritta «Impaginato»
- * sparisce, così i due tasti prendono tutta la larghezza. Finché l'anteprima è
- * aperta la pagina sotto non scorre.
+ * (resta nell'etichetta per i lettori di schermo) e i due tasti prendono tutta
+ * la larghezza; il loro testo è un filo più piccolo, così «Versione Smartphone»
+ * non va a capo nemmeno sui telefoni stretti. Finché l'anteprima è aperta la
+ * pagina sotto non scorre.
  */
 export function AnteprimaExport({
   tipo,
@@ -126,10 +127,11 @@ export function AnteprimaExport({
         </button>
       </div>
 
-      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden border-b border-bordo/70 bg-carta/70 px-2 py-2 sm:px-3">
-        <span className="hidden shrink-0 text-[11px] font-semibold tracking-wide text-inchiostro-tenue uppercase sm:inline">
-          Impaginato
-        </span>
+      <div
+        role="group"
+        aria-label="Versione del foglio da salvare"
+        className="flex min-w-0 items-center gap-1.5 overflow-hidden border-b border-bordo/70 bg-carta/70 px-2 py-2 sm:px-3"
+      >
         {VERSIONI.map((versione) => {
           const scelta = versione.stretto === ottimizza;
           return (
@@ -143,7 +145,7 @@ export function AnteprimaExport({
               onClick={() => {
                 if (!scelta) onOttimizza(versione.stretto);
               }}
-              className={`min-h-10 flex-1 rounded-lg border px-3 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+              className={`min-h-10 flex-1 rounded-lg border px-2 text-[11px] leading-tight font-semibold whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-50 sm:px-3 sm:text-xs ${
                 scelta
                   ? 'border-terracotta bg-oro-velo text-oro-chiaro'
                   : 'border-bordo text-inchiostro-tenue hover:border-terracotta/50'

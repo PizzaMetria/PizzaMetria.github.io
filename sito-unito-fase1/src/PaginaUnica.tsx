@@ -216,7 +216,7 @@ export function PaginaUnica() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-1.5 pt-5 pb-14 sm:px-6 sm:pt-7 lg:max-w-4xl lg:pb-16">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-1.5 pt-5 pb-4 sm:px-6 sm:pt-7 lg:max-w-4xl lg:pb-8">
         {inRicetta ? (
           <div className="mb-3 sm:mb-4">
             <button

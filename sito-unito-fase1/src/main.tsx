@@ -2,6 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { PaginaUnica } from './PaginaUnica';
 import { AggiornamentoSito } from './components/AggiornamentoSito';
+import { RimbalzoFinePagina } from './components/RimbalzoFinePagina';
+import { AccessoRiservato } from './components/AccessoRiservato';
 import './fonts.css';
 import './index.css';
 
@@ -12,7 +14,10 @@ if (!radice) {
 
 createRoot(radice).render(
   <StrictMode>
-    <PaginaUnica />
-    <AggiornamentoSito />
+    <AccessoRiservato>
+      <PaginaUnica />
+      <AggiornamentoSito />
+      <RimbalzoFinePagina />
+    </AccessoRiservato>
   </StrictMode>,
 );

@@ -347,3 +347,83 @@ html[data-tema="scuro"] {
 .scheda-biga :is(dt, dd, label, p, li, span, strong):is(.font-bold, .font-semibold) {
   font-weight: 500;
 }
+
+/* Rimbalzo a fine pagina: curva smorzata campionata ogni 5%, così il movimento
+   non ha scalini fra un fotogramma e l'altro. Il livello grafico dedicato evita
+   di ridisegnare tutta la pagina a ogni passo. */
+@keyframes rimbalzo-fine {
+  0% {
+    transform: translate3d(0, 0.00px, 0);
+  }
+  5% {
+    transform: translate3d(0, -4.02px, 0);
+  }
+  10% {
+    transform: translate3d(0, -6.05px, 0);
+  }
+  15% {
+    transform: translate3d(0, -6.23px, 0);
+  }
+  20% {
+    transform: translate3d(0, -5.06px, 0);
+  }
+  25% {
+    transform: translate3d(0, -3.17px, 0);
+  }
+  30% {
+    transform: translate3d(0, -1.17px, 0);
+  }
+  35% {
+    transform: translate3d(0, 0.50px, 0);
+  }
+  40% {
+    transform: translate3d(0, 1.58px, 0);
+  }
+  45% {
+    transform: translate3d(0, 2.03px, 0);
+  }
+  50% {
+    transform: translate3d(0, 1.92px, 0);
+  }
+  55% {
+    transform: translate3d(0, 1.44px, 0);
+  }
+  60% {
+    transform: translate3d(0, 0.80px, 0);
+  }
+  65% {
+    transform: translate3d(0, 0.18px, 0);
+  }
+  70% {
+    transform: translate3d(0, -0.30px, 0);
+  }
+  75% {
+    transform: translate3d(0, -0.58px, 0);
+  }
+  80% {
+    transform: translate3d(0, -0.66px, 0);
+  }
+  85% {
+    transform: translate3d(0, -0.58px, 0);
+  }
+  90% {
+    transform: translate3d(0, -0.40px, 0);
+  }
+  95% {
+    transform: translate3d(0, -0.19px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0.00px, 0);
+  }
+}
+
+main.rimbalzo-fine {
+  will-change: transform;
+  animation: rimbalzo-fine 520ms linear both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main.rimbalzo-fine {
+    animation: none;
+  }
+}

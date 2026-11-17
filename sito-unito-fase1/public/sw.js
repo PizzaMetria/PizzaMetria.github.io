@@ -79,7 +79,24 @@ self.addEventListener('fetch', (evento) => {
   const url = new URL(richiesta.url);
   if (url.origin !== self.location.origin) return;
   // I pacchetti da scaricare non si mettono in cache.
-  if (url.pathname.includes('/apk/')) return;
+  if (url.pathname.includes('/apk/') || url.pathname.includes('/files/')) return;
+
+  // La password si cambia senza ricostruire il sito: il file di accesso si
+  // chiede sempre alla rete, e la copia salvata serve solo senza rete.
+  if (url.pathname.endsWith('/accesso.json')) {
+    evento.respondWith(
+      fetch(richiesta, { cache: 'no-store' })
+        .then((risposta) => {
+          if (risposta.ok && risposta.type === 'basic') {
+            const copia = risposta.clone();
+            evento.waitUntil(caches.open(CACHE).then((cache) => cache.put(richiesta, copia)));
+          }
+          return risposta;
+        })
+        .catch(() => caches.match(richiesta).then((trovata) => trovata ?? Response.error())),
+    );
+    return;
+  }
 
   // Pagine: prima la rete, la copia salvata solo se la rete non risponde.
   if (richiesta.mode === 'navigate') {

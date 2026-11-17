@@ -1609,7 +1609,7 @@ export default function App({
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className={senzaTestata ? '' : 'min-h-screen'}>
       {senzaTestata ? null : (
       <header className="sticky top-0 z-40 border-b border-bordo/70 bg-crema-scuro/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6">
@@ -1667,7 +1667,7 @@ export default function App({
 
       <main
         id="calcolatore"
-        className={`mx-auto max-w-5xl scroll-mt-20 px-0 pb-14 sm:px-6 ${
+        className={`mx-auto max-w-5xl scroll-mt-20 px-0 pb-3 sm:px-6 ${
           senzaTestata ? 'pt-4' : ''
         }`}
       >

@@ -13,7 +13,9 @@
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:prova": "tsc --noEmit && vite build --mode prova && node scripts/precache.mjs && node scripts/accesso.mjs",
+    "impronta": "node scripts/impronta.mjs"
   },
   "dependencies": {
     "pdfjs-dist": "^6.5.438",

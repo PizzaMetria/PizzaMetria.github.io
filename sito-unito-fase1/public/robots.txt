@@ -1,0 +1,6 @@
+# PizzaMetria — https://pizzametria.github.io
+# Sito pubblico: si può indicizzare tutto, l'indirizzo della mappa è qui sotto.
+User-agent: *
+Allow: /
+
+Sitemap: https://pizzametria.github.io/sitemap.xml
