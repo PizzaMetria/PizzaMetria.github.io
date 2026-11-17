@@ -68,6 +68,26 @@ function foglioDi(risultato: RisultatoCalcolo, tipoLievito: TipoLievito = 'fresc
 }
 
 describe('export del calcolatore diretto', () => {
+  it('segnala nel foglio e nel PDF una temperatura dell’acqua sotto zero', () => {
+    const base = caso();
+    const risultato = calcola({
+      ...base,
+      temperaturaImpasto: 24,
+      temperaturaFarina: 30,
+      riscaldamento: 15,
+      tempi: { ...base.tempi, ta: 30 },
+    });
+    expect(risultato.temperaturaAcqua).toBe(-3);
+    const foglio = foglioDi(risultato);
+    expect(foglio.dosi?.find(({ tipo }) => tipo === 'acqua')?.nota)
+      .toBe('Con questi parametri servirebbe acqua sotto 0 °C.');
+    for (const smartphone of [false, true]) {
+      const pdf = new TextDecoder('latin1').decode(creaPdf(foglio, smartphone));
+      expect(pdf).toContain('servirebbe acqua sotto 0');
+      expect(pdf).not.toContain('Temperatura consigliata -3');
+    }
+  });
+
   it('con i dati puliti il foglio torna i numeri del risultato e il PDF si genera', () => {
     const risultato = calcola(caso('fresco'));
 

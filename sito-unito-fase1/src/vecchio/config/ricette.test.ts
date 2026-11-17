@@ -277,7 +277,7 @@ describe('testi aggiornati di biga e calcolatore', () => {
 
   it('descrive la biga come prefermento che matura', () => {
     expect(configBiga().descrizione).toBe(
-      'Solo prefermento: farina, acqua e lievito. L’idratazione varia in base a tempi e temperature, per avere sempre un prefermento maturo.',
+      'Solo prefermento: farina, acqua e lievito. L’idratazione della biga si adatta ai tempi e alle temperature che imposti.',
     );
   });
 

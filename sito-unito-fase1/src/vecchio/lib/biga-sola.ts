@@ -77,7 +77,7 @@ function configurazione(
     slug: 'biga',
     nome: 'Biga',
     descrizione:
-      'Solo prefermento: farina, acqua e lievito. L’idratazione varia in base a tempi e temperature, per avere sempre un prefermento maturo.',
+      'Solo prefermento: farina, acqua e lievito. L’idratazione della biga si adatta ai tempi e alle temperature che imposti.',
     sottotitolo: `${testoMaturazione(piano)} · biga al ${piano.idratazione}%`,
     famiglia: 'biga-rinfresco',
     modalita: ['farina'],

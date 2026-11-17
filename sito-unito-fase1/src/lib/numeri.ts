@@ -8,6 +8,13 @@ export function leggiNumeroDecimale(grezzo: string): number | null {
   return Number.isFinite(numero) ? numero : null;
 }
 
+/** Testo condiviso con i fogli di ricetta. */
+export function notaTemperaturaAcqua(temperatura: number): string {
+  return temperatura < 0
+    ? 'Con questi parametri servirebbe acqua sotto 0 °C.'
+    : `Temperatura consigliata ${formatta(temperatura, 0)} °C`;
+}
+
 /** Numero con la virgola italiana e i decimali richiesti. */
 export function formatta(valore: number, decimali = 0): string {
   return valore.toLocaleString('it-IT', {

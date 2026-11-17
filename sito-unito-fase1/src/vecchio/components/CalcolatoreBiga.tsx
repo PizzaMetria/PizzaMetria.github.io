@@ -244,7 +244,7 @@ export function CalcolatoreBiga() {
     <section className="min-w-0">
       {/* Il titolo è già quello della fisarmonica: qui resta solo la guida. */}
       <p className="text-xs leading-relaxed text-inchiostro-tenue">
-        Per avere sempre un prefermento maturo, l’idratazione varia in base ai tempi a disposizione e alle temperature.
+        L’idratazione della biga si adatta ai tempi e alle temperature che imposti.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">

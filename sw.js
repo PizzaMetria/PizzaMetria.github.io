@@ -15,7 +15,7 @@
  */
 
 // Il build sostituisce questa riga con la versione e gli asset effettivi.
-const BUILD = {"versione":"d4671d667dd711a5","sito":["./assets/index-B2DGDWwQ.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-tjDlAy7v.js","./assets/pdf-BVZ5Df7v.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
+const BUILD = {"versione":"0e58d1db89265453","sito":["./assets/index-Dlj8a0Nj.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-CPsdfUWT.js","./assets/pdf-AkcjhWro.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
 const CACHE = `pizzametria-${BUILD?.versione ?? 'dev'}`;
 const CACHE_PDF = `${CACHE}-pdf`;
 const ASSET_PDF = new Set((BUILD?.pdf ?? []).map(
@@ -100,23 +100,29 @@ self.addEventListener('fetch', (evento) => {
 
   // Pagine: prima la rete, la copia salvata solo se la rete non risponde.
   if (richiesta.mode === 'navigate') {
+    // La home e index.html sono lo stesso documento. Le altre pagine
+    // conservano una chiave propria, anche quando sono aperte dal menu.
+    const scope = new URL(self.registration.scope);
+    const pagina = url.pathname === scope.pathname
+      ? new URL('index.html', scope).href
+      : url.origin + url.pathname;
     evento.respondWith(
       fetch(richiesta)
         .then((risposta) => {
-          // Solo una pagina vera va in cache. Un 503 di manutenzione o un errore
-          // del server, salvato sotto index.html, resterebbe servito per sempre
-          // ogni volta che l'utente apre l'app senza rete: da fuori sembrerebbe
-          // un sito rotto, e nessuno saprebbe che basta aspettare.
+          // Una risposta di errore non sostituisce l’ultima copia valida.
           const html = (risposta.headers.get('content-type') ?? '').includes('text/html');
           if (risposta.ok && risposta.type === 'basic' && html) {
             const copia = risposta.clone();
             evento.waitUntil(
-              caches.open(CACHE).then((cache) => cache.put('./index.html', copia)),
+              caches.open(CACHE).then((cache) => cache.put(pagina, copia)),
             );
           }
           return risposta;
         })
-        .catch(() => caches.open(CACHE).then((cache) => cache.match('./index.html'))),
+        .catch(async () => {
+          const cache = await caches.open(CACHE);
+          return (await cache.match(pagina)) ?? Response.error();
+        }),
     );
     return;
   }

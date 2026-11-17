@@ -13,7 +13,7 @@
  */
 import type { DatiFoglio, VoceDose } from './foglio';
 import { NOMI_LIEVITO } from '../lib/fermentazione';
-import { leggiNumeroDecimale, formatta, grammi } from '../lib/numeri';
+import { leggiNumeroDecimale, formatta, grammi, notaTemperaturaAcqua } from '../lib/numeri';
 import { istruzioneChiusura, orarioFase, titoloAzione } from '../lib/orari';
 import type { GiudizioForza, RisultatoCalcolo, TipoLievito } from '../types';
 
@@ -72,7 +72,7 @@ export function foglioDiretto(ingressi: IngressiFoglioDiretto): DatiFoglio {
     { nome: 'Farina', tipo: 'farina', grammi: r.farinaG, percentuale: 100 },
     {
       nome: 'Acqua', tipo: 'acqua', grammi: r.acquaG, percentuale: idrNum,
-      nota: `Temperatura consigliata ${formatta(r.temperaturaAcqua, 0)} °C`,
+      nota: notaTemperaturaAcqua(r.temperaturaAcqua),
     },
     { nome: 'Sale', tipo: 'sale', grammi: r.saleG, percentuale: percentoSuFarina(r.saleG) },
   ];

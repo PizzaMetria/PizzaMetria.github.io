@@ -43,7 +43,7 @@ const VOCI_BIGA = [
     nome: 'Biga',
     tipo: 'Prefermento',
     sottotitolo:
-      'Modifica tempo e temperatura per ottenere sempre un prefermento perfetto.',
+      'Calcola le dosi della biga in base a tempi e temperature.',
   },
 ];
 

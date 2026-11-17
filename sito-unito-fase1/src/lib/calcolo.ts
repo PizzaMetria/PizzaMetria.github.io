@@ -801,7 +801,9 @@ export function calcola(
       'Lievitazione molto lunga: oltre le 60 ore equivalenti cresce il rischio di sovramaturazione, con impasto che perde struttura.',
     );
   }
-  if (acquaConsigliata < 4) {
+  if (acquaConsigliata < 0) {
+    avvisi.push('Con questi parametri servirebbe acqua sotto 0 °C. Rivedi la temperatura di chiusura o raffredda la farina.');
+  } else if (acquaConsigliata < 4) {
     avvisi.push(
       `L’acqua dovrebbe stare a ${Math.round(acquaConsigliata)} °C: così fredda rallenti troppo la partenza del lievito.`,
     );

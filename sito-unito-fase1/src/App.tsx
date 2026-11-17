@@ -36,6 +36,7 @@ import {
   grammi,
   grammiLievito,
   leggiNumeroDecimale,
+  notaTemperaturaAcqua,
   ore,
 } from './lib/numeri';
 import { MESSAGGIO_DATI_CAMBIATI, bloccoExport } from './export/blocco';
@@ -1079,7 +1080,7 @@ export default function App({
         ) : null}
         <dl className="divide-y divide-bordo/60 text-sm">
           <Riga etichetta="Farina" valore={`${grammi(r.farinaG)} g`} tipo="farina" />
-          <Riga etichetta="Acqua" valore={`${grammi(r.acquaG)} g`} tipo="acqua" nota={`Temperatura consigliata ${formatta(r.temperaturaAcqua, 0)} °C`} />
+          <Riga etichetta="Acqua" valore={`${grammi(r.acquaG)} g`} tipo="acqua" nota={notaTemperaturaAcqua(r.temperaturaAcqua)} />
           <Riga etichetta="Sale" valore={`${grammi(r.saleG)} g`} tipo="sale" />
           {r.olioG > 0 ? <Riga etichetta="Olio" valore={`${grammi(r.olioG)} g`} tipo="olio" /> : null}
           {r.maltoG > 0 ? <Riga etichetta="Malto" valore={`${grammi(r.maltoG)} g`} tipo="malto" /> : null}
@@ -2215,9 +2216,8 @@ export default function App({
                 />
               </div>
               <p className="rounded-xl border border-bordo bg-crema px-3 py-2 text-xs leading-relaxed text-inchiostro-tenue">
-                Acqua consigliata:{' '}
                 <strong className="text-oro-chiaro">
-                  {formatta(r?.temperaturaAcqua ?? acquaAnteprima, 0)} °C
+                  {notaTemperaturaAcqua(r?.temperaturaAcqua ?? acquaAnteprima)}
                 </strong>{' '}
                 {r ? '' : '· anteprima'}
               </p>

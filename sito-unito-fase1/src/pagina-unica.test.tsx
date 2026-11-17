@@ -137,7 +137,7 @@ describe('testata della voce con la ricetta aperta', () => {
       }),
     ).toEqual({
       titolo: 'Biga',
-      nota: 'Modifica tempo e temperatura per ottenere sempre un prefermento perfetto.',
+      nota: 'Calcola le dosi della biga in base a tempi e temperature.',
     });
   });
 

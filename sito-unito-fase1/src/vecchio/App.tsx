@@ -437,6 +437,19 @@ export default function App({
       // formule, fasi e testi restano quelli originali.
       const config = configPersonalizzata(ricetta, parametri, opzioni);
 
+      const esitoFarina = modalita === 'farina'
+        ? validaModalitaFarina(
+            valori.farina.farinaKg,
+            ricetta.famiglia === 'diretto' ? '' : valori.farina.pesoPanetto,
+          )
+        : null;
+      if (ricetta.prodotti && esitoFarina && !esitoFarina.valori) {
+        setErrori(esitoFarina.errori);
+        if (proceduraGuidata && paginaApp === 4) vaiAPagina(3);
+        setAnnuncioCalcolo('Calcolo non eseguito: controlla la quantità di farina.');
+        return;
+      }
+
       let prodotti: RigaProdottoCalcolo[] = [];
       if (ricetta.prodotti) {
         const righe = (ricetta.prodotti ?? []).map((prodotto) => ({
@@ -528,11 +541,8 @@ export default function App({
           esito.valori.numeroTeglie,
           opzioni,
         );
-      } else {
-        const esito = validaModalitaFarina(
-          valori.farina.farinaKg,
-          ricetta.famiglia === 'diretto' ? '' : valori.farina.pesoPanetto,
-        );
+      } else if (esitoFarina) {
+        const esito = esitoFarina;
         erroriCalcolo = esito.errori;
 
         // La stima delle teglie è del Trancio: il calcolatore misto, partendo

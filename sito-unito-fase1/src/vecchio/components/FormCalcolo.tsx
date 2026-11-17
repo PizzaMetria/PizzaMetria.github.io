@@ -105,13 +105,14 @@ export function FormCalcolo({
     erroriPrecedenti.current = errori;
     if (!mostraDosi) return;
     const chiave = Object.keys(errori).find((nome) =>
-      /^(?:prodotti|prodotto-.+-dim-[ab])$/.test(nome) && !precedenti[nome as keyof ErroriCampi],
+      /^(?:farinaKg|prodotti|prodotto-.+-dim-[ab])$/.test(nome) && !precedenti[nome as keyof ErroriCampi],
     );
     if (!chiave) return;
     const formato = /^prodotto-(.+)-dim-[ab]$/.exec(chiave)?.[1];
     if (formato) setApertoProdotto(formato);
+    const campo = { farinaKg: 'farina-totale', prodotti: 'errore-formati' } as Record<string, string>;
     const frame = requestAnimationFrame(() => {
-      document.getElementById(chiave === 'prodotti' ? 'errore-formati' : chiave)?.focus();
+      document.getElementById(campo[chiave] ?? chiave)?.focus();
     });
     return () => cancelAnimationFrame(frame);
   }, [errori, mostraDosi]);
@@ -191,6 +192,7 @@ export function FormCalcolo({
   const testoNumero = (valore: number) => String(valore).replace('.', ',');
 
   const formattatoreGrammi = new Intl.NumberFormat('it-IT', {
+    useGrouping: true,
     maximumFractionDigits: 0,
   });
 
@@ -501,7 +503,7 @@ export function FormCalcolo({
         <div role="status" className="rounded-xl border border-bordo/70 bg-crema-scuro/40 px-3 py-2.5 text-sm">
           {differenzaG < -1e-7
             ? `Farina mancante: ${formattatoreGrammi.format(Math.ceil(-differenzaG / bilancio.fattorePeso))} g`
-            : `Farina disponibile: ${formattatoreGrammi.format(Math.floor(Math.max(0, differenzaG) / bilancio.fattorePeso + 1e-7))} g`}
+            : `Farina ancora da assegnare: ${formattatoreGrammi.format(Math.floor(Math.max(0, differenzaG) / bilancio.fattorePeso + 1e-7))} g`}
           <span className="mt-1 block text-xs text-inchiostro-tenue">
             {formattatoreGrammi.format(pesoComplessivo)} g di impasto assegnati su {formattatoreGrammi.format(bilancio.pesoImpastoG)} g
           </span>
@@ -522,7 +524,7 @@ export function FormCalcolo({
       {righeProdotti.map(({ prodotto, riga, subtotale, peso, quantita }) => {
         const dimensione = prodotto.dimensione;
         const aggiungibili = bilancio && peso > 0
-          ? Math.max(0, Math.floor((differenzaG + 1e-7) / peso))
+          ? Math.max(0, Math.min(LIMITI.maxPezzi - quantita, Math.floor((differenzaG + 1e-7) / peso)))
           : null;
         const dimensioneScelta = dimensione
           ? dimensione.tipo === 'stampo'
@@ -566,7 +568,7 @@ export function FormCalcolo({
                   </span>
                   {formattatoreGrammi.format(subtotale)} g
                   {aggiungibili !== null ? (
-                    <span className="block">+{aggiungibili} pz. possibili</span>
+                    <span className="block">{aggiungibili > 0 ? `Puoi aggiungerne ${aggiungibili}` : "Non puoi aggiungerne altri"}</span>
                   ) : null}
                 </span>
                 <svg
