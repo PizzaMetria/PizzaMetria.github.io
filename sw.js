@@ -15,7 +15,7 @@
  */
 
 // Il build sostituisce questa riga con la versione e gli asset effettivi.
-const BUILD = {"versione":"0e58d1db89265453","sito":["./assets/index-Dlj8a0Nj.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-CPsdfUWT.js","./assets/pdf-AkcjhWro.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
+const BUILD = {"versione":"6550fd0b5df2cf06","sito":["./assets/index-CWgWwVlX.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-Cj9GJehR.js","./assets/pdf-DSvrOA1G.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
 const CACHE = `pizzametria-${BUILD?.versione ?? 'dev'}`;
 const CACHE_PDF = `${CACHE}-pdf`;
 const ASSET_PDF = new Set((BUILD?.pdf ?? []).map(

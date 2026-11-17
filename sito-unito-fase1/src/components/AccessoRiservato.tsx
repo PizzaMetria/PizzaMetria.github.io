@@ -2,26 +2,22 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Marchio } from './Marchio';
 
 /**
- * Schermata di accesso per il sito di prova.
+ * Schermata di accesso, davanti al calcolatore in tutte le build.
  *
  * L'impronta della password non sta nel JavaScript: si legge da `accesso.json`
  * accanto alla pagina, quindi si può cambiare la password riscrivendo quel solo
  * file. Il confronto avviene nel browser con SHA-256.
  *
- * Se il file manca (o è vuoto) il sito si apre normalmente: è il caso della
- * pubblicazione su GitHub Pages. Serve a contingentare gli accessi, non è una
+ * Con `"impronta": ""` il sito si apre normalmente: è la via per spegnere il
+ * filtro senza toccare il codice. Serve a contingentare gli accessi, non è una
  * protezione: chi scarica il sito può aggirarla.
+ *
+ * Il service worker chiede `accesso.json` prima di tutto alla rete e ne tiene
+ * una copia, quindi il controllo funziona anche senza campo: senza rete il sito
+ * usa l'ultima impronta scaricata.
  */
 
 const CHIAVE = 'pizzametria-accesso';
-
-/**
- * Il blocco esiste soltanto nella build di prova (`npm run build:prova`).
- * Nella build pubblicata per GitHub il componente non fa nulla: nessuna
- * richiesta di `accesso.json`, quindi nessun rischio di restare bloccati su
- * «Accesso non verificabile» quando il telefono è senza rete.
- */
-const IN_PROVA = import.meta.env.MODE === 'prova';
 
 type Stato = 'verifica' | 'bloccato' | 'aperto' | 'errore';
 
@@ -75,7 +71,7 @@ function Intestazione() {
 }
 
 export function AccessoRiservato({ children }: { children: ReactNode }) {
-  const [stato, setStato] = useState<Stato>(IN_PROVA ? 'verifica' : 'aperto');
+  const [stato, setStato] = useState<Stato>('verifica');
   const [attesa, setAttesa] = useState('');
   const [password, setPassword] = useState('');
   const [messaggio, setMessaggio] = useState('');
@@ -83,7 +79,6 @@ export function AccessoRiservato({ children }: { children: ReactNode }) {
   const [tentativo, setTentativo] = useState(0);
 
   useEffect(() => {
-    if (!IN_PROVA) return;
     let attivo = true;
     setStato('verifica');
     improntaAttesa()
