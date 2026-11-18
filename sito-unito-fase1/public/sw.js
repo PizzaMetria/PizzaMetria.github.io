@@ -92,19 +92,28 @@ self.addEventListener('fetch', (evento) => {
   if (url.pathname.includes('/apk/') || url.pathname.includes('/files/')) return;
 
   // La password si cambia senza ricostruire il sito: il file di accesso si
-  // chiede sempre alla rete, e la copia salvata serve solo senza rete.
+  // chiede sempre alla rete, e la copia salvata serve quando la rete manca o
+  // quando il server risponde con un errore (per esempio un 503 di troppo).
+  // In quel caso vale l'ultima impronta buona: senza questa seconda chance un
+  // errore del server chiuderebbe fuori anche chi ha già la copia in cache.
   if (url.pathname.endsWith('/accesso.json')) {
-    evento.respondWith(
-      fetch(richiesta, { cache: 'no-store' })
-        .then((risposta) => {
-          if (risposta.ok && risposta.type === 'basic') {
-            const copia = risposta.clone();
-            evento.waitUntil(caches.open(CACHE).then((cache) => cache.put(richiesta, copia)));
-          }
-          return risposta;
-        })
-        .catch(() => caches.match(richiesta).then((trovata) => trovata ?? Response.error())),
-    );
+    evento.respondWith((async () => {
+      let risposta;
+      try {
+        risposta = await fetch(richiesta, { cache: 'no-store' });
+      } catch {
+        // Rete assente: si prova la copia salvata.
+      }
+      if (risposta?.ok && risposta.type === 'basic') {
+        const copia = risposta.clone();
+        evento.waitUntil(caches.open(CACHE).then((cache) => cache.put(richiesta, copia)));
+        return risposta;
+      }
+      const trovata = await caches.match(richiesta);
+      if (trovata) return trovata;
+      // Niente copia: passa l'errore, così la pagina mostra «Riprova».
+      return risposta ?? Response.error();
+    })());
     return;
   }
 
