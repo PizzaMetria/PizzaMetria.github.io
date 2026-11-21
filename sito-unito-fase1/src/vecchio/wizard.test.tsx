@@ -1,3 +1,4 @@
+import { TempoAmbienteBiga } from './components/TempoAmbienteBiga';
 import { FormCalcolo } from './components/FormCalcolo';
 import { RICETTE } from './config/ricette';
 import { caricaStato } from './lib/persistenza';
@@ -84,4 +85,15 @@ describe('comandi del modulo nel percorso guidato', () => {
       expect(desktop).toContain('>Risultato</button>');
     });
   }
+});
+
+
+it('mostra ore e istante sincronizzati nello stesso controllo della biga', () => {
+  const html = renderToStaticMarkup(<TempoAmbienteBiga id="prova-tempo"
+    inizio="2026-11-21T08:00" fine="2026-11-22T08:00" ore="12"
+    onChange={() => {}} />);
+  expect(html).toContain('Tempo a temperatura ambiente');
+  expect(html).toContain('Metti in frigorifero');
+  expect(html).toContain('value="2026-11-21T20:00"');
+  expect(html).toContain('value="12"');
 });

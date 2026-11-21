@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ingressoFrigoDaOre,
+  oreDaIngressoFrigo,
   cambiaOrarioBiga,
   rinnovaOrariBiga,
   completaCoppia,
@@ -104,5 +106,47 @@ describe('orari dei nuovi calcoli biga', () => {
     const nuova = cambiaOrarioBiga(biga, 'oraPronta', '2026-11-13T08:00');
     expect(nuova.oraPronta).toBe('2026-11-13T08:00');
     expect(oreTraIstanti(nuova.oraImpasto!, nuova.oraPronta!)).toBeNull();
+  });
+});
+
+
+describe('ore ambiente e orario di ingresso in frigorifero', () => {
+  it('converte le 12 ore della ricetta nell’ingresso alle 20', () => {
+    expect(ingressoFrigoDaOre('2026-11-21T08:00', '12')).toBe('2026-11-21T20:00');
+    expect(oreDaIngressoFrigo('2026-11-21T08:00', '2026-11-21T20:00')).toBe('12');
+  });
+
+  it('gestisce frazioni di ora con virgola e punto', () => {
+    for (const ore of ['12,5', '12.5']) {
+      expect(ingressoFrigoDaOre('2026-11-21T08:00', ore)).toBe('2026-11-21T20:30');
+    }
+    expect(oreDaIngressoFrigo('2026-11-21T08:00', '2026-11-21T20:30')).toBe('12,5');
+  });
+
+  it('permette un ingresso dopo la mezzanotte con la data esplicita', () => {
+    expect(ingressoFrigoDaOre('2026-11-21T20:00', '6')).toBe('2026-11-22T02:00');
+    expect(oreDaIngressoFrigo('2026-11-21T20:00', '2026-11-22T02:00')).toBe('6');
+  });
+
+  it('mantiene i minuti anche dopo più conversioni', () => {
+    const inizio = '2026-11-21T08:00';
+    const ingresso = '2026-11-21T20:01';
+    expect(ingressoFrigoDaOre(inizio, oreDaIngressoFrigo(inizio, ingresso))).toBe(ingresso);
+  });
+
+  it('lascia vuoto l’orario per un campo vuoto o incompleto', () => {
+    for (const ore of ['', '12,', 'testo', 'Infinity']) {
+      expect(ingressoFrigoDaOre('2026-11-21T08:00', ore)).toBe('');
+    }
+    expect(oreDaIngressoFrigo('2026-11-21T08:00', '')).toBe('');
+    expect(oreDaIngressoFrigo('', '2026-11-21T20:00')).toBe('');
+  });
+
+  it('mantiene fuori programma un ingresso prima della preparazione', () => {
+    expect(oreDaIngressoFrigo('2026-11-21T08:00', '2026-11-21T07:00')).toBe('-1');
+  });
+
+  it('usa la differenza reale tra istanti anche al cambio di ora legale', () => {
+    expect(oreDaIngressoFrigo('2026-10-25T01:30:00+02:00', '2026-10-25T03:30:00+01:00')).toBe('3');
   });
 });

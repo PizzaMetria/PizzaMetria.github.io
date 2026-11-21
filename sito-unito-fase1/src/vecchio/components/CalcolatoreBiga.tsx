@@ -4,6 +4,7 @@ import type { TipoEsportazione, TipoLievito } from '../types';
 import { calcolaBigaSola, oreTraDate } from '../lib/biga-sola';
 import { FRIGO, oreAmbienteSuggerite, stimaBigaMista } from '../lib/motore-biga';
 import { SceltaFrigoBiga } from './SceltaFrigoBiga';
+import { TempoAmbienteBiga } from './TempoAmbienteBiga';
 import { giornoDi, impastoPredefinito, oraDi, spostaOrarioBiga } from '../lib/orari';
 import { creaNomeFile } from '../lib/nomeFile';
 import { testoMaturazione } from '../lib/vista';
@@ -379,16 +380,12 @@ export function CalcolatoreBiga() {
 
       {misto ? (
         <div className="mt-4 space-y-3 rounded-xl border border-bordo bg-crema-scuro/60 p-3">
-          <CampoNumero
+          <TempoAmbienteBiga
             id="biga-ore-ambiente-misto"
-            label="Tempo a temperatura ambiente"
-            unit="h"
-            value={oreMiste}
+            inizio={inizio}
+            fine={fine}
+            ore={oreMiste}
             onChange={setOreMiste}
-            inputMode="decimal"
-            incremento={0.5}
-            minimo={0.5}
-            decimali={1}
           />
           {programmaMistoValido ? (
             <>

@@ -150,3 +150,22 @@ export function cambiaOrarioBiga(
   const ore = oreTraIstanti(coppia.inizio, coppia.fine);
   return { ...biga, oraImpasto: coppia.inizio, oraPronta: coppia.fine, ...(ore === null ? {} : { ore }) };
 }
+
+
+/** Istante di ingresso in frigo, espresso al minuto come il selettore di data. */
+export function ingressoFrigoDaOre(inizio: string, testoOre: string): string {
+  const scritto = testoOre.trim().replace(',', '.');
+  if (!/^-?\d+(?:\.\d+)?$/.test(scritto)) return '';
+  const ore = Number(scritto);
+  if (!Number.isFinite(ore)) return '';
+  return spostaOrarioBiga(inizio, Math.round(ore * 60) / 60);
+}
+
+/** Mantiene anche durate fuori programma per farle segnalare dal motore. */
+export function oreDaIngressoFrigo(inizio: string, ingresso: string): string {
+  if (!inizio || !ingresso) return '';
+  const a = new Date(inizio).getTime();
+  const b = new Date(ingresso).getTime();
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return '';
+  return String((b - a) / 3_600_000).replace('.', ',');
+}

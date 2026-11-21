@@ -18,6 +18,7 @@ import { configPersonalizzata, type ChiaveParametro } from '../config/personaliz
 import { leggiIntero, leggiNumeroDecimale, LIMITI } from '../lib/validazione';
 import { testoMaturazione } from '../lib/vista';
 import { SceltaFrigoBiga } from './SceltaFrigoBiga';
+import { TempoAmbienteBiga } from './TempoAmbienteBiga';
 import { CampoNumero } from './CampoNumero';
 import { SelettoreModalita } from './SelettoreModalita';
 import { PannelloPersonalizzazione } from './PannelloPersonalizzazione';
@@ -433,10 +434,12 @@ export function FormCalcolo({
 
           {misto ? (
             <div className="mt-3">
-              <CampoNumero id="ricetta-ore-ambiente-biga" label="Tempo a temperatura ambiente" unit="h"
-                value={oreMiste}
+              <TempoAmbienteBiga
+                id="ricetta-ore-ambiente-biga"
+                inizio={inizioBiga}
+                fine={fineBiga}
+                ore={oreMiste ?? ''}
                 onChange={(valore) => cambiaBiga({ oreAmbienteMisto: valore })}
-                inputMode="decimal" incremento={0.5} minimo={0.5} decimali={2}
               />
               {stimaMista?.piano ? (
                 <p className="mt-2 text-xs">
