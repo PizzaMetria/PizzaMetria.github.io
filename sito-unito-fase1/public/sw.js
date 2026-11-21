@@ -132,9 +132,16 @@ self.addEventListener('fetch', (evento) => {
           const html = (risposta.headers.get('content-type') ?? '').includes('text/html');
           if (risposta.ok && risposta.type === 'basic' && html) {
             const copia = risposta.clone();
-            evento.waitUntil(
-              caches.open(CACHE).then((cache) => cache.put(pagina, copia)),
-            );
+            // Un host che reindirizza (per esempio /privacy.html → /privacy)
+            // serve la pagina con un secondo indirizzo: si salva anche quello,
+            // così il percorso finale si apre pure senza rete.
+            const finale = risposta.redirected ? risposta.url : '';
+            evento.waitUntil(caches.open(CACHE).then(async (cache) => {
+              await cache.put(pagina, copia);
+              if (finale && finale !== pagina) {
+                await cache.put(finale, risposta.clone());
+              }
+            }));
           }
           return risposta;
         })

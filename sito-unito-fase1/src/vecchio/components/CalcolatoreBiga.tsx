@@ -4,7 +4,7 @@ import type { TipoEsportazione, TipoLievito } from '../types';
 import { calcolaBigaSola, oreTraDate } from '../lib/biga-sola';
 import { FRIGO, oreAmbienteSuggerite, stimaBigaMista } from '../lib/motore-biga';
 import { SceltaFrigoBiga } from './SceltaFrigoBiga';
-import { giornoDi, orarioPredefinito, oraDi, spostaOrarioBiga } from '../lib/orari';
+import { giornoDi, impastoPredefinito, oraDi, spostaOrarioBiga } from '../lib/orari';
 import { creaNomeFile } from '../lib/nomeFile';
 import { testoMaturazione } from '../lib/vista';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -81,8 +81,8 @@ const PASSI = ['Dosi e tempi', 'Il tuo impasto'];
  */
 export function CalcolatoreBiga() {
   const [farina, setFarina] = useState('1');
-  const [inizio, setInizio] = useState(() => orarioPredefinito(0));
-  const [fine, setFine] = useState(() => orarioPredefinito(1));
+  const [inizio, setInizio] = useState(() => impastoPredefinito(0));
+  const [fine, setFine] = useState(() => impastoPredefinito(24));
   const [misto, setMisto] = useState(false);
   const [oreMiste, setOreMiste] = useState('');
   const [tuttaInFrigo, setTuttaInFrigo] = useState<boolean | undefined>(true);
@@ -324,7 +324,12 @@ export function CalcolatoreBiga() {
           <input
             type="datetime-local"
             value={inizio}
-            onChange={(evento) => setInizio(evento.target.value)}
+            onChange={(evento) => {
+              const nuovaPartenza = evento.target.value;
+              const durata = tuttaInFrigo && !misto ? 24 : (attesa ?? 24);
+              setInizio(nuovaPartenza);
+              setFine(spostaOrarioBiga(nuovaPartenza, durata));
+            }}
             className="mt-1 min-h-11 w-full rounded-xl border border-bordo bg-carta px-3 text-sm font-semibold text-inchiostro tabular-nums"
           />
         </label>

@@ -1,3 +1,6 @@
+import { FormCalcolo } from './components/FormCalcolo';
+import { RICETTE } from './config/ricette';
+import { caricaStato } from './lib/persistenza';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -58,4 +61,27 @@ describe('percorso guidato delle ricette', () => {
     // Il risultato arriva nel passo dopo.
     expect(testo).not.toContain('Farina totale');
   });
+});
+
+describe('comandi del modulo nel percorso guidato', () => {
+  for (const ricetta of RICETTE) {
+    it(`mostra il comando di calcolo solo nella barra dei passi per ${ricetta.nome}`, () => {
+      const stato = caricaStato(null).ricette[ricetta.id];
+      const props = {
+        ricetta, modalita: stato.modalita, opzioni: stato.opzioni,
+        valori: stato.valori, parametri: stato.parametri, personalizzata: false,
+        errori: {}, erroreGenerale: null,
+        onCambiaModalita() {}, onCambiaOpzione() {}, onCambiaCampo() {},
+        onCambiaParametro() {}, onRipristinaParametri() {}, onCalcola() {},
+      };
+      const dosi = renderToStaticMarkup(<FormCalcolo {...props} sezione="dosi" />);
+      expect(dosi).not.toContain('>Risultato</button>');
+      const personalizza = renderToStaticMarkup(<FormCalcolo {...props} sezione="personalizza"
+        navigazioneRisultato={() => <nav>Comando nella barra</nav>} />);
+      expect(personalizza).not.toContain('>Risultato</button>');
+      expect(personalizza.indexOf('</form>')).toBeLessThan(personalizza.indexOf('<nav>'));
+      const desktop = renderToStaticMarkup(<FormCalcolo {...props} sezione="tutto" />);
+      expect(desktop).toContain('>Risultato</button>');
+    });
+  }
 });

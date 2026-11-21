@@ -1,5 +1,5 @@
 import { formattaNumero } from '../lib/formato';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { PulsantePasso } from '../../components/Passi';
 import type {
   ErroriCampi,
@@ -12,7 +12,7 @@ import type {
   ValoriGrezzi,
 } from '../types';
 import { FRIGO, oreAmbienteSuggerite, oreAttesa, piano as pianoMotore, stimaBigaMistaDaCampo } from '../lib/motore-biga';
-import { completaCoppia, giornoDi, oraDi, orarioPredefinito, spostaOrarioBiga } from '../lib/orari';
+import { cambiaOrarioBiga, completaCoppia, giornoDi, oraDi, orarioPredefinito, spostaOrarioBiga } from '../lib/orari';
 import { calcolaDaFarinaTotale } from '../lib/calcolo';
 import { configPersonalizzata, type ChiaveParametro } from '../config/personalizzazione';
 import { leggiIntero, leggiNumeroDecimale, LIMITI } from '../lib/validazione';
@@ -47,6 +47,7 @@ interface Props {
   onCambiaParametro: (chiave: ChiaveParametro, valore: number) => void;
   onRipristinaParametri: () => void;
   onCalcola: () => void;
+  navigazioneRisultato?: (bloccata: boolean) => ReactNode;
   onAvantiDosi?: () => void;
   /**
    * Nel percorso guidato il modulo si spezza in due passi: prima le dosi, poi
@@ -86,6 +87,7 @@ export function FormCalcolo({
   onCambiaParametro,
   onRipristinaParametri,
   onCalcola,
+  navigazioneRisultato,
   onAvantiDosi,
   sezione = 'tutto',
 }: Props) {
@@ -167,22 +169,7 @@ export function FormCalcolo({
     valore: string,
   ) => {
     if (!richiestaBiga) return;
-    const coppia = completaCoppia(
-      campo === 'oraImpasto'
-        ? valore
-        : (richiestaBiga.oraImpasto ?? orarioPredefinito(0)),
-      campo === 'oraPronta'
-        ? valore
-        : (richiestaBiga.oraPronta ?? orarioPredefinito(1)),
-    );
-    const ore = oreAttesa(coppia.inizio, coppia.fine);
-    const prossima: RichiestaBiga = {
-      ...richiestaBiga,
-      oraImpasto: coppia.inizio,
-      oraPronta: coppia.fine,
-      ...(ore === null ? {} : { ore }),
-    };
-    onCambiaOpzione('biga', prossima);
+    onCambiaOpzione('biga', cambiaOrarioBiga(richiestaBiga, campo, valore));
   };
 
   const leggìNumero = (testo: string, difetto: number) => {
@@ -1010,14 +997,13 @@ export function FormCalcolo({
         </p>
       ) : null}
 
-      {/*
-       * Un solo comando finale, sotto il modulo e uguale in tutte le ricette:
-       * anche nel percorso guidato, invece che nella barra dei passi.
-       */}
-      <div className="mt-5 flex justify-end">
-        <PulsantePasso etichetta="Risultato" form="calcolatore" disabilitato={bigaNonValida} />
-      </div>
+      {sezione === 'tutto' ? (
+        <div className="mt-5 flex justify-end">
+          <PulsantePasso etichetta="Risultato" form="calcolatore" disabilitato={bigaNonValida} />
+        </div>
+      ) : null}
     </form>
+    {navigazioneRisultato?.(bigaNonValida)}
     </>
   );
 }

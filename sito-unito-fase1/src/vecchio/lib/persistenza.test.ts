@@ -7,6 +7,7 @@ import {
 } from '../config/ricette';
 import {
   CHIAVE_STATO,
+  azzeraStato,
   aggiornaValoriValidi,
   caricaStato,
   salvaStato,
@@ -307,5 +308,35 @@ describe('opzioni lievito e autolisi', () => {
         oraPronta: '08:00',
       },
     });
+  });
+});
+
+describe('nuovo calcolo dal logo', () => {
+  it('ripristina tutte le ricette conservando gli altri dati del browser', () => {
+    const dati = new Map<string, string>([['pizzametria-accesso', 'sessione'], ['altro', 'dato']]);
+    const archivio = {
+      getItem: (key: string) => dati.get(key) ?? null,
+      setItem: (key: string, value: string) => { dati.set(key, value); },
+      removeItem: (key: string) => { dati.delete(key); },
+    };
+    const stato = caricaStato(null);
+    stato.ricette[RICETTA_TEGLIA_BIGA.id].valori.panetti.numeroPanetti = '12';
+    salvaStato(stato, archivio);
+    azzeraStato(archivio);
+    expect(dati.has(CHIAVE_STATO)).toBe(false);
+    expect(caricaStato(archivio)).toEqual(caricaStato(null));
+    expect(dati.get('pizzametria-accesso')).toBe('sessione');
+    expect(dati.get('altro')).toBe('dato');
+  });
+
+  it('gestisce archivi minimi e indisponibili', () => {
+    const minimo = archivioFinto('vecchio');
+    azzeraStato(minimo);
+    expect(caricaStato(minimo)).toEqual(caricaStato(null));
+    expect(() => azzeraStato(null)).not.toThrow();
+    expect(() => azzeraStato({
+      getItem: () => null,
+      setItem: () => { throw new Error('memoria indisponibile'); },
+    })).not.toThrow();
   });
 });

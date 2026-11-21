@@ -1,3 +1,4 @@
+import { rinnovaOrariBiga } from './lib/orari';
 import { useEffect, useRef, useState } from 'react';
 import type {
   ChiaveErrore,
@@ -126,6 +127,11 @@ export default function App({
 } = {}) {
   const [stato, setStato] = useState<StatoSalvato>(() => {
     const base = caricaStato();
+    for (const statoRicetta of Object.values(base.ricette)) {
+      if (statoRicetta.opzioni.biga) {
+        statoRicetta.opzioni.biga = rinnovaOrariBiga(statoRicetta.opzioni.biga);
+      }
+    }
     return ricettaIniziale ? { ...base, ricettaId: ricettaIniziale } : base;
   });
   const ricetta = trovaRicetta(stato.ricettaId);
@@ -241,7 +247,16 @@ export default function App({
   function cambiaRicetta(ricettaId: string) {
     if (ricettaId === ricetta.id) return;
     const nuova = trovaRicetta(ricettaId);
-    setStato((precedente) => ({ ...precedente, ricettaId }));
+    setStato((precedente) => {
+      const selezionata = precedente.ricette[ricettaId];
+      const biga = selezionata?.opzioni.biga;
+      return { ...precedente, ricettaId, ricette: {
+        ...precedente.ricette,
+        ...(biga ? { [ricettaId]: { ...selezionata, opzioni: {
+          ...selezionata.opzioni, biga: rinnovaOrariBiga(biga),
+        } } } : {}),
+      } };
+    });
     invalidaRisultato();
     setAnnuncioCalcolo(`Ricetta selezionata: ${nuova.nome}.`);
   }
@@ -735,6 +750,16 @@ export default function App({
       onCalcola={calcola}
       onAvantiDosi={sezione === 'dosi' ? () => calcola(true) : undefined}
       sezione={sezione}
+      navigazioneRisultato={sezione === 'personalizza' ? (bloccata) => (
+        <NavigazionePassi
+          passi={passiGuidati}
+          attivo={indiceGuidato}
+          onIndietro={() => vaiAPagina(3)}
+          formAvanti="calcolatore"
+          etichettaAvanti="Risultato"
+          bloccaAvanti={bloccata}
+        />
+      ) : undefined}
     />
   );
   const esitoCalcolo =

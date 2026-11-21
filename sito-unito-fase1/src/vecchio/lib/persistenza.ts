@@ -22,7 +22,7 @@ import { oreAttesa } from './motore-biga';
 
 export const CHIAVE_STATO = 'impasti-pizza:v1';
 
-type Archivio = Pick<Storage, 'getItem' | 'setItem'>;
+type Archivio = Pick<Storage, 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>;
 
 function archivioDisponibile(): Archivio | null {
   try {
@@ -494,6 +494,20 @@ export function salvaStato(
     );
   } catch {
     // La persistenza non deve bloccare l'app.
+  }
+}
+
+/** Il logo avvia un nuovo calcolo, cancellando solo le ricette salvate. */
+export function azzeraStato(archivio: Archivio | null = archivioDisponibile()): void {
+  if (!archivio) return;
+  try {
+    if (archivio.removeItem) archivio.removeItem(CHIAVE_STATO);
+    // Ripiego per gli archivi minimi (i test) e per chi non espone il
+    // metodo: `caricaStato` legge la stringa vuota come «niente salvato»,
+    // quindi il calcolo riparte comunque dai valori della ricetta.
+    else archivio.setItem(CHIAVE_STATO, '');
+  } catch {
+    // Anche con la memoria indisponibile si può tornare alla home.
   }
 }
 

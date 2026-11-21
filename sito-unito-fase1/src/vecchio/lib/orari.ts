@@ -1,3 +1,5 @@
+import type { RichiestaBiga } from '../types';
+
 /**
  * GIORNO E ORA DELLA BIGA
  * =======================
@@ -122,4 +124,29 @@ export function completaCoppia(
   }
 
   return { inizio: partenza, fine: arrivo };
+}
+
+/** Nuovo percorso: rinnova gli istanti conservando il programma scelto. */
+export function rinnovaOrariBiga(biga: RichiestaBiga, adesso = new Date()): RichiestaBiga {
+  const inizio = impastoPredefinito(0, adesso);
+  const durata = biga.tuttaInFrigo && biga.oreAmbienteMisto === undefined ? 24 : biga.ore;
+  return { ...biga, oraImpasto: inizio, oraPronta: spostaOrarioBiga(inizio, durata), ore: durata };
+}
+
+/** Cambiando la preparazione, la fine segue la durata del programma. */
+export function cambiaOrarioBiga(
+  biga: RichiestaBiga,
+  campo: 'oraImpasto' | 'oraPronta',
+  valore: string,
+): RichiestaBiga {
+  const precedente = completaCoppia(
+    biga.oraImpasto ?? orarioPredefinito(0),
+    biga.oraPronta ?? orarioPredefinito(1),
+  );
+  const durata = biga.tuttaInFrigo && biga.oreAmbienteMisto === undefined ? 24 : (oreTraIstanti(precedente.inizio, precedente.fine) ?? biga.ore);
+  const coppia = campo === 'oraImpasto'
+    ? { inizio: valore, fine: spostaOrarioBiga(valore, durata) }
+    : { inizio: precedente.inizio, fine: valore };
+  const ore = oreTraIstanti(coppia.inizio, coppia.fine);
+  return { ...biga, oraImpasto: coppia.inizio, oraPronta: coppia.fine, ...(ore === null ? {} : { ore }) };
 }

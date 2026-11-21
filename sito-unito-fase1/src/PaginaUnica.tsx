@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { azzeraStato } from './vecchio/lib/persistenza';
 import App from './App';
 import { Testata } from './components/Testata';
 import { SelettoreDiretti } from './components/SelettoreDiretti';
@@ -111,6 +112,7 @@ export function PaginaUnica() {
 
   /** Marchio in testa: si torna alla home e si ricomincia da zero. */
   function tornaAllaHome() {
+    azzeraStato();
     // Come al primo caricamento: le tre voci tornano chiuse.
     setAperto(null);
     setDiretta(null);

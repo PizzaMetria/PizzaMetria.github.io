@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cambiaOrarioBiga,
+  rinnovaOrariBiga,
   completaCoppia,
   giornoDi,
   haGiorno,
@@ -72,5 +74,35 @@ describe('impasto predefinito', () => {
     expect(impastoPredefinito(24, new Date('2026-11-09T18:59:00'))).toBe(
       '2026-11-10T19:15',
     );
+  });
+});
+
+describe('orari dei nuovi calcoli biga', () => {
+  const biga = { temperatura: 20, temperaturaFrigo: 4, ore: 24, tuttaInFrigo: true,
+    oraImpasto: '2026-11-14T08:00', oraPronta: '2026-11-15T08:00' };
+
+  it('rinnova le vecchie date mantenendo 24 ore dal nuovo inizio', () => {
+    const nuova = rinnovaOrariBiga(biga, new Date('2026-11-21T09:30:00'));
+    expect(nuova.oraImpasto).toBe('2026-11-21T09:45');
+    expect(nuova.oraPronta).toBe('2026-11-22T09:45');
+  });
+
+  it('sposta la fine quando si modifica la preparazione in frigo', () => {
+    const nuova = cambiaOrarioBiga(biga, 'oraImpasto', '2026-11-21T08:00');
+    expect(nuova.oraPronta).toBe('2026-11-22T08:00');
+  });
+
+  it('conserva la durata personalizzata del programma misto', () => {
+    const nuova = cambiaOrarioBiga({ ...biga, ore: 36,
+      oraPronta: '2026-11-15T20:00', oreAmbienteMisto: '12' },
+      'oraImpasto', '2026-11-21T08:00');
+    expect(nuova.oraPronta).toBe('2026-11-22T20:00');
+    expect(nuova.oreAmbienteMisto).toBe('12');
+  });
+
+  it('conserva una fine inserita manualmente anche se deve essere corretta', () => {
+    const nuova = cambiaOrarioBiga(biga, 'oraPronta', '2026-11-13T08:00');
+    expect(nuova.oraPronta).toBe('2026-11-13T08:00');
+    expect(oreTraIstanti(nuova.oraImpasto!, nuova.oraPronta!)).toBeNull();
   });
 });

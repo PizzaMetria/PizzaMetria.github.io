@@ -65,8 +65,8 @@ accendere o spegnere quando la ricetta lo permette.
 - Esportazione in **JPG** (dosi e resa) e in **PDF** (ricetta completa).
 - Interfaccia pensata prima per il telefono, con caratteri grandi e nessuno
   scorrimento orizzontale.
-- Installabile come app dal browser; nella cartella `apk/` c'è anche la versione
-  Android.
+- Installabile come app dal browser (PWA). L'app Android **è dismessa**: l'APK
+  non è più incluso nel pacchetto e non riceve aggiornamenti.
 
 ## 💻 Provarlo sul tuo computer
 

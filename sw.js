@@ -15,7 +15,7 @@
  */
 
 // Il build sostituisce questa riga con la versione e gli asset effettivi.
-const BUILD = {"versione":"01d4f38d4dfefe2c","sito":["./assets/index-CWgWwVlX.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-Cj9GJehR.js","./assets/pdf-DSvrOA1G.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
+const BUILD = {"versione":"1b309c3354a78cda","sito":["./assets/index-XtRHQrG6.js","./assets/index-jl-0MIUF.css","./assets/inter-variable-Dx4kXJAl.woff2","./assets/playfair-display-variable-BOwq7MWX.woff2","./assets/playfair-display-variable-italic-DmbndNpe.woff2","./assets/tinos-bold-qGf2y18O.woff2","./assets/tinos-regular-rilFpyjL.woff2"],"pdf":["./assets/PaginePdf-XO_vBr_u.js","./assets/pdf-BYMdx1DX.js","./assets/pdf.worker.min-B5Yc7dP4.mjs"]};
 const CACHE = `pizzametria-${BUILD?.versione ?? 'dev'}`;
 const CACHE_PDF = `${CACHE}-pdf`;
 const ASSET_PDF = new Set((BUILD?.pdf ?? []).map(
@@ -132,9 +132,16 @@ self.addEventListener('fetch', (evento) => {
           const html = (risposta.headers.get('content-type') ?? '').includes('text/html');
           if (risposta.ok && risposta.type === 'basic' && html) {
             const copia = risposta.clone();
-            evento.waitUntil(
-              caches.open(CACHE).then((cache) => cache.put(pagina, copia)),
-            );
+            // Un host che reindirizza (per esempio /privacy.html → /privacy)
+            // serve la pagina con un secondo indirizzo: si salva anche quello,
+            // così il percorso finale si apre pure senza rete.
+            const finale = risposta.redirected ? risposta.url : '';
+            evento.waitUntil(caches.open(CACHE).then(async (cache) => {
+              await cache.put(pagina, copia);
+              if (finale && finale !== pagina) {
+                await cache.put(finale, risposta.clone());
+              }
+            }));
           }
           return risposta;
         })
